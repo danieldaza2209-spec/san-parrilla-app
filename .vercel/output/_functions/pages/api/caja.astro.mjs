@@ -1,4 +1,4 @@
-import { d as getActiveCashRegister, o as openCashRegister, e as closeCashRegister } from '../../chunks/db_DvolSJbv.mjs';
+import { d as getActiveCashRegister, o as openCashRegister, e as closeCashRegister } from '../../chunks/db_CYyknqGr.mjs';
 export { renderers } from '../../renderers.mjs';
 
 async function GET() {

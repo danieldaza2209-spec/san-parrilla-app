@@ -1,4 +1,5 @@
 ---
+export const prerender = true;
 import Layout from '../layouts/Layout.astro';
 import { getActiveCashRegister, db } from '../lib/db.js';
 
@@ -10,11 +11,11 @@ const formatPrice = (val) => {
 };
 
 // Recent closed registers
-const pastRegisters = db.prepare(`
+const pastRegisters = db ? db.prepare(`
   SELECT * FROM cash_registers 
   WHERE status = 'closed' 
   ORDER BY id DESC LIMIT 5
-`).all();
+`).all() : [];
 
 const expectedCash = activeCash ? (activeCash.initial_cash + activeCash.total_cash_sales) : 0;
 const totalDigitalSales = activeCash ? (activeCash.total_nequi_sales + activeCash.total_daviplata_sales + activeCash.total_card_sales) : 0;

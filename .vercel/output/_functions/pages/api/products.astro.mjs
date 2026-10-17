@@ -1,4 +1,4 @@
-import { b as getProducts, k as db } from '../../chunks/db_DvolSJbv.mjs';
+import { b as getProducts, k as db } from '../../chunks/db_CYyknqGr.mjs';
 export { renderers } from '../../renderers.mjs';
 
 async function GET({ url }) {

@@ -101,7 +101,8 @@ let db = null;
 // Initialize SQLite only in non-serverless local environments
 if (!isVercel) {
   try {
-    const sqlite = require$1('node:sqlite');
+    const modName = 'node' + ':sqlite';
+    const sqlite = require$1(modName);
     if (sqlite && sqlite.DatabaseSync) {
       const dataDir = path.resolve(__dirname$1, '../../data');
       if (!fs.existsSync(dataDir)) {
@@ -110,6 +111,22 @@ if (!isVercel) {
       const dbPath = path.join(dataDir, 'sanparrilla.db');
       db = new sqlite.DatabaseSync(dbPath);
       try { db.exec('PRAGMA foreign_keys = ON;'); } catch (e) {}
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS categories (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_order INTEGER DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, name TEXT NOT NULL, price INTEGER NOT NULL, category_id TEXT NOT NULL, description TEXT DEFAULT '', is_active INTEGER DEFAULT 1, is_featured INTEGER DEFAULT 0, sort_order INTEGER DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS daily_specials (id INTEGER PRIMARY KEY CHECK (id = 1), sopa TEXT NOT NULL, principios TEXT NOT NULL, acompanamientos TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+        CREATE TABLE IF NOT EXISTS customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL UNIQUE, address TEXT NOT NULL, neighborhood TEXT DEFAULT '', notes TEXT DEFAULT '', order_count INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+        CREATE TABLE IF NOT EXISTS cash_registers (id INTEGER PRIMARY KEY AUTOINCREMENT, opened_at DATETIME DEFAULT CURRENT_TIMESTAMP, closed_at DATETIME, initial_cash INTEGER NOT NULL DEFAULT 0, status TEXT DEFAULT 'open', total_cash_sales INTEGER DEFAULT 0, total_nequi_sales INTEGER DEFAULT 0, total_daviplata_sales INTEGER DEFAULT 0, total_card_sales INTEGER DEFAULT 0, final_cash_counted INTEGER DEFAULT 0, cash_difference INTEGER DEFAULT 0, notes TEXT DEFAULT '');
+        CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY AUTOINCREMENT, order_type TEXT NOT NULL, table_number TEXT, customer_id INTEGER, customer_name TEXT, customer_phone TEXT, delivery_address TEXT, delivery_neighborhood TEXT, delivery_notes TEXT, subtotal INTEGER NOT NULL, delivery_fee INTEGER DEFAULT 0, packaging_fee INTEGER DEFAULT 0, total INTEGER NOT NULL, payment_method TEXT NOT NULL, payment_change_for INTEGER DEFAULT 0, status TEXT DEFAULT 'completado', cash_register_id INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+        CREATE TABLE IF NOT EXISTS order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, product_name TEXT NOT NULL, price INTEGER NOT NULL, quantity INTEGER NOT NULL DEFAULT 1, notes TEXT DEFAULT '');
+        CREATE TABLE IF NOT EXISTS views_counter (date TEXT PRIMARY KEY, views_count INTEGER DEFAULT 0);
+      `);
+      try {
+        const cashCount = db.prepare('SELECT count(*) as count FROM cash_registers').get().count;
+        if (cashCount === 0) {
+          db.prepare("INSERT INTO cash_registers (initial_cash, status, notes) VALUES (100000, 'open', 'Apertura inicial')").run();
+        }
+      } catch (e) {}
     }
   } catch (err) {
     db = null;
