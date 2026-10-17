@@ -1,4 +1,4 @@
-import { a as getDailySpecials, l as updateDailySpecials } from '../../chunks/db_CSF7mnNq.mjs';
+import { a as getDailySpecials, l as updateDailySpecials } from '../../chunks/db_DvolSJbv.mjs';
 export { renderers } from '../../renderers.mjs';
 
 async function GET() {

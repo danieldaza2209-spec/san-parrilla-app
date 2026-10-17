@@ -1,7 +1,7 @@
 import { e as createComponent, k as renderComponent, r as renderTemplate, n as defineScriptVars, m as maybeRenderHead } from '../chunks/astro/server_CKkv12kC.mjs';
 import 'piccolore';
 import { $ as $$Layout } from '../chunks/Layout_D0Sahy0n.mjs';
-import { d as getActiveCashRegister, k as db } from '../chunks/db_CSF7mnNq.mjs';
+import { d as getActiveCashRegister, m as db } from '../chunks/db_DvolSJbv.mjs';
 export { renderers } from '../renderers.mjs';
 
 var __freeze = Object.freeze;

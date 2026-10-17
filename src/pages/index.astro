@@ -1,9 +1,7 @@
 ---
+export const prerender = true;
 import Layout from '../layouts/Layout.astro';
-import { getCategories, getProducts, getDailySpecials, recordView } from '../lib/db.js';
-
-// Record anonymous page view for metrics
-recordView();
+import { getCategories, getProducts, getDailySpecials } from '../lib/db.js';
 
 const categories = getCategories();
 const products = getProducts(true);

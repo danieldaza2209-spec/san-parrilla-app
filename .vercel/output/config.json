@@ -50,10 +50,6 @@
 		{
 			"src": "^/pos/?$",
 			"dest": "_render"
-		},
-		{
-			"src": "^/$",
-			"dest": "_render"
 		}
 	]
 }

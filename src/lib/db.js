@@ -1,12 +1,14 @@
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 
+const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const isServerless = Boolean(process.env.VERCEL || process.env.AWS_REGION || process.env.LAMBDA_TASK_ROOT);
+const isVercel = Boolean(process.env.VERCEL || process.env.AWS_REGION || process.env.LAMBDA_TASK_ROOT);
 
-// Fallback in-memory state
-const fallbackCategories = [
+// Categorías del Menú
+export const fallbackCategories = [
   { id: 'especiales_hoy', name: 'Especiales de Hoy', sort_order: 1 },
   { id: 'fuertes_165', name: 'Platos Fuertes $16.500', sort_order: 2 },
   { id: 'fuertes_175', name: 'Platos Fuertes $17.500', sort_order: 3 },
@@ -15,14 +17,14 @@ const fallbackCategories = [
   { id: 'bebidas', name: 'Bebidas y Adicionales', sort_order: 6 },
 ];
 
-const fallbackDailySpecials = {
+export const fallbackDailySpecials = {
   sopa: 'Campesina',
   principios: ['Ensalada de atún', 'Garbanzos rancheros', 'Frijoles'],
   acompanamientos: ['Francesa casera', 'Torta de zanahoria', 'Tajadas maduras'],
   updated_at: new Date().toISOString()
 };
 
-const initialProductList = [
+export const initialProductList = [
   // 16.500
   { id: 't1-0', name: 'Milanesa de pollo', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 0 },
   { id: 't1-1', name: 'Nuggets de pollo', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 1 },
@@ -96,161 +98,25 @@ const initialProductList = [
 
 let db = null;
 
-// Initialize Database with maximum safety (Support both Local and Serverless Vercel)
-try {
-  const { DatabaseSync } = await import('node:sqlite');
-  
-  const targetDir = isServerless ? '/tmp' : path.resolve(__dirname, '../../data');
-  if (!fs.existsSync(targetDir)) {
-    try { fs.mkdirSync(targetDir, { recursive: true }); } catch (e) {}
-  }
-
-  const dbPath = path.join(targetDir, 'sanparrilla.db');
-  db = new DatabaseSync(dbPath);
-
+// Initialize SQLite only in non-serverless local environments
+if (!isVercel) {
   try {
-    db.exec('PRAGMA foreign_keys = ON;');
-  } catch (e) {}
-
-  // Initialize Tables
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS categories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      sort_order INTEGER DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS products (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      price INTEGER NOT NULL,
-      category_id TEXT NOT NULL,
-      description TEXT DEFAULT '',
-      is_active INTEGER DEFAULT 1,
-      is_featured INTEGER DEFAULT 0,
-      sort_order INTEGER DEFAULT 0,
-      FOREIGN KEY (category_id) REFERENCES categories(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS daily_specials (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      sopa TEXT NOT NULL,
-      principios TEXT NOT NULL,
-      acompanamientos TEXT NOT NULL,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS customers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      phone TEXT NOT NULL UNIQUE,
-      address TEXT NOT NULL,
-      neighborhood TEXT DEFAULT '',
-      notes TEXT DEFAULT '',
-      order_count INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS cash_registers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      opened_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      closed_at DATETIME,
-      initial_cash INTEGER NOT NULL DEFAULT 0,
-      status TEXT DEFAULT 'open',
-      total_cash_sales INTEGER DEFAULT 0,
-      total_nequi_sales INTEGER DEFAULT 0,
-      total_daviplata_sales INTEGER DEFAULT 0,
-      total_card_sales INTEGER DEFAULT 0,
-      final_cash_counted INTEGER DEFAULT 0,
-      cash_difference INTEGER DEFAULT 0,
-      notes TEXT DEFAULT ''
-    );
-
-    CREATE TABLE IF NOT EXISTS orders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      order_type TEXT NOT NULL,
-      table_number TEXT,
-      customer_id INTEGER,
-      customer_name TEXT,
-      customer_phone TEXT,
-      delivery_address TEXT,
-      delivery_neighborhood TEXT,
-      delivery_notes TEXT,
-      subtotal INTEGER NOT NULL,
-      delivery_fee INTEGER DEFAULT 0,
-      packaging_fee INTEGER DEFAULT 0,
-      total INTEGER NOT NULL,
-      payment_method TEXT NOT NULL,
-      payment_change_for INTEGER DEFAULT 0,
-      status TEXT DEFAULT 'completado',
-      cash_register_id INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (customer_id) REFERENCES customers(id),
-      FOREIGN KEY (cash_register_id) REFERENCES cash_registers(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS order_items (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      order_id INTEGER NOT NULL,
-      product_name TEXT NOT NULL,
-      price INTEGER NOT NULL,
-      quantity INTEGER NOT NULL DEFAULT 1,
-      notes TEXT DEFAULT '',
-      FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS views_counter (
-      date TEXT PRIMARY KEY,
-      views_count INTEGER DEFAULT 0
-    );
-  `);
-
-  // Seed categories if empty
-  const catCount = db.prepare('SELECT count(*) as count FROM categories').get().count;
-  if (catCount === 0) {
-    const insertCat = db.prepare('INSERT INTO categories (id, name, sort_order) VALUES (?, ?, ?)');
-    fallbackCategories.forEach(c => insertCat.run(c.id, c.name, c.sort_order));
+    const sqlite = require('node:sqlite');
+    if (sqlite && sqlite.DatabaseSync) {
+      const dataDir = path.resolve(__dirname, '../../data');
+      if (!fs.existsSync(dataDir)) {
+        try { fs.mkdirSync(dataDir, { recursive: true }); } catch (e) {}
+      }
+      const dbPath = path.join(dataDir, 'sanparrilla.db');
+      db = new sqlite.DatabaseSync(dbPath);
+      try { db.exec('PRAGMA foreign_keys = ON;'); } catch (e) {}
+    }
+  } catch (err) {
+    db = null;
   }
-
-  // Seed products if empty
-  const prodCount = db.prepare('SELECT count(*) as count FROM products').get().count;
-  if (prodCount === 0) {
-    const insertProd = db.prepare(
-      'INSERT INTO products (id, name, price, category_id, description, is_active, is_featured, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    );
-    initialProductList.forEach(p => {
-      insertProd.run(p.id, p.name, p.price, p.category_id, p.description, p.is_active, p.is_featured, p.sort_order);
-    });
-  }
-
-  // Seed daily specials
-  const specialCount = db.prepare('SELECT count(*) as count FROM daily_specials').get().count;
-  if (specialCount === 0) {
-    db.prepare(`
-      INSERT INTO daily_specials (id, sopa, principios, acompanamientos)
-      VALUES (1, ?, ?, ?)
-    `).run(
-      fallbackDailySpecials.sopa,
-      JSON.stringify(fallbackDailySpecials.principios),
-      JSON.stringify(fallbackDailySpecials.acompanamientos)
-    );
-  }
-
-  // Seed cash register
-  const cashCount = db.prepare('SELECT count(*) as count FROM cash_registers').get().count;
-  if (cashCount === 0) {
-    db.prepare(`
-      INSERT INTO cash_registers (initial_cash, status, notes)
-      VALUES (100000, 'open', 'Apertura inicial de caja')
-    `).run();
-  }
-} catch (err) {
-  console.warn('[DB WARNING] SQLite failed to initialize, running with in-memory resilient fallback:', err.message);
-  db = null;
 }
 
-// In-memory runtime state (used if DB is unavailable or as cache)
+// In-memory runtime state (used if DB is unavailable, in Vercel or as high-speed cache)
 let memProducts = [...initialProductList];
 let memSpecials = { ...fallbackDailySpecials };
 let memCustomers = [];
@@ -272,7 +138,7 @@ let memCash = {
 let memViews = 1;
 
 // ==========================================
-// EXPORTED FUNCTIONS WITH FAILSAFE
+// EXPORTED FUNCTIONS
 // ==========================================
 
 export function getCategories() {

@@ -1,7 +1,7 @@
 import { e as createComponent, k as renderComponent, r as renderTemplate, m as maybeRenderHead, g as addAttribute, l as renderScript } from '../chunks/astro/server_CKkv12kC.mjs';
 import 'piccolore';
 import { $ as $$Layout } from '../chunks/Layout_D0Sahy0n.mjs';
-import { g as getDashboardMetrics, a as getDailySpecials, b as getProducts, c as getCategories } from '../chunks/db_CSF7mnNq.mjs';
+import { g as getDashboardMetrics, a as getDailySpecials, b as getProducts, c as getCategories } from '../chunks/db_DvolSJbv.mjs';
 export { renderers } from '../renderers.mjs';
 
 const $$Admin = createComponent(async ($$result, $$props, $$slots) => {
