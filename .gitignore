@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Production build output
+dist/
+
+# Local database (can be excluded or kept depending on initial seed)
+data/*.db-wal
+data/*.db-shm
+
+# Environment & OS
+.env
+.DS_Store
+*.local
