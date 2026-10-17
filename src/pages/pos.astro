@@ -1,10 +1,14 @@
 ---
 export const prerender = true;
 import Layout from '../layouts/Layout.astro';
-import { getCategories, getProducts, getActiveCashRegister } from '../lib/db.js';
+import { getCategories, getProducts, getActiveCashRegister, fallbackCategories, initialProductList } from '../lib/db.js';
 
-const categories = getCategories();
-const products = getProducts(true);
+const rawCategories = getCategories();
+const categories = (rawCategories && rawCategories.length > 0) ? rawCategories : fallbackCategories;
+
+const rawProducts = getProducts(true);
+const products = (rawProducts && rawProducts.length > 0) ? rawProducts : initialProductList;
+console.log(">>> POS PRODUCTS IN ASTRO BUILD:", products.length, "Categories:", categories.length);
 const activeCash = getActiveCashRegister();
 
 // Format Colombian Peso
@@ -276,6 +280,16 @@ const formatPrice = (val) => {
 
           <button 
             type="button" 
+            id="btn-quick-test-print" 
+            class="px-3 py-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap"
+            title="Carga automáticamente el combo de prueba y lanza la impresión a la SAT Q22"
+          >
+            <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+            <span>Test SAT Q22</span>
+          </button>
+
+          <button 
+            type="button" 
             id="btn-checkout-print" 
             class="flex-1 py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-parrilla-dark font-display font-black text-base shadow-xl shadow-parrilla-gold/20 flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -411,6 +425,7 @@ const formatPrice = (val) => {
     const cashReceivedInput = document.getElementById('cash-received');
     const cashChangeDisplay = document.getElementById('cash-change-display');
     const clearCartBtn = document.getElementById('btn-clear-cart');
+    const quickTestBtn = document.getElementById('btn-quick-test-print');
     const checkoutPrintBtn = document.getElementById('btn-checkout-print');
 
     // Order Type Elements
@@ -685,6 +700,37 @@ const formatPrice = (val) => {
         cashReceivedInput.value = '';
         renderCart();
       }
+    });
+
+    // 7.1 QUICK TEST PRINT SAT Q22
+    quickTestBtn?.addEventListener('click', () => {
+      // Add test combo to cart if not present
+      const testItem = cart.find(i => i.id === 'test-print-sat');
+      if (testItem) {
+        testItem.quantity += 1;
+      } else {
+        cart.push({
+          id: 'test-print-sat',
+          name: '🔥 Combo Prueba Impresión SAT Q22',
+          price: 1000,
+          quantity: 1,
+          category_id: 'fuertes_165'
+        });
+      }
+      renderCart();
+      // If delivery mode is selected, populate test delivery data so validation passes
+      if (currentOrderType === 'domicilio') {
+        // @ts-ignore
+        if (!custPhoneInput.value) custPhoneInput.value = '3183821787';
+        // @ts-ignore
+        if (!custNameInput.value) custNameInput.value = 'CLIENTE PRUEBA SAT';
+        // @ts-ignore
+        if (!custAddressInput.value) custAddressInput.value = 'Cra 15 # 45 - 20 Apto 301';
+        // @ts-ignore
+        if (!custNeighborhoodInput.value) custNeighborhoodInput.value = 'Parrilla Centro';
+      }
+      // Trigger checkout and print immediately
+      checkoutPrintBtn?.click();
     });
 
     // 8. CHECKOUT & INSTANT PRINT TO SAT Q22

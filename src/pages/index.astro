@@ -1,11 +1,15 @@
 ---
 export const prerender = true;
 import Layout from '../layouts/Layout.astro';
-import { getCategories, getProducts, getDailySpecials } from '../lib/db.js';
+import { getCategories, getProducts, getDailySpecials, fallbackCategories, initialProductList, fallbackDailySpecials } from '../lib/db.js';
 
-const categories = getCategories();
-const products = getProducts(true);
-const dailySpecials = getDailySpecials();
+const rawCategories = getCategories();
+const categories = (rawCategories && rawCategories.length > 0) ? rawCategories : fallbackCategories;
+
+const rawProducts = getProducts(true);
+const products = (rawProducts && rawProducts.length > 0) ? rawProducts : initialProductList;
+
+const dailySpecials = getDailySpecials() || fallbackDailySpecials;
 
 // Group products by category
 const productsByCat = {};

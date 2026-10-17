@@ -25,6 +25,9 @@ const fallbackDailySpecials = {
 };
 
 const initialProductList = [
+  // Plato de Prueba de Impresión Térmica SAT Q22
+  { id: 'test-print-sat', name: '🔥 Combo Prueba Impresión SAT Q22', price: 1000, category_id: 'fuertes_165', description: 'Plato de prueba rápida para calibrar corte e impresión en impresora térmica SAT Q22 (80mm).', is_active: 1, is_featured: 1, sort_order: -999 },
+
   // 16.500
   { id: 't1-0', name: 'Milanesa de pollo', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 0 },
   { id: 't1-1', name: 'Nuggets de pollo', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 1 },
@@ -122,6 +125,31 @@ if (!isVercel) {
         CREATE TABLE IF NOT EXISTS views_counter (date TEXT PRIMARY KEY, views_count INTEGER DEFAULT 0);
       `);
       try {
+        const catCount = db.prepare('SELECT count(*) as count FROM categories').get().count;
+        if (catCount === 0) {
+          const insertCat = db.prepare('INSERT INTO categories (id, name, sort_order) VALUES (?, ?, ?)');
+          for (const c of fallbackCategories) {
+            insertCat.run(c.id, c.name, c.sort_order);
+          }
+        }
+        const prodCount = db.prepare('SELECT count(*) as count FROM products').get().count;
+        if (prodCount === 0) {
+          const insertProd = db.prepare(`
+            INSERT INTO products (id, name, price, category_id, description, is_active, is_featured, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          for (const p of initialProductList) {
+            insertProd.run(p.id, p.name, p.price, p.category_id, p.description || '', p.is_active, p.is_featured, p.sort_order);
+          }
+        }
+        // Always ensure test product is available
+        const hasTest = db.prepare("SELECT count(*) as count FROM products WHERE id = 'test-print-sat'").get().count;
+        if (hasTest === 0) {
+          db.prepare(`
+            INSERT OR REPLACE INTO products (id, name, price, category_id, description, is_active, is_featured, sort_order)
+            VALUES ('test-print-sat', '🔥 Combo Prueba Impresión SAT Q22', 1000, 'fuertes_165', 'Plato de prueba rápida para calibrar corte e impresión en impresora térmica SAT Q22 (80mm).', 1, 1, -999)
+          `).run();
+        }
         const cashCount = db.prepare('SELECT count(*) as count FROM cash_registers').get().count;
         if (cashCount === 0) {
           db.prepare("INSERT INTO cash_registers (initial_cash, status, notes) VALUES (100000, 'open', 'Apertura inicial')").run();
@@ -161,7 +189,8 @@ let memViews = 1;
 function getCategories() {
   if (db) {
     try {
-      return db.prepare('SELECT * FROM categories ORDER BY sort_order ASC').all();
+      const rows = db.prepare('SELECT * FROM categories ORDER BY sort_order ASC').all();
+      if (rows && rows.length > 0) return rows;
     } catch (e) {}
   }
   return fallbackCategories;
@@ -170,10 +199,10 @@ function getCategories() {
 function getProducts(onlyActive = true) {
   if (db) {
     try {
-      if (onlyActive) {
-        return db.prepare('SELECT * FROM products WHERE is_active = 1 ORDER BY sort_order ASC').all();
-      }
-      return db.prepare('SELECT * FROM products ORDER BY category_id, sort_order ASC').all();
+      const rows = onlyActive
+        ? db.prepare('SELECT * FROM products WHERE is_active = 1 ORDER BY sort_order ASC').all()
+        : db.prepare('SELECT * FROM products ORDER BY category_id, sort_order ASC').all();
+      if (rows && rows.length > 0) return rows;
     } catch (e) {}
   }
   if (onlyActive) {
@@ -538,4 +567,4 @@ function getDashboardMetrics() {
 }
 const db$1 = db;
 
-export { getDailySpecials as a, getProducts as b, getCategories as c, getActiveCashRegister as d, closeCashRegister as e, getCustomerByPhone as f, getDashboardMetrics as g, getOrderDetails as h, getRecentOrders as i, createOrder as j, db$1 as k, updateDailySpecials as l, db as m, openCashRegister as o, searchCustomers as s, upsertCustomer as u };
+export { getDailySpecials as a, getProducts as b, getCategories as c, getActiveCashRegister as d, closeCashRegister as e, getCustomerByPhone as f, getDashboardMetrics as g, getOrderDetails as h, getRecentOrders as i, createOrder as j, db$1 as k, updateDailySpecials as l, db as m, fallbackCategories as n, openCashRegister as o, initialProductList as p, fallbackDailySpecials as q, searchCustomers as s, upsertCustomer as u };
