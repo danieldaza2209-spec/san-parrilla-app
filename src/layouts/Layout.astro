@@ -31,15 +31,15 @@ const {
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="bg-parrilla-dark text-parrilla-ivory min-h-screen flex flex-col selection:bg-parrilla-gold selection:text-parrilla-dark">
+<body class="bg-parrilla-dark text-parrilla-ivory min-h-screen flex flex-col selection:bg-parrilla-gold selection:text-white">
 
   {showNav && (
-    <header class="sticky top-0 z-40 bg-parrilla-surface/90 backdrop-blur-md border-b border-parrilla-border no-print">
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-parrilla-border no-print">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         <!-- Brand -->
         <a href="/" class="flex items-center gap-3 group">
-          <img src="/logo.png" alt="San Parrilla Logo" class="h-10 w-auto rounded-full ring-2 ring-parrilla-gold/40 group-hover:ring-parrilla-gold transition" />
+          <img src="/logo.png" alt="San Parrilla Logo" class="h-10 w-auto rounded-full ring-2 ring-parrilla-gold/30 group-hover:ring-parrilla-gold transition" />
           <div class="flex flex-col">
             <span class="font-display font-extrabold text-xl tracking-tight leading-none text-parrilla-ivory">
               SAN <span class="text-parrilla-gold">PARRILLA</span>
@@ -49,17 +49,17 @@ const {
         </a>
 
         <!-- Navigation Links -->
-        <nav class="hidden md:flex items-center gap-1 bg-parrilla-dark/60 p-1.5 rounded-full border border-parrilla-border text-sm">
-          <a href="/" class="px-4 py-1.5 rounded-full text-parrilla-ivory hover:text-parrilla-gold hover:bg-parrilla-surface transition font-medium">
+        <nav class="hidden md:flex items-center gap-1 bg-slate-100/90 p-1 rounded-full border border-parrilla-border text-sm">
+          <a href="/" class="px-4 py-1.5 rounded-full text-parrilla-ivory hover:text-parrilla-gold hover:bg-white transition font-medium">
             🍽️ Menú Carta
           </a>
-          <a href="/pos" class="px-4 py-1.5 rounded-full bg-parrilla-gold/10 text-parrilla-gold border border-parrilla-gold/30 hover:bg-parrilla-gold hover:text-parrilla-dark font-semibold transition">
+          <a href="/pos" class="px-4 py-1.5 rounded-full bg-parrilla-gold text-white shadow-sm hover:bg-parrilla-goldLight font-semibold transition">
             ⚡ Punto de Venta (POS)
           </a>
-          <a href="/caja" class="px-4 py-1.5 rounded-full text-parrilla-ivory hover:text-parrilla-gold hover:bg-parrilla-surface transition font-medium">
+          <a href="/caja" class="px-4 py-1.5 rounded-full text-parrilla-ivory hover:text-parrilla-gold hover:bg-white transition font-medium">
             💵 Cuadre de Caja
           </a>
-          <a href="/admin" class="px-4 py-1.5 rounded-full text-parrilla-ivory hover:text-parrilla-gold hover:bg-parrilla-surface transition font-medium">
+          <a href="/admin" class="px-4 py-1.5 rounded-full text-parrilla-ivory hover:text-parrilla-gold hover:bg-white transition font-medium">
             📊 Métricas & Menú
           </a>
         </nav>
@@ -67,7 +67,7 @@ const {
         <!-- Right Quick Actions -->
         <div class="flex items-center gap-3">
           <a href="https://wa.me/573183821787" target="_blank" rel="noopener noreferrer" 
-             class="inline-flex items-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-parrilla-dark font-bold text-xs sm:text-sm px-3.5 py-2 rounded-lg shadow-md hover:shadow-parrilla-gold/20 transition active:scale-95">
+             class="inline-flex items-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs sm:text-sm px-3.5 py-2 rounded-lg shadow-sm hover:shadow transition active:scale-95">
             <i data-lucide="phone" class="w-4 h-4"></i>
             <span class="hidden sm:inline">WhatsApp</span>
           </a>

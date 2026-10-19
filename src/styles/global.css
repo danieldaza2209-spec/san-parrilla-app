@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    --text-main: #FFFFF0;
-    --bg-primary: #18110e;
-    --bg-secondary: #261b16;
-    --primary: #FFD700;
-    --primary-light: #ffe240;
-    --accent: #4CAF50;
-    --border-subtle: rgba(121, 85, 72, 0.35);
+    --text-main: #0F172A;
+    --bg-primary: #F8FAFC;
+    --bg-secondary: #FFFFFF;
+    --primary: #C2410C;
+    --primary-light: #9A3412;
+    --accent: #15803D;
+    --border-subtle: #E2E8F0;
   }
 
   body {
@@ -31,14 +31,14 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #18110e;
+  background: #F1F5F9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3a2921;
+  background: #CBD5E1;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #FFD700;
+  background: #C2410C;
 }
 
 /* ===================================================
