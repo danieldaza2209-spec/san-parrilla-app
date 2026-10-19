@@ -1,13 +1,13 @@
 ---
 export const prerender = true;
-import Layout from '../layouts/Layout.astro';
-import { getCategories, getProducts, getDailySpecials, fallbackCategories, initialProductList, fallbackDailySpecials } from '../lib/db.js';
+import PublicLayout from '../layouts/PublicLayout.astro';
+import { getCategories, getPublicProducts, getDailySpecials, fallbackCategories, fallbackDailySpecials } from '../lib/db.js';
 
 const rawCategories = getCategories();
 const categories = (rawCategories && rawCategories.length > 0) ? rawCategories : fallbackCategories;
 
-const rawProducts = getProducts(true);
-const products = (rawProducts && rawProducts.length > 0) ? rawProducts : initialProductList;
+// Solo platos del menú: los productos internos (ej. prueba de impresión) nunca llegan al público.
+const products = getPublicProducts();
 
 const dailySpecials = getDailySpecials() || fallbackDailySpecials;
 
@@ -23,7 +23,7 @@ const formatPrice = (val) => {
 };
 ---
 
-<Layout title="San Parrilla | Menú Digital & Brasas">
+<PublicLayout title="San Parrilla | Menú Digital & Brasas">
   <!-- Hero Section -->
   <section class="relative min-h-[50vh] sm:min-h-[58vh] flex items-center justify-center overflow-hidden border-b border-parrilla-border bg-gradient-to-b from-slate-100/60 to-parrilla-dark">
     <!-- Background Image with Soft Light Warm Overlay -->
@@ -235,4 +235,4 @@ const formatPrice = (val) => {
       });
     });
   </script>
-</Layout>
+</PublicLayout>

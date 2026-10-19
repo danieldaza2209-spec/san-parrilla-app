@@ -1,9 +1,9 @@
-import db, { getProducts } from '../../lib/db.js';
+import db, { getPublicProducts } from '../../lib/db.js';
 
-export async function GET({ url }) {
+// GET es público (es la misma información de la carta). El POST lo restringe el middleware a rol Administrador.
+export async function GET() {
   try {
-    const all = url.searchParams.get('all') === 'true';
-    const products = getProducts(!all);
+    const products = getPublicProducts();
     return new Response(JSON.stringify(products), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

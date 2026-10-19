@@ -211,6 +211,15 @@ export function getProducts(onlyActive = true) {
   return memProducts;
 }
 
+// Productos de uso interno (solo visibles para el personal en el POS, nunca en la carta pública).
+export const INTERNAL_PRODUCT_IDS = new Set(['test-print-sat']);
+
+export function getPublicProducts() {
+  const rows = getProducts(true) || [];
+  const visible = rows.filter((p) => !INTERNAL_PRODUCT_IDS.has(p.id));
+  return visible.length > 0 ? visible : initialProductList.filter((p) => !INTERNAL_PRODUCT_IDS.has(p.id));
+}
+
 export function getDailySpecials() {
   if (db) {
     try {

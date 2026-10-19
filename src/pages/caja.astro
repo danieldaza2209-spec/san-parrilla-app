@@ -1,6 +1,6 @@
 ---
-export const prerender = true;
-import Layout from '../layouts/Layout.astro';
+export const prerender = false; // SSR: protegida por src/middleware.js
+import StaffLayout from '../layouts/StaffLayout.astro';
 import { getActiveCashRegister, db } from '../lib/db.js';
 
 const activeCash = getActiveCashRegister();
@@ -22,7 +22,7 @@ const totalDigitalSales = activeCash ? (activeCash.total_nequi_sales + activeCas
 const grandTotalSales = activeCash ? (activeCash.total_cash_sales + totalDigitalSales) : 0;
 ---
 
-<Layout title="Control y Cierre de Caja | San Parrilla">
+<StaffLayout title="Control y Cierre de Caja | San Parrilla">
   <div class="max-w-6xl mx-auto px-4 py-8 flex-1 flex flex-col no-print">
 
     <!-- Header -->
@@ -224,7 +224,7 @@ const grandTotalSales = activeCash ? (activeCash.total_cash_sales + totalDigital
     <div class="ticket-header">
       <h1 class="restaurant-name">SAN PARRILLA</h1>
       <p style="margin: 1mm 0; font-size: 9.5pt;">REPORTE Z - CIERRE DE CAJA</p>
-      <div class="ticket-badge" style="border: 2px solid #000; font-size: 13pt;">COMPROBANTE FISCAL DE TURNO</div>
+      <div class="ticket-badge" style="border: 2px solid #000; font-size: 13pt;">CIERRE DE TURNO</div>
       <div style="font-size: 9pt; margin-top: 1.5mm;">
         <span>Turno #: <strong id="z-id">{activeCash?.id || '0'}</strong></span> | 
         <span>Fecha: <strong id="z-date">--/--/--</strong></span>
@@ -388,4 +388,4 @@ const grandTotalSales = activeCash ? (activeCash.total_cash_sales + totalDigital
       });
     }
   </script>
-</Layout>
+</StaffLayout>

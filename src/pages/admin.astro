@@ -1,6 +1,6 @@
 ---
-export const prerender = true;
-import Layout from '../layouts/Layout.astro';
+export const prerender = false; // SSR: protegida por src/middleware.js
+import StaffLayout from '../layouts/StaffLayout.astro';
 import { getDashboardMetrics, getDailySpecials, getProducts, getCategories } from '../lib/db.js';
 
 const metrics = getDashboardMetrics();
@@ -13,7 +13,7 @@ const formatPrice = (val) => {
 };
 ---
 
-<Layout title="Panel de Métricas & Menú | San Parrilla">
+<StaffLayout title="Panel de Métricas & Menú | San Parrilla">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col no-print">
 
     <!-- Header -->
@@ -24,6 +24,10 @@ const formatPrice = (val) => {
       </div>
 
       <div class="flex items-center gap-3">
+        <a href="/api/launcher" download class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-parrilla-ivory font-bold text-xs px-4 py-2.5 rounded-xl border border-parrilla-border shadow-sm transition" title="Descarga el acceso directo de Windows que abre el POS e imprime sin ventanas">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>Lanzador PC de caja (.bat)</span>
+        </a>
         <a href="/pos" class="inline-flex items-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition">
           <i data-lucide="zap" class="w-4 h-4"></i>
           <span>Ir al POS</span>
@@ -355,4 +359,4 @@ const formatPrice = (val) => {
       });
     });
   </script>
-</Layout>
+</StaffLayout>

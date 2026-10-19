@@ -1,6 +1,6 @@
 ---
-export const prerender = true;
-import Layout from '../layouts/Layout.astro';
+export const prerender = false; // SSR: protegida por src/middleware.js
+import StaffLayout from '../layouts/StaffLayout.astro';
 import { getCategories, getProducts, getActiveCashRegister, fallbackCategories, initialProductList } from '../lib/db.js';
 
 const rawCategories = getCategories();
@@ -17,7 +17,7 @@ const formatPrice = (val) => {
 };
 ---
 
-<Layout title="POS Punto de Venta | San Parrilla">
+<StaffLayout title="POS Punto de Venta | San Parrilla">
   <div class="max-w-[1600px] mx-auto px-2 sm:px-4 py-4 flex-1 flex flex-col no-print">
 
     <!-- Top Alert if Cash Register is closed -->
@@ -298,6 +298,16 @@ const formatPrice = (val) => {
           </button>
         </div>
 
+        <!-- Reimprimir el último ticket (sin cobrar de nuevo) -->
+        <button
+          type="button"
+          id="btn-reprint"
+          class="hidden w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-parrilla-ivory border border-parrilla-border text-xs font-bold transition items-center justify-center gap-2"
+        >
+          <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          <span id="btn-reprint-label">Reimprimir último ticket</span>
+        </button>
+
       </div>
 
     </div>
@@ -322,7 +332,7 @@ const formatPrice = (val) => {
 
     <!-- SECCIÓN MENSAJERO / DOMICILIO (RESALTADO EN GRANDE) -->
     <div id="t-delivery-box" class="delivery-banner" style="display: none;">
-      <div class="delivery-title">🛵 TICKET PARA EL MENSAJERO</div>
+      <div class="delivery-title">DOMICILIO - MENSAJERO</div>
       <div>
         <span style="font-size: 9pt;">CLIENTE:</span>
         <div id="t-cust-name" style="font-size: 13pt; font-weight: 900; text-transform: uppercase;">--</div>
@@ -335,6 +345,16 @@ const formatPrice = (val) => {
         <span style="font-size: 9pt;">DIRECCIÓN DE ENTREGA:</span>
         <div id="t-cust-address" class="delivery-address">--</div>
         <div id="t-cust-notes" style="font-size: 10pt; font-style: italic; margin-top: 0.5mm;">--</div>
+      </div>
+      <div style="margin-top: 2mm; border-top: 2px solid #000; padding-top: 1.5mm;">
+        <div style="display: flex; justify-content: space-between; font-size: 13pt; font-weight: 900;">
+          <span>COBRAR:</span>
+          <span id="t-courier-collect">$0</span>
+        </div>
+        <div id="t-courier-change-row" style="display: none; justify-content: space-between; font-size: 11pt; font-weight: bold; margin-top: 0.5mm;">
+          <span>LLEVAR VUELTAS:</span>
+          <span id="t-courier-change">$0</span>
+        </div>
       </div>
     </div>
 
@@ -795,61 +815,31 @@ const formatPrice = (val) => {
 
         const savedOrder = resData.order;
 
-        // POPULATE TICKET DOM BEFORE PRINTING
-        document.getElementById('t-id').textContent = '#' + savedOrder.id;
-        document.getElementById('t-date').textContent = new Date().toLocaleString('es-CO');
-        document.getElementById('t-payment-method').textContent = currentPaymentMethod;
-
-        const ticketBadge = document.getElementById('ticket-badge');
-        const deliveryBox = document.getElementById('t-delivery-box');
-        const mesaBox = document.getElementById('t-mesa-box');
-        const rowDelivery = document.getElementById('t-row-delivery');
-        const changeBox = document.getElementById('t-change-box');
-
-        if (currentOrderType === 'domicilio') {
-          ticketBadge.textContent = '🛵 DOMICILIO';
-          deliveryBox.style.display = 'block';
-          mesaBox.style.display = 'none';
-          rowDelivery.style.display = 'flex';
-          document.getElementById('t-cust-name').textContent = orderPayload.orderData.customerName;
-          document.getElementById('t-cust-phone').textContent = orderPayload.orderData.customerPhone;
-          document.getElementById('t-cust-address').textContent = orderPayload.orderData.deliveryAddress;
-          document.getElementById('t-cust-notes').textContent = orderPayload.orderData.deliveryNeighborhood || '';
-          document.getElementById('t-delivery-fee').textContent = fmt(deliveryFee);
-        } else {
-          ticketBadge.textContent = currentOrderType === 'mesa' ? 'CUENTA MESA' : 'PARA LLEVAR';
-          deliveryBox.style.display = 'none';
-          mesaBox.style.display = 'block';
-          rowDelivery.style.display = 'none';
+        // Un único objeto 'ticket' alimenta la impresión y la reimpresión
+        const ticket = {
+          id: savedOrder.id,
+          createdAt: new Date().toISOString(),
+          orderType: currentOrderType,
           // @ts-ignore
-          document.getElementById('t-mesa-val').textContent = tableInput.value || 'Mesa';
-        }
+          table: currentOrderType === 'mesa' ? (tableInput.value || 'Mesa') : '',
+          customerName: orderPayload.orderData.customerName,
+          customerPhone: orderPayload.orderData.customerPhone,
+          address: orderPayload.orderData.deliveryAddress,
+          neighborhood: orderPayload.orderData.deliveryNeighborhood,
+          items: cart.map(({ name, price, quantity, notes }) => ({ name, price, quantity, notes: notes || '' })),
+          subtotal,
+          deliveryFee,
+          total,
+          paymentMethod: currentPaymentMethod,
+          cashPaid: cashChangeFor
+        };
 
-        // Items in Ticket
-        const tItemsBody = document.getElementById('t-items-body');
-        tItemsBody.innerHTML = cart.map(it => `
-          <tr>
-            <td style="font-weight: bold;">${it.quantity}</td>
-            <td>${it.name}</td>
-            <td style="text-align: right; font-weight: bold;">${fmt(it.price * it.quantity)}</td>
-          </tr>
-        `).join('');
+        saveLastTicket(ticket);
 
-        document.getElementById('t-subtotal').textContent = fmt(subtotal);
-        document.getElementById('t-total').textContent = fmt(total);
+        // IMPRIMIR DE INMEDIATO (con --kiosk-printing sale directo a la SAT Q22 sin ventanas)
+        printTicket(ticket);
 
-        if (currentPaymentMethod === 'efectivo' && cashChangeFor > 0) {
-          changeBox.style.display = 'block';
-          document.getElementById('t-cash-paid').textContent = fmt(cashChangeFor);
-          document.getElementById('t-cash-change').textContent = fmt(Math.max(0, cashChangeFor - total));
-        } else {
-          changeBox.style.display = 'none';
-        }
-
-        // TRIGGER PRINT IMMEDIATELY (Sends directly to SAT Q22)
-        window.print();
-
-        // Reset Cart after print
+        // Vaciar la comanda
         cart = [];
         // @ts-ignore
         cashReceivedInput.value = '';
@@ -864,5 +854,114 @@ const formatPrice = (val) => {
         if (window.lucide) window.lucide.createIcons();
       }
     });
+
+    // ==============================================================
+    //  TICKET: armar, imprimir y reimprimir (SAT Q22 - 80mm)
+    // ==============================================================
+    const LAST_TICKET_KEY = 'sp_last_ticket';
+    const reprintBtn = document.getElementById('btn-reprint');
+    const reprintLabel = document.getElementById('btn-reprint-label');
+
+    const byId = (id) => document.getElementById(id);
+
+    function saveLastTicket(ticket) {
+      try {
+        localStorage.setItem(LAST_TICKET_KEY, JSON.stringify(ticket));
+      } catch (e) { /* almacenamiento lleno o bloqueado: no es crítico */ }
+      refreshReprintButton();
+    }
+
+    function loadLastTicket() {
+      try {
+        return JSON.parse(localStorage.getItem(LAST_TICKET_KEY) || 'null');
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function refreshReprintButton() {
+      const last = loadLastTicket();
+      if (!reprintBtn || !last) return;
+      reprintLabel.textContent = 'Reimprimir último ticket (#' + last.id + ')';
+      reprintBtn.classList.remove('hidden');
+      reprintBtn.classList.add('flex');
+    }
+
+    // Llena el ticket oculto con los datos. Todo se inserta con textContent (nunca HTML crudo).
+    function fillTicket(t, isCopy) {
+      const when = new Date(t.createdAt).toLocaleString('es-CO');
+      byId('t-id').textContent = '#' + t.id;
+      byId('t-date').textContent = when + (isCopy ? ' - COPIA' : '');
+      byId('t-payment-method').textContent = t.paymentMethod;
+
+      const isDelivery = t.orderType === 'domicilio';
+      byId('ticket-badge').textContent = isDelivery ? 'DOMICILIO' : (t.orderType === 'mesa' ? 'CUENTA MESA' : 'PARA LLEVAR');
+      byId('t-delivery-box').style.display = isDelivery ? 'block' : 'none';
+      byId('t-mesa-box').style.display = isDelivery ? 'none' : 'block';
+      byId('t-row-delivery').style.display = isDelivery ? 'flex' : 'none';
+
+      if (isDelivery) {
+        byId('t-cust-name').textContent = t.customerName;
+        byId('t-cust-phone').textContent = t.customerPhone;
+        byId('t-cust-address').textContent = t.address;
+        byId('t-cust-notes').textContent = t.neighborhood || '';
+        byId('t-delivery-fee').textContent = fmt(t.deliveryFee);
+        byId('t-courier-collect').textContent = fmt(t.total);
+
+        const hasChange = t.paymentMethod === 'efectivo' && t.cashPaid > t.total;
+        byId('t-courier-change-row').style.display = hasChange ? 'flex' : 'none';
+        byId('t-courier-change').textContent = hasChange ? fmt(t.cashPaid - t.total) : '$0';
+      } else {
+        byId('t-mesa-val').textContent = t.table || 'Mesa';
+      }
+
+      const body = byId('t-items-body');
+      body.replaceChildren();
+      t.items.forEach((it) => {
+        const row = document.createElement('tr');
+
+        const qty = document.createElement('td');
+        qty.className = 'item-qty';
+        qty.textContent = it.quantity;
+
+        const name = document.createElement('td');
+        name.textContent = it.name;
+        if (it.notes) {
+          const note = document.createElement('span');
+          note.className = 'item-note';
+          note.textContent = '* ' + it.notes;
+          name.appendChild(note);
+        }
+
+        const price = document.createElement('td');
+        price.style.cssText = 'text-align: right; font-weight: bold;';
+        price.textContent = fmt(it.price * it.quantity);
+
+        row.append(qty, name, price);
+        body.appendChild(row);
+      });
+
+      byId('t-subtotal').textContent = fmt(t.subtotal);
+      byId('t-total').textContent = fmt(t.total);
+
+      const showChange = t.paymentMethod === 'efectivo' && t.cashPaid > 0;
+      byId('t-change-box').style.display = showChange ? 'block' : 'none';
+      if (showChange) {
+        byId('t-cash-paid').textContent = fmt(t.cashPaid);
+        byId('t-cash-change').textContent = fmt(Math.max(0, t.cashPaid - t.total));
+      }
+    }
+
+    function printTicket(ticket, isCopy = false) {
+      fillTicket(ticket, isCopy);
+      window.print();
+    }
+
+    reprintBtn?.addEventListener('click', () => {
+      const last = loadLastTicket();
+      if (last) printTicket(last, true);
+    });
+
+    refreshReprintButton();
   </script>
-</Layout>
+</StaffLayout>

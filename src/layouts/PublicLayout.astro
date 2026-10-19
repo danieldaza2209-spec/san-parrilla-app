@@ -1,0 +1,61 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'San Parrilla | Menú Digital & Brasas',
+  description = 'Carta digital de San Parrilla: carnes a la parrilla, menú del día y picadas. Pide por WhatsApp.',
+} = Astro.props;
+
+const WHATSAPP = 'https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20deseo%20hacer%20un%20pedido';
+---
+
+<BaseLayout title={title} description={description}>
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-parrilla-border">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3 group" aria-label="San Parrilla - Inicio">
+        <img src="/logo.png" alt="San Parrilla" class="h-10 w-auto rounded-full ring-2 ring-parrilla-gold/30 group-hover:ring-parrilla-gold transition" />
+        <div class="flex flex-col">
+          <span class="font-display font-extrabold text-xl tracking-tight leading-none text-parrilla-ivory">
+            SAN <span class="text-parrilla-gold">PARRILLA</span>
+          </span>
+          <span class="text-[10px] tracking-widest text-parrilla-muted uppercase font-medium">Sazón & Fogón</span>
+        </div>
+      </a>
+
+      <div class="flex items-center gap-3">
+        <a href="#menu-carta" class="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-parrilla-ivory hover:text-parrilla-gold transition px-3 py-2">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          <span>La Carta</span>
+        </a>
+        <a href={WHATSAPP} target="_blank" rel="noopener noreferrer"
+           class="inline-flex items-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs sm:text-sm px-3.5 py-2 rounded-lg shadow-sm hover:shadow transition active:scale-95">
+          <i data-lucide="message-circle" class="w-4 h-4"></i>
+          <span>Pedir por WhatsApp</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1">
+    <slot />
+  </main>
+
+  <footer class="bg-white border-t border-parrilla-border py-8 text-xs text-parrilla-muted">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+      <div class="flex items-center gap-2">
+        <span class="font-display font-bold text-parrilla-gold text-sm">SAN PARRILLA</span>
+        <span>•</span>
+        <span>Tradición & Sazón Casero</span>
+      </div>
+      <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" class="hover:text-parrilla-gold transition font-medium">
+        Domicilios: 318 382 1787
+      </a>
+      <p>© {new Date().getFullYear()} San Parrilla. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+</BaseLayout>

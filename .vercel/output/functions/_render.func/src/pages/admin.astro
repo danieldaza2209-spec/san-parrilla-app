@@ -1,0 +1,362 @@
+---
+export const prerender = false; // SSR: protegida por src/middleware.js
+import StaffLayout from '../layouts/StaffLayout.astro';
+import { getDashboardMetrics, getDailySpecials, getProducts, getCategories } from '../lib/db.js';
+
+const metrics = getDashboardMetrics();
+const specials = getDailySpecials();
+const products = getProducts(false); // get all products including inactive
+const categories = getCategories();
+
+const formatPrice = (val) => {
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
+};
+---
+
+<StaffLayout title="Panel de Métricas & Menú | San Parrilla">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col no-print">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-parrilla-border pb-6 mb-8">
+      <div>
+        <span class="text-xs font-bold text-parrilla-gold uppercase tracking-widest">Inteligencia de Negocio & Control</span>
+        <h1 class="font-display font-black text-3xl sm:text-4xl text-parrilla-ivory mt-1">Dashboard & Administración</h1>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/api/launcher" download class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-parrilla-ivory font-bold text-xs px-4 py-2.5 rounded-xl border border-parrilla-border shadow-sm transition" title="Descarga el acceso directo de Windows que abre el POS e imprime sin ventanas">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>Lanzador PC de caja (.bat)</span>
+        </a>
+        <a href="/pos" class="inline-flex items-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition">
+          <i data-lucide="zap" class="w-4 h-4"></i>
+          <span>Ir al POS</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 1. KPI CARDS GRID -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      
+      <!-- Ventas Hoy -->
+      <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-border shadow-lg">
+        <div class="flex items-center justify-between text-parrilla-muted mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider">Ventas de Hoy</span>
+          <i data-lucide="dollar-sign" class="w-5 h-5 text-parrilla-gold"></i>
+        </div>
+        <div class="font-display font-black text-3xl text-parrilla-gold">
+          {formatPrice(metrics.todaySales)}
+        </div>
+        <span class="text-[11px] text-parrilla-muted mt-1 block">
+          Efectivo: {formatPrice(metrics.cashSales)} | Digital: {formatPrice(metrics.digitalSales)}
+        </span>
+      </div>
+
+      <!-- Pedidos Hoy -->
+      <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-border shadow-lg">
+        <div class="flex items-center justify-between text-parrilla-muted mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider">Comandas Totales</span>
+          <i data-lucide="shopping-cart" class="w-5 h-5 text-parrilla-accent"></i>
+        </div>
+        <div class="font-display font-black text-3xl text-parrilla-ivory">
+          {metrics.todayOrderCount}
+        </div>
+        <span class="text-[11px] text-parrilla-muted mt-1 block">Mesas y domicilios atendidos hoy</span>
+      </div>
+
+      <!-- Clientes en Base de Datos -->
+      <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-border shadow-lg">
+        <div class="flex items-center justify-between text-parrilla-muted mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider">Clientes Guardados</span>
+          <i data-lucide="users" class="w-5 h-5 text-amber-400"></i>
+        </div>
+        <div class="font-display font-black text-3xl text-amber-400">
+          {metrics.totalCustomers}
+        </div>
+        <span class="text-[11px] text-parrilla-muted mt-1 block">Teléfonos y direcciones para envíos</span>
+      </div>
+
+      <!-- Visitas al Menú QR -->
+      <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-border shadow-lg">
+        <div class="flex items-center justify-between text-parrilla-muted mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider">Escaneos QR Hoy</span>
+          <i data-lucide="qr-code" class="w-5 h-5 text-blue-400"></i>
+        </div>
+        <div class="font-display font-black text-3xl text-blue-400">
+          {metrics.todayViews}
+        </div>
+        <span class="text-[11px] text-parrilla-muted mt-1 block">Personas viendo la carta digital</span>
+      </div>
+    </div>
+
+    <!-- 2. RANKING PLATOS TOP & EDITOR DE ESPECIALES -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">
+      
+      <!-- Top Platos Vendidos (6 cols) -->
+      <div class="lg:col-span-6 bg-parrilla-surface rounded-2xl border border-parrilla-border p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4 pb-3 border-b border-parrilla-border">
+          <div>
+            <h2 class="font-display font-bold text-lg text-parrilla-ivory">Platos Más Vendidos</h2>
+            <p class="text-xs text-parrilla-muted">Ranking histórico de productos con mayor salida.</p>
+          </div>
+          <i data-lucide="flame" class="w-5 h-5 text-parrilla-gold"></i>
+        </div>
+
+        {metrics.topDishes.length === 0 ? (
+          <div class="py-10 text-center text-xs text-parrilla-muted italic">
+            Aún no hay comandas registradas. Registra pedidos en el POS para ver las estadísticas.
+          </div>
+        ) : (
+          <div class="space-y-3">
+            {metrics.topDishes.map((dish, idx) => (
+              <div class="flex items-center justify-between p-3 rounded-xl bg-parrilla-dark border border-parrilla-border/60">
+                <div class="flex items-center gap-3">
+                  <span class="w-7 h-7 rounded-lg bg-parrilla-gold/20 text-parrilla-gold flex items-center justify-center font-black text-xs font-display">
+                    #{idx + 1}
+                  </span>
+                  <div>
+                    <span class="font-bold text-sm text-parrilla-ivory block">{dish.product_name}</span>
+                    <span class="text-xs text-parrilla-muted">{dish.sold_count} porciones vendidas</span>
+                  </div>
+                </div>
+                <div class="font-display font-extrabold text-sm text-parrilla-gold">
+                  {formatPrice(dish.total_revenue)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <!-- Editor de Especiales del Día (6 cols) -->
+      <div class="lg:col-span-6 bg-parrilla-surface rounded-2xl border border-parrilla-border p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4 pb-3 border-b border-parrilla-border">
+          <div>
+            <h2 class="font-display font-bold text-lg text-parrilla-ivory">Editor de Especiales del Día</h2>
+            <p class="text-xs text-parrilla-muted">Modifica la sopa y principios que se muestran en el menú digital.</p>
+          </div>
+          <i data-lucide="soup" class="w-5 h-5 text-amber-400"></i>
+        </div>
+
+        <form id="form-specials" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Sopa del Día *</label>
+            <input 
+              type="text" 
+              id="specials-sopa" 
+              value={specials?.sopa || ''} 
+              required
+              class="w-full px-3.5 py-2.5 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Principios (separados por coma) *</label>
+            <input 
+              type="text" 
+              id="specials-principios" 
+              value={specials?.principios?.join(', ') || ''} 
+              required
+              class="w-full px-3.5 py-2.5 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+            <span class="text-[10px] text-parrilla-muted mt-1 block">Ejemplo: Ensalada de atún, Garbanzos rancheros, Frijoles</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Acompañamientos (separados por coma) *</label>
+            <input 
+              type="text" 
+              id="specials-acompanamientos" 
+              value={specials?.acompanamientos?.join(', ') || ''} 
+              required
+              class="w-full px-3.5 py-2.5 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+            <span class="text-[10px] text-parrilla-muted mt-1 block">Ejemplo: Francesa casera, Torta de zanahoria, Tajadas maduras</span>
+          </div>
+
+          <button 
+            type="submit" 
+            id="btn-save-specials"
+            class="w-full py-3 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-sm shadow-md transition active:scale-95"
+          >
+            Guardar Especiales del Día
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- 3. GESTOR DE PRECIOS Y DISPONIBILIDAD DEL MENÚ -->
+    <div class="bg-parrilla-surface rounded-2xl border border-parrilla-border p-6 shadow-xl">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-parrilla-border">
+        <div>
+          <h2 class="font-display font-bold text-xl text-parrilla-ivory">Gestor de Precios y Platos Agotados</h2>
+          <p class="text-xs text-parrilla-muted">Actualiza precios o pausa platos agotados al instante sin tocar código.</p>
+        </div>
+
+        <div class="relative w-full sm:w-72">
+          <i data-lucide="search" class="w-4 h-4 text-parrilla-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input 
+            type="text" 
+            id="admin-search-dish" 
+            placeholder="Filtrar plato..." 
+            class="w-full pl-9 pr-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+          />
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-parrilla-border text-parrilla-muted uppercase font-bold text-[11px]">
+              <th class="py-3 px-3">Plato / Producto</th>
+              <th class="py-3 px-3">Categoría</th>
+              <th class="py-3 px-3">Precio Actual ($)</th>
+              <th class="py-3 px-3 text-center">Estado / Disponible</th>
+              <th class="py-3 px-3 text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-parrilla-border/40" id="admin-table-body">
+            {products.map(p => (
+              <tr class="hover:bg-parrilla-dark/40 transition dish-row" data-name={p.name.toLowerCase()}>
+                <td class="py-3 px-3 font-bold text-sm text-parrilla-ivory">
+                  {p.name}
+                </td>
+                <td class="py-3 px-3 text-parrilla-muted">
+                  {categories.find(c => c.id === p.category_id)?.name || p.category_id}
+                </td>
+                <td class="py-3 px-3">
+                  <div class="flex items-center gap-2">
+                    <span class="text-parrilla-gold font-bold font-mono text-sm">$</span>
+                    <input 
+                      type="number" 
+                      class="price-input w-28 px-2 py-1 bg-parrilla-dark rounded-lg border border-parrilla-border text-sm font-mono text-parrilla-gold focus:border-parrilla-gold outline-none"
+                      value={p.price}
+                      data-id={p.id}
+                    />
+                  </div>
+                </td>
+                <td class="py-3 px-3 text-center">
+                  <button 
+                    type="button" 
+                    class="btn-toggle-active px-3 py-1 rounded-full text-[11px] font-bold transition"
+                    data-id={p.id}
+                    data-active={p.is_active}
+                    style={p.is_active ? 'background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1px solid rgba(76, 175, 80, 0.4);' : 'background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);'}
+                  >
+                    {p.is_active ? '✓ Activo' : '✕ Agotado (Pausado)'}
+                  </button>
+                </td>
+                <td class="py-3 px-3 text-right">
+                  <button 
+                    type="button" 
+                    class="btn-save-price bg-white hover:bg-parrilla-gold text-parrilla-ivory hover:text-white font-bold px-3 py-1.5 rounded-lg border border-parrilla-border hover:border-parrilla-gold shadow-sm transition text-xs"
+                    data-id={p.id}
+                  >
+                    Actualizar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Client JavaScript for Admin Actions -->
+  <script>
+    // Search dishes in table
+    const searchDishInput = document.getElementById('admin-search-dish');
+    const dishRows = document.querySelectorAll('.dish-row');
+
+    if (searchDishInput) {
+      searchDishInput.addEventListener('input', (e) => {
+        // @ts-ignore
+        const q = e.target.value.toLowerCase().trim();
+        dishRows.forEach(row => {
+          const name = row.getAttribute('data-name') || '';
+          // @ts-ignore
+          row.style.display = name.includes(q) ? 'table-row' : 'none';
+        });
+      });
+    }
+
+    // Save Daily Specials
+    const formSpecials = document.getElementById('form-specials');
+    if (formSpecials) {
+      formSpecials.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        // @ts-ignore
+        const sopa = document.getElementById('specials-sopa').value.trim();
+        // @ts-ignore
+        const principios = document.getElementById('specials-principios').value.split(',').map(s => s.trim()).filter(Boolean);
+        // @ts-ignore
+        const acompanamientos = document.getElementById('specials-acompanamientos').value.split(',').map(s => s.trim()).filter(Boolean);
+
+        const res = await fetch('/api/specials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sopa, principios, acompanamientos })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Especiales del día actualizados correctamente.');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      });
+    }
+
+    // Update Price buttons
+    document.querySelectorAll('.btn-save-price').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        // @ts-ignore
+        const input = document.querySelector(`.price-input[data-id="${id}"]`);
+        // @ts-ignore
+        const price = Number(input.value);
+
+        const res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'update_price', id, price })
+        });
+        const data = await res.json();
+        if (data.success) {
+          btn.textContent = '✓ Guardado';
+          setTimeout(() => { btn.textContent = 'Actualizar'; }, 1500);
+        } else {
+          alert('Error al guardar precio');
+        }
+      });
+    });
+
+    // Toggle Active / Agotado buttons
+    document.querySelectorAll('.btn-toggle-active').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const currentActive = btn.getAttribute('data-active') === '1';
+        const newActive = !currentActive;
+
+        const res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'toggle_active', id, is_active: newActive })
+        });
+        const data = await res.json();
+        if (data.success) {
+          btn.setAttribute('data-active', newActive ? '1' : '0');
+          btn.textContent = newActive ? '✓ Activo' : '✕ Agotado (Pausado)';
+          // @ts-ignore
+          btn.style.cssText = newActive 
+            ? 'background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1px solid rgba(76, 175, 80, 0.4);' 
+            : 'background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);';
+        } else {
+          alert('Error al actualizar disponibilidad');
+        }
+      });
+    });
+  </script>
+</StaffLayout>

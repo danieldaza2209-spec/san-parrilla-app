@@ -211,6 +211,15 @@ function getProducts(onlyActive = true) {
   return memProducts;
 }
 
+// Productos de uso interno (solo visibles para el personal en el POS, nunca en la carta pública).
+const INTERNAL_PRODUCT_IDS = new Set(['test-print-sat']);
+
+function getPublicProducts() {
+  const rows = getProducts(true) || [];
+  const visible = rows.filter((p) => !INTERNAL_PRODUCT_IDS.has(p.id));
+  return visible.length > 0 ? visible : initialProductList.filter((p) => !INTERNAL_PRODUCT_IDS.has(p.id));
+}
+
 function getDailySpecials() {
   if (db) {
     try {
@@ -567,4 +576,4 @@ function getDashboardMetrics() {
 }
 const db$1 = db;
 
-export { getDailySpecials as a, getProducts as b, getCategories as c, getActiveCashRegister as d, closeCashRegister as e, getCustomerByPhone as f, getDashboardMetrics as g, getOrderDetails as h, getRecentOrders as i, createOrder as j, db$1 as k, updateDailySpecials as l, db as m, fallbackCategories as n, openCashRegister as o, initialProductList as p, fallbackDailySpecials as q, searchCustomers as s, upsertCustomer as u };
+export { getDailySpecials as a, getProducts as b, getCategories as c, getActiveCashRegister as d, closeCashRegister as e, getCustomerByPhone as f, getDashboardMetrics as g, getOrderDetails as h, getRecentOrders as i, createOrder as j, getPublicProducts as k, db$1 as l, updateDailySpecials as m, db as n, openCashRegister as o, fallbackCategories as p, fallbackDailySpecials as q, initialProductList as r, searchCustomers as s, upsertCustomer as u };

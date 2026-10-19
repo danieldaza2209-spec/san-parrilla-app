@@ -1,10 +1,10 @@
-import { b as getProducts, k as db } from '../../chunks/db_BVGR8mub.mjs';
+import { k as getPublicProducts, l as db } from '../../chunks/db_Be_7xi3m.mjs';
 export { renderers } from '../../renderers.mjs';
 
-async function GET({ url }) {
+// GET es público (es la misma información de la carta). El POST lo restringe el middleware a rol Administrador.
+async function GET() {
   try {
-    const all = url.searchParams.get('all') === 'true';
-    const products = getProducts(!all);
+    const products = getPublicProducts();
     return new Response(JSON.stringify(products), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

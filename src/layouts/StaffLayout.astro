@@ -1,0 +1,88 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { getActiveCashRegister } from '../lib/db.js';
+import { ROLE_ADMIN, ROLE_LABELS } from '../lib/auth.js';
+
+interface Props {
+  title?: string;
+}
+
+const { title = 'Personal | San Parrilla' } = Astro.props;
+
+// El middleware ya validó la sesión; aquí solo se usa para adaptar el menú al rol.
+const user = Astro.locals.user;
+const isAdmin = user?.role === ROLE_ADMIN;
+const pathname = Astro.url.pathname.replace(/\/+$/, '') || '/';
+
+const cashOpen = Boolean(getActiveCashRegister());
+
+const navItems = [
+  { href: '/pos', label: 'Punto de Venta', icon: 'zap', show: true },
+  { href: '/caja', label: 'Caja', icon: 'wallet', show: true },
+  { href: '/admin', label: 'Administración', icon: 'bar-chart-3', show: isAdmin },
+].filter((item) => item.show);
+---
+
+<BaseLayout title={title} noindex>
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-parrilla-border no-print">
+    <div class="max-w-[1600px] mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-3">
+
+      <div class="flex items-center gap-3 min-w-0">
+        <img src="/logo.png" alt="San Parrilla" class="h-9 w-auto rounded-full ring-2 ring-parrilla-gold/30" />
+        <nav class="flex items-center gap-1 bg-slate-100/90 p-1 rounded-full border border-parrilla-border text-sm">
+          {navItems.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <a
+                href={item.href}
+                class:list={[
+                  'px-3 sm:px-4 py-1.5 rounded-full font-semibold transition inline-flex items-center gap-1.5',
+                  active
+                    ? 'bg-parrilla-gold text-white shadow-sm'
+                    : 'text-parrilla-ivory hover:text-parrilla-gold hover:bg-white',
+                ]}
+              >
+                <i data-lucide={item.icon} class="w-4 h-4"></i>
+                <span class="hidden sm:inline">{item.label}</span>
+              </a>
+            );
+          })}
+        </nav>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <span
+          class:list={[
+            'hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border',
+            cashOpen
+              ? 'bg-green-50 text-parrilla-accent border-green-200'
+              : 'bg-red-50 text-red-600 border-red-200',
+          ]}
+        >
+          <span class:list={['w-2 h-2 rounded-full', cashOpen ? 'bg-parrilla-accent animate-pulse' : 'bg-red-500']}></span>
+          {cashOpen ? 'Caja abierta' : 'Caja cerrada'}
+        </span>
+
+        <span class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-parrilla-muted">
+          <i data-lucide="user-round" class="w-4 h-4"></i>
+          {user ? ROLE_LABELS[user.role] : ''}
+        </span>
+
+        <form method="POST" action="/api/auth/logout">
+          <button
+            type="submit"
+            class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border transition"
+            title="Cerrar sesión"
+          >
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Salir</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1">
+    <slot />
+  </main>
+</BaseLayout>

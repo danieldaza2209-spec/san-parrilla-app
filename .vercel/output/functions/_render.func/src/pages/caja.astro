@@ -1,0 +1,391 @@
+---
+export const prerender = false; // SSR: protegida por src/middleware.js
+import StaffLayout from '../layouts/StaffLayout.astro';
+import { getActiveCashRegister, db } from '../lib/db.js';
+
+const activeCash = getActiveCashRegister();
+
+// Format Colombian Peso
+const formatPrice = (val) => {
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
+};
+
+// Recent closed registers
+const pastRegisters = db ? db.prepare(`
+  SELECT * FROM cash_registers 
+  WHERE status = 'closed' 
+  ORDER BY id DESC LIMIT 5
+`).all() : [];
+
+const expectedCash = activeCash ? (activeCash.initial_cash + activeCash.total_cash_sales) : 0;
+const totalDigitalSales = activeCash ? (activeCash.total_nequi_sales + activeCash.total_daviplata_sales + activeCash.total_card_sales) : 0;
+const grandTotalSales = activeCash ? (activeCash.total_cash_sales + totalDigitalSales) : 0;
+---
+
+<StaffLayout title="Control y Cierre de Caja | San Parrilla">
+  <div class="max-w-6xl mx-auto px-4 py-8 flex-1 flex flex-col no-print">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-parrilla-border pb-6 mb-8">
+      <div>
+        <span class="text-xs font-bold text-parrilla-gold uppercase tracking-widest">Administración de Efectivo y Turnos</span>
+        <h1 class="font-display font-black text-3xl sm:text-4xl text-parrilla-ivory mt-1">Cuadre y Cierre de Caja</h1>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-parrilla-muted">Estado Actual:</span>
+        {activeCash ? (
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-parrilla-accent/20 text-parrilla-accent border border-parrilla-accent/40">
+            <span class="w-2 h-2 rounded-full bg-parrilla-accent animate-pulse"></span>
+            Caja Abierta (Turno #{activeCash.id})
+          </span>
+        ) : (
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/40">
+            Caja Cerrada
+          </span>
+        )}
+      </div>
+    </div>
+
+    {/* IF NO ACTIVE CASH: SHOW OPEN REGISTER FORM */}
+    {!activeCash && (
+      <div class="max-w-md mx-auto w-full bg-parrilla-surface rounded-2xl border border-parrilla-border p-6 shadow-2xl">
+        <div class="text-center mb-6">
+          <div class="w-14 h-14 mx-auto rounded-2xl bg-parrilla-gold/10 border border-parrilla-gold/30 flex items-center justify-center text-parrilla-gold mb-3">
+            <i data-lucide="unlock" class="w-7 h-7"></i>
+          </div>
+          <h2 class="font-display font-bold text-xl text-parrilla-ivory">Apertura de Turno de Caja</h2>
+          <p class="text-xs text-parrilla-muted mt-1">Ingresa el dinero base en efectivo con el que inicia el cajón hoy.</p>
+        </div>
+
+        <form id="form-open-cash" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Base Inicial en Efectivo ($) *</label>
+            <input 
+              type="number" 
+              id="open-initial-cash" 
+              value="100000" 
+              step="1000" 
+              required
+              class="w-full px-4 py-3 bg-parrilla-dark rounded-xl border border-parrilla-border text-lg font-bold font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-parrilla-muted mb-1">Notas u observaciones</label>
+            <input 
+              type="text" 
+              id="open-notes" 
+              placeholder="Ej. Billetes de 10k y 20k para cambio" 
+              class="w-full px-4 py-2.5 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            class="w-full py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-sm shadow-md transition active:scale-95"
+          >
+            Abrir Caja e Iniciar Turno
+          </button>
+        </form>
+      </div>
+    )}
+
+    {activeCash && (
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Metrics Cards (7 cols) */}
+        <div class="lg:col-span-7 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            {/* Base Inicial */}
+            <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-border">
+              <span class="text-xs text-parrilla-muted font-semibold uppercase tracking-wider block">Base Inicial</span>
+              <span class="font-display font-black text-2xl text-parrilla-ivory mt-1 block">
+                {formatPrice(activeCash.initial_cash)}
+              </span>
+              <span class="text-[11px] text-parrilla-muted mt-2 block">
+                Abierta: {new Date(activeCash.opened_at).toLocaleTimeString('es-CO')}
+              </span>
+            </div>
+
+            {/* Ventas Efectivo */}
+            <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-border">
+              <span class="text-xs text-parrilla-muted font-semibold uppercase tracking-wider block">Ventas en Efectivo</span>
+              <span class="font-display font-black text-2xl text-parrilla-accent mt-1 block">
+                {formatPrice(activeCash.total_cash_sales)}
+              </span>
+              <span class="text-[11px] text-parrilla-muted mt-2 block">Cobrado directo en caja</span>
+            </div>
+
+            {/* Ventas Digitales */}
+            <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-border">
+              <span class="text-xs text-parrilla-muted font-semibold uppercase tracking-wider block">Nequi / Daviplata / Tarjetas</span>
+              <span class="font-display font-black text-2xl text-amber-400 mt-1 block">
+                {formatPrice(totalDigitalSales)}
+              </span>
+              <div class="flex items-center gap-2 mt-2 text-[10px] text-parrilla-muted">
+                <span>Nequi: {formatPrice(activeCash.total_nequi_sales)}</span>
+                <span>•</span>
+                <span>Daviplata: {formatPrice(activeCash.total_daviplata_sales)}</span>
+              </div>
+            </div>
+
+            {/* Gran Total Ventas */}
+            <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-gold/40">
+              <span class="text-xs text-parrilla-gold font-bold uppercase tracking-wider block">Total Ventas del Turno</span>
+              <span class="font-display font-black text-2xl text-parrilla-gold mt-1 block">
+                {formatPrice(grandTotalSales)}
+              </span>
+              <span class="text-[11px] text-parrilla-muted mt-2 block">Efectivo + Medios Digitales</span>
+            </div>
+          </div>
+
+          {/* Expected Cash In Drawer Highlight */}
+          <div class="bg-gradient-to-r from-parrilla-dark to-parrilla-surface rounded-2xl p-6 border-2 border-parrilla-accent/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+            <div>
+              <span class="text-xs font-bold text-parrilla-accent uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="calculator" class="w-4 h-4"></i>
+                <span>Efectivo que DEBE haber en el cajón</span>
+              </span>
+              <p class="text-xs text-parrilla-muted mt-1">Base Inicial ({formatPrice(activeCash.initial_cash)}) + Ventas Efectivo ({formatPrice(activeCash.total_cash_sales)})</p>
+            </div>
+            <div class="text-right">
+              <span class="font-display font-black text-3xl sm:text-4xl text-parrilla-accent">
+                {formatPrice(expectedCash)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Arqueo & Cierre Form (5 cols) */}
+        <div class="lg:col-span-5 bg-parrilla-surface rounded-2xl border border-parrilla-border p-6 shadow-2xl flex flex-col justify-between">
+          <div>
+            <h2 class="font-display font-bold text-xl text-parrilla-ivory flex items-center gap-2 mb-2">
+              <i data-lucide="lock" class="w-5 h-5 text-parrilla-gold"></i>
+              <span>Arqueo y Cierre de Turno</span>
+            </h2>
+            <p class="text-xs text-parrilla-muted mb-6">
+              Cuenta todos los billetes y monedas del cajón físico e introduce el total para calcular el cuadre.
+            </p>
+
+            <form id="form-close-cash" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Efectivo Físico Contado ($) *</label>
+                <input 
+                  type="number" 
+                  id="counted-cash-input" 
+                  placeholder="Ej. 350000" 
+                  required
+                  class="w-full px-4 py-3 bg-parrilla-dark rounded-xl border border-parrilla-border text-xl font-bold font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                />
+              </div>
+
+              {/* Diferencia Display */}
+              <div class="bg-parrilla-dark p-3.5 rounded-xl border border-parrilla-border flex items-center justify-between">
+                <div>
+                  <span class="text-[11px] text-parrilla-muted uppercase font-semibold block">Diferencia de Cuadre:</span>
+                  <span id="diff-status" class="text-xs font-bold text-parrilla-muted">Ingresa el valor contado</span>
+                </div>
+                <span id="diff-amount" class="font-display font-black text-2xl text-parrilla-muted">$0</span>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-parrilla-muted mb-1">Observaciones de cierre</label>
+                <textarea 
+                  id="close-notes" 
+                  rows="2"
+                  placeholder="Ej. Se pagaron $20.000 de hielo en efectivo..."
+                  class="w-full px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none resize-none"
+                ></textarea>
+              </div>
+
+              <button 
+                type="submit" 
+                id="btn-submit-close"
+                class="w-full py-4 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-base shadow-md flex items-center justify-center gap-2 transition active:scale-95"
+              >
+                <i data-lucide="printer" class="w-5 h-5"></i>
+                <span>Cerrar Caja e Imprimir Reporte Z (80mm)</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    )}
+
+  </div>
+
+  <!-- ==============================================================
+       REPORTE Z TICKET DE CIERRE PARA SAT Q22 (80MM)
+       ============================================================== -->
+  <div id="z-ticket" class="receipt-ticket hidden">
+    <div class="ticket-header">
+      <h1 class="restaurant-name">SAN PARRILLA</h1>
+      <p style="margin: 1mm 0; font-size: 9.5pt;">REPORTE Z - CIERRE DE CAJA</p>
+      <div class="ticket-badge" style="border: 2px solid #000; font-size: 13pt;">CIERRE DE TURNO</div>
+      <div style="font-size: 9pt; margin-top: 1.5mm;">
+        <span>Turno #: <strong id="z-id">{activeCash?.id || '0'}</strong></span> | 
+        <span>Fecha: <strong id="z-date">--/--/--</strong></span>
+      </div>
+    </div>
+
+    <div style="font-size: 10pt; margin: 3mm 0;">
+      <div class="total-row">
+        <span>Hora Apertura:</span>
+        <span id="z-opened-at">{activeCash?.opened_at || ''}</span>
+      </div>
+      <div class="total-row">
+        <span>Hora Cierre:</span>
+        <span id="z-closed-at">--</span>
+      </div>
+    </div>
+
+    <div class="totals-box">
+      <div class="total-row" style="font-weight: bold;">
+        <span>(+) Base Inicial de Caja:</span>
+        <span id="z-initial">{formatPrice(activeCash?.initial_cash)}</span>
+      </div>
+      <div class="total-row" style="font-weight: bold;">
+        <span>(+) Ventas en Efectivo:</span>
+        <span id="z-cash-sales">{formatPrice(activeCash?.total_cash_sales)}</span>
+      </div>
+      <div class="total-row" style="border-top: 1px dashed #000; padding-top: 1mm; font-weight: 900;">
+        <span>(=) EFECTIVO ESPERADO:</span>
+        <span id="z-expected">{formatPrice(expectedCash)}</span>
+      </div>
+      <div class="total-row" style="font-size: 12pt; font-weight: 900; margin-top: 1mm;">
+        <span>(✓) EFECTIVO CONTADO:</span>
+        <span id="z-counted">$0</span>
+      </div>
+      <div class="total-row" style="border: 1.5px solid #000; padding: 1.5mm; font-weight: 900; margin-top: 2mm;">
+        <span>DIFERENCIA (CUADRE):</span>
+        <span id="z-diff">$0</span>
+      </div>
+    </div>
+
+    <!-- Otros Medios de Pago -->
+    <div style="margin-top: 4mm; border-top: 1px dashed #000; padding-top: 2mm; font-size: 10pt;">
+      <div style="font-weight: bold; text-align: center; margin-bottom: 1.5mm;">VENTAS POR OTROS MEDIOS</div>
+      <div class="total-row">
+        <span>Nequi:</span>
+        <span id="z-nequi">{formatPrice(activeCash?.total_nequi_sales)}</span>
+      </div>
+      <div class="total-row">
+        <span>Daviplata:</span>
+        <span id="z-daviplata">{formatPrice(activeCash?.total_daviplata_sales)}</span>
+      </div>
+      <div class="total-row">
+        <span>Datáfono / Tarjetas:</span>
+        <span id="z-cards">{formatPrice(activeCash?.total_card_sales)}</span>
+      </div>
+      <div class="total-row grand-total">
+        <span>GRAN TOTAL VENDIDO:</span>
+        <span id="z-grand-total">{formatPrice(grandTotalSales)}</span>
+      </div>
+    </div>
+
+    <div id="z-notes-box" style="margin-top: 3mm; font-size: 9pt; font-style: italic;">
+      Notas: <span id="z-notes">--</span>
+    </div>
+
+    <div class="ticket-footer" style="margin-top: 6mm;">
+      <p style="margin: 0; font-weight: bold;">FIRMA DEL CAJERO / RESPONSABLE</p>
+      <div style="height: 12mm; border-bottom: 1px solid #000; margin-top: 8mm;"></div>
+      <p style="margin-top: 2mm; font-size: 8pt;">Impreso en SAT Q22 Térmica - San Parrilla POS</p>
+    </div>
+  </div>
+
+  <!-- Client Script for Caja -->
+  <script define:vars={{ expectedCash }}>
+    const countedInput = document.getElementById('counted-cash-input');
+    const diffStatus = document.getElementById('diff-status');
+    const diffAmount = document.getElementById('diff-amount');
+    const formOpenCash = document.getElementById('form-open-cash');
+    const formCloseCash = document.getElementById('form-close-cash');
+
+    const fmt = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+
+    // Live Difference Calculation
+    if (countedInput) {
+      countedInput.addEventListener('input', (e) => {
+        const val = Number(e.target.value || 0);
+        const diff = val - expectedCash;
+
+        diffAmount.textContent = fmt(diff);
+        if (diff === 0) {
+          diffStatus.textContent = '✅ Cuadre Exacto Perfecto';
+          diffAmount.className = 'font-display font-black text-2xl text-parrilla-accent';
+        } else if (diff > 0) {
+          diffStatus.textContent = '⚠️ Sobrante en caja (+)';
+          diffAmount.className = 'font-display font-black text-2xl text-amber-400';
+        } else {
+          diffStatus.textContent = '❌ Faltante en caja (-)';
+          diffAmount.className = 'font-display font-black text-2xl text-red-400';
+        }
+      });
+    }
+
+    // Submit Open Cash
+    if (formOpenCash) {
+      formOpenCash.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const initialCash = Number(document.getElementById('open-initial-cash').value);
+        const notes = document.getElementById('open-notes').value;
+
+        const res = await fetch('/api/caja', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'open', initialCash, notes })
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.location.reload();
+        } else {
+          alert('Error al abrir caja: ' + data.error);
+        }
+      });
+    }
+
+    // Submit Close Cash & Print Report Z
+    if (formCloseCash) {
+      formCloseCash.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const counted = Number(countedInput.value);
+        const notes = document.getElementById('close-notes').value;
+        const diff = counted - expectedCash;
+
+        if (!confirm(`¿Confirmas el cierre de caja?\nEfectivo contado: ${fmt(counted)}\nDiferencia: ${fmt(diff)}`)) {
+          return;
+        }
+
+        const res = await fetch('/api/caja', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'close', countedCash: counted, notes })
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          alert('Error al cerrar caja: ' + data.error);
+          return;
+        }
+
+        // Fill Z ticket template
+        document.getElementById('z-date').textContent = new Date().toLocaleString('es-CO');
+        document.getElementById('z-closed-at').textContent = new Date().toLocaleTimeString('es-CO');
+        document.getElementById('z-counted').textContent = fmt(counted);
+        document.getElementById('z-diff').textContent = fmt(diff);
+        document.getElementById('z-notes').textContent = notes || 'Sin novedades';
+
+        // PRINT Z REPORT DIRECTLY TO SAT Q22
+        window.print();
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      });
+    }
+  </script>
+</StaffLayout>
