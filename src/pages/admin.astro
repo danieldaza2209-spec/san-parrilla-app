@@ -1,12 +1,14 @@
 ---
-export const prerender = false; // SSR: protegida por src/middleware.js
+export const prerender = true;
 import StaffLayout from '../layouts/StaffLayout.astro';
-import { getDashboardMetrics, getDailySpecials, getProducts, getCategories } from '../lib/db.js';
+import { getDashboardMetrics, getDailySpecials, getProducts, getCategories, fallbackCategories, initialProductList } from '../lib/db.js';
 
 const metrics = getDashboardMetrics();
 const specials = getDailySpecials();
-const products = getProducts(false); // get all products including inactive
-const categories = getCategories();
+const rawProducts = getProducts(false);
+const products = (rawProducts && rawProducts.length > 0) ? rawProducts : initialProductList;
+const rawCategories = getCategories();
+const categories = (rawCategories && rawCategories.length > 0) ? rawCategories : fallbackCategories;
 
 const formatPrice = (val) => {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
@@ -24,10 +26,10 @@ const formatPrice = (val) => {
       </div>
 
       <div class="flex items-center gap-3">
-        <a href="/api/launcher" download class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-parrilla-ivory font-bold text-xs px-4 py-2.5 rounded-xl border border-parrilla-border shadow-sm transition" title="Descarga el acceso directo de Windows que abre el POS e imprime sin ventanas">
+        <button id="btn-download-launcher" type="button" class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-parrilla-ivory font-bold text-xs px-4 py-2.5 rounded-xl border border-parrilla-border shadow-sm transition" title="Descarga el acceso directo de Windows que abre el POS e imprime sin ventanas">
           <i data-lucide="download" class="w-4 h-4"></i>
           <span>Lanzador PC de caja (.bat)</span>
-        </a>
+        </button>
         <a href="/pos" class="inline-flex items-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition">
           <i data-lucide="zap" class="w-4 h-4"></i>
           <span>Ir al POS</span>
@@ -267,6 +269,45 @@ const formatPrice = (val) => {
 
   <!-- Client JavaScript for Admin Actions -->
   <script>
+    // Download Windows POS Launcher (.bat) with --kiosk-printing
+    const btnLauncher = document.getElementById('btn-download-launcher');
+    if (btnLauncher) {
+      btnLauncher.addEventListener('click', () => {
+        const posUrl = `${window.location.origin}/pos`;
+        const batLines = [
+          '@echo off',
+          'REM ===============================================================',
+          'REM  San Parrilla POS - Lanzador con impresion termica silenciosa',
+          'REM ===============================================================',
+          'set "POS_URL=' + posUrl + '"',
+          'set "PROFILE_DIR=%LOCALAPPDATA%\\SanParrillaPOS"',
+          '',
+          'for %%P in (',
+          '  "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe"',
+          '  "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe"',
+          '  "%LOCALAPPDATA%\\Google\\Chrome\\Application\\chrome.exe"',
+          '  "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe"',
+          '  "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe"',
+          ') do (',
+          '  if exist "%%~P" (',
+          '    start "" "%%~P" --user-data-dir="%PROFILE_DIR%" --kiosk-printing --app="%POS_URL%"',
+          '    exit /b 0',
+          '  )',
+          ')',
+          'start "" "%POS_URL%"',
+        ];
+        const blob = new Blob([batLines.join('\r\n') + '\r\n'], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'San Parrilla POS.bat';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+    }
+
     // Search dishes in table
     const searchDishInput = document.getElementById('admin-search-dish');
     const dishRows = document.querySelectorAll('.dish-row');

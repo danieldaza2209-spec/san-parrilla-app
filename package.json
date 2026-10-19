@@ -8,13 +8,12 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/node": "^11.1.8",
     "@astrojs/tailwind": "^6.0.2",
     "@astrojs/vercel": "^8.2.11",
     "astro": "^5.18.2",
     "lucide": "^1.58.0",
     "tailwindcss": "^3.4.19",
-    "zod": "^4.6.7"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "vercel": "^64.5.0"

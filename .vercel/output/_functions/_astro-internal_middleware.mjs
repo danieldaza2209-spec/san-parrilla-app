@@ -26,9 +26,11 @@ function hardenHeaders(response) {
 
 const onRequest$1 = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
+  if (!pathname.startsWith('/api/')) return next();
+
   const rule = getAccessRule(pathname, context.request.method);
 
-  // Rutas públicas (carta "/", "/login", "/api/auth/*"): no se toca nada.
+  // Rutas públicas ("/api/auth/*"): no se toca nada.
   if (!rule) return next();
 
   const token = context.cookies.get(SESSION_COOKIE)?.value;

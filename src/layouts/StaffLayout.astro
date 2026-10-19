@@ -9,7 +9,6 @@ interface Props {
 
 const { title = 'Personal | San Parrilla' } = Astro.props;
 
-// El middleware ya validó la sesión; aquí solo se usa para adaptar el menú al rol.
 const user = Astro.locals.user;
 const isAdmin = user?.role === ROLE_ADMIN;
 const pathname = Astro.url.pathname.replace(/\/+$/, '') || '/';
@@ -17,13 +16,46 @@ const pathname = Astro.url.pathname.replace(/\/+$/, '') || '/';
 const cashOpen = Boolean(getActiveCashRegister());
 
 const navItems = [
-  { href: '/pos', label: 'Punto de Venta', icon: 'zap', show: true },
-  { href: '/caja', label: 'Caja', icon: 'wallet', show: true },
-  { href: '/admin', label: 'Administración', icon: 'bar-chart-3', show: isAdmin },
-].filter((item) => item.show);
+  { href: '/pos', label: 'Punto de Venta', icon: 'zap', adminOnly: false },
+  { href: '/caja', label: 'Caja', icon: 'wallet', adminOnly: false },
+  { href: '/admin', label: 'Administración', icon: 'bar-chart-3', adminOnly: true },
+];
 ---
 
 <BaseLayout title={title} noindex>
+  <script is:inline>
+    (function () {
+      var STORAGE_KEY = 'sp_staff_session';
+      var pathname = window.location.pathname.replace(/\/+$/, '') || '/';
+      var session = null;
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (parsed && parsed.role && parsed.exp > Date.now()) {
+            session = parsed;
+          } else {
+            localStorage.removeItem(STORAGE_KEY);
+          }
+        }
+      } catch (e) {}
+
+      if (!session) {
+        window.location.replace('/login?next=' + encodeURIComponent(pathname + window.location.search));
+        return;
+      }
+
+      if (pathname === '/admin' || pathname.indexOf('/admin/') === 0) {
+        if (session.role !== 'admin') {
+          window.location.replace('/pos');
+          return;
+        }
+      }
+
+      window.__SP_STAFF_ROLE__ = session.role;
+    })();
+  </script>
+
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-parrilla-border no-print">
     <div class="max-w-[1600px] mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-3">
 
@@ -35,8 +67,10 @@ const navItems = [
             return (
               <a
                 href={item.href}
+                id={item.adminOnly ? 'nav-admin-link' : undefined}
                 class:list={[
-                  'px-3 sm:px-4 py-1.5 rounded-full font-semibold transition inline-flex items-center gap-1.5',
+                  'px-3 sm:px-4 py-1.5 rounded-full font-semibold transition items-center gap-1.5',
+                  item.adminOnly && !isAdmin ? 'hidden' : 'inline-flex',
                   active
                     ? 'bg-parrilla-gold text-white shadow-sm'
                     : 'text-parrilla-ivory hover:text-parrilla-gold hover:bg-white',
@@ -65,19 +99,18 @@ const navItems = [
 
         <span class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-parrilla-muted">
           <i data-lucide="user-round" class="w-4 h-4"></i>
-          {user ? ROLE_LABELS[user.role] : ''}
+          <span id="staff-role-label">{user ? ROLE_LABELS[user.role] : 'Personal'}</span>
         </span>
 
-        <form method="POST" action="/api/auth/logout">
-          <button
-            type="submit"
-            class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border transition"
-            title="Cerrar sesión"
-          >
-            <i data-lucide="log-out" class="w-4 h-4"></i>
-            <span class="hidden sm:inline">Salir</span>
-          </button>
-        </form>
+        <button
+          id="btn-staff-logout"
+          type="button"
+          class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border transition"
+          title="Cerrar sesión"
+        >
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Salir</span>
+        </button>
       </div>
     </div>
   </header>
@@ -85,4 +118,37 @@ const navItems = [
   <main class="flex-1">
     <slot />
   </main>
+
+  <script is:inline>
+    (function () {
+      var role = window.__SP_STAFF_ROLE__;
+      var adminLink = document.getElementById('nav-admin-link');
+      var roleLabel = document.getElementById('staff-role-label');
+      var logoutBtn = document.getElementById('btn-staff-logout');
+
+      if (role === 'admin' && adminLink) {
+        adminLink.classList.remove('hidden');
+        adminLink.classList.add('inline-flex');
+      } else if (adminLink) {
+        adminLink.classList.add('hidden');
+        adminLink.classList.remove('inline-flex');
+      }
+
+      if (roleLabel) {
+        roleLabel.textContent = role === 'admin' ? 'Administrador' : 'Cajero / POS';
+      }
+
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', function () {
+          try {
+            localStorage.removeItem('sp_staff_session');
+            document.cookie = 'sp_role=; path=/; max-age=0; SameSite=Lax';
+          } catch (e) {}
+          fetch('/api/auth/logout', { method: 'POST' }).catch(function () {}).finally(function () {
+            window.location.replace('/login');
+          });
+        });
+      }
+    })();
+  </script>
 </BaseLayout>
