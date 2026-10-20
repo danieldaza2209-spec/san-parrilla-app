@@ -60,7 +60,8 @@ const formatPrice = (val) => {
 
   <!-- Menu Carta Section -->
   <section id="menu-carta" class="max-w-6xl mx-auto px-2 sm:px-6 lg:px-8 pt-8 sm:pt-14 pb-24">
-    <!-- Selector de Vista Destacado -->
+    <!-- Selector de Vista Destacado (Oculto / comentado temporalmente: vista fija en Pedidos Rápidos) -->
+    <!--
     <div class="flex flex-col items-center justify-center mb-12">
       <span class="text-[11px] font-bold uppercase tracking-widest text-parrilla-muted mb-2.5">Elige cómo prefieres ver el menú</span>
       <div
@@ -88,8 +89,9 @@ const formatPrice = (val) => {
         </button>
       </div>
     </div>
+    -->
 
-    <!-- Vista 1 (Por defecto): ⚡ Pedidos Rápidos -->
+    <!-- Vista Principal Fija: ⚡ Pedidos Rápidos -->
     <div id="view-panel-quick">
       <QuickOrderView
         products={products}
@@ -98,13 +100,16 @@ const formatPrice = (val) => {
       />
     </div>
 
-    <!-- Vista 2 (Alternativa): 📖 Carta Estilizada ("La Carta del Asador") -->
-    <div id="view-panel-styled" class="hidden">
-      <StyledMenuView categories={categories} products={products} customizableCategories={customizableCategories} />
-    </div>
+    <!-- Vista Alternativa Desconectada (No borrada): 📖 Carta Estilizada ("La Carta del Asador") -->
+    {false && (
+      <div id="view-panel-styled" class="hidden">
+        <StyledMenuView categories={categories} products={products} customizableCategories={customizableCategories} />
+      </div>
+    )}
   </section>
 
-  <!-- Alternancia instantánea entre vistas sin recargar ni perder el carrito -->
+  <!-- Script de alternancia de vistas (comentado mientras la vista Pedidos Rápidos permanece fija) -->
+  <!--
   <script>
     const viewButtons = document.querySelectorAll('.menu-view-btn');
     const quickPanel = document.getElementById('view-panel-quick');
@@ -141,7 +146,8 @@ const formatPrice = (val) => {
       });
     });
   </script>
+  -->
 
-  <!-- Carrito flotante (pedido local compartido por ambas vistas, se envía por WhatsApp) -->
+  <!-- Carrito flotante (pedido local, campos de entrega/pago y envío por WhatsApp) -->
   <CartDrawer specials={dailySpecials} />
 </PublicLayout>
