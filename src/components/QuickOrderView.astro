@@ -1,10 +1,8 @@
 ---
 /**
  * Vista "⚡ Pedidos Rápidos"
- * Replica la estructura y distribución del diseño de referencia en PALETA CLARA:
- * 1. ACOMPAÑA TU PROTEÍNA - Especiales de Hoy (3 tarjetas: Sopa del Día, Principios, Acompañamientos)
- * 2. ELIGE TU PROTEÍNA - Nuestro Menú (Tarjetas por rango de precio con botón "+" táctil de 40x40px e insignias destacadas)
- * 3. PARA COMPARTIR - Picadas Especiales (y Bebidas/Adicionales)
+ * Replica exactamente la distribución de 3 columnas en "Especiales de Hoy" y
+ * 2 columnas de precios lado a lado desde móvil (grid-cols-2 base), en PALETA CLARA.
  */
 interface Product {
   id: string;
@@ -57,53 +55,54 @@ const picadas = products.filter((p) => p.category_id === 'picadas');
 const bebidas = products.filter((p) => p.category_id === 'bebidas');
 ---
 
-<div id="quick-order-view" class="space-y-16">
+<div id="quick-order-view" class="space-y-10 sm:space-y-14">
   <!-- =========================================================
        1. SECCIÓN SUPERIOR: ACOMPAÑA TU PROTEÍNA - Especiales de Hoy
+          (3 columnas lado a lado incluso en móvil: grid-cols-3)
        ========================================================= -->
   {dailySpecials && (
-    <section aria-labelledby="heading-especiales-hoy" class="space-y-8">
-      <div class="text-center max-w-2xl mx-auto">
-        <span class="text-xs font-extrabold uppercase tracking-[0.2em] text-parrilla-gold block mb-1.5">
+    <section aria-labelledby="heading-especiales-hoy" class="space-y-4 sm:space-y-6">
+      <div class="text-center max-w-2xl mx-auto px-2">
+        <span class="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-parrilla-gold block mb-1">
           ACOMPAÑA TU PROTEÍNA
         </span>
-        <h2 id="heading-especiales-hoy" class="font-display font-black text-3xl sm:text-4xl text-parrilla-ivory">
+        <h2 id="heading-especiales-hoy" class="font-display font-black text-2xl sm:text-4xl text-parrilla-ivory">
           Especiales de Hoy
         </h2>
-        <p class="text-sm sm:text-base text-parrilla-muted mt-2">
+        <p class="text-xs sm:text-sm text-parrilla-muted mt-1">
           Todos los platos fuertes del menú incluyen la sopa, principio y acompañamiento del día.
         </p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+      <div class="grid grid-cols-3 gap-2 sm:gap-5 px-1 sm:px-2 items-stretch">
         <!-- Tarjeta 1: SOPA DEL DÍA -->
-        <div class="bg-white rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-5 sm:p-6 shadow-sm hover:shadow-md transition text-center flex flex-col items-center justify-center">
-          <div class="w-12 h-12 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-parrilla-gold mb-3 sm:mb-4">
-            <i data-lucide="soup" class="w-5 h-5"></i>
+        <div class="bg-white rounded-xl sm:rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-2.5 sm:p-6 shadow-sm text-center flex flex-col items-center justify-start">
+          <div class="w-7 h-7 sm:w-11 sm:h-11 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-parrilla-gold mb-1.5 sm:mb-3">
+            <i data-lucide="soup" class="w-3.5 h-3.5 sm:w-5 sm:h-5"></i>
           </div>
-          <span class="text-xs font-bold uppercase tracking-widest text-parrilla-muted">
+          <span class="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-parrilla-muted">
             SOPA DEL DÍA
           </span>
-          <h3 class="font-display font-black text-2xl sm:text-3xl text-parrilla-ivory mt-1">
+          <h3 class="font-display font-black text-sm sm:text-2xl text-parrilla-ivory mt-1 leading-tight">
             {dailySpecials.sopa}
           </h3>
-          <p class="text-xs sm:text-sm text-parrilla-muted mt-1.5 max-w-xs leading-relaxed">
+          <p class="text-[10px] sm:text-xs text-parrilla-muted mt-1 leading-snug">
             Con el sabor casero tradicional de nuestro fogón.
           </p>
         </div>
 
         <!-- Tarjeta 2: PRINCIPIOS -->
-        <div class="bg-white rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-5 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col items-center">
-          <div class="w-12 h-12 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-parrilla-gold mb-3 sm:mb-4">
-            <i data-lucide="beef" class="w-5 h-5"></i>
+        <div class="bg-white rounded-xl sm:rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-2.5 sm:p-6 shadow-sm flex flex-col items-center justify-start">
+          <div class="w-7 h-7 sm:w-11 sm:h-11 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-parrilla-gold mb-1.5 sm:mb-3">
+            <i data-lucide="beef" class="w-3.5 h-3.5 sm:w-5 sm:h-5"></i>
           </div>
-          <span class="text-xs font-bold uppercase tracking-widest text-parrilla-muted mb-3">
+          <span class="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-parrilla-muted mb-1.5 sm:mb-3 text-center">
             PRINCIPIOS
           </span>
-          <ul class="space-y-2.5 text-left w-full max-w-[240px]">
+          <ul class="space-y-1 sm:space-y-2 text-left w-full">
             {dailySpecials.principios.map((p) => (
-              <li class="flex items-center gap-2.5 text-base font-medium text-parrilla-ivory">
-                <i data-lucide="check" class="w-4 h-4 text-parrilla-gold flex-shrink-0"></i>
+              <li class="flex items-start gap-1 sm:gap-2 text-[11px] sm:text-sm font-medium text-parrilla-ivory leading-tight">
+                <i data-lucide="check" class="w-3 h-3 sm:w-4 sm:h-4 text-parrilla-gold flex-shrink-0 mt-0.5"></i>
                 <span>{p}</span>
               </li>
             ))}
@@ -111,17 +110,17 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
         </div>
 
         <!-- Tarjeta 3: ACOMPAÑAMIENTOS -->
-        <div class="bg-white rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-5 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col items-center">
-          <div class="w-12 h-12 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-parrilla-gold mb-3 sm:mb-4">
-            <i data-lucide="salad" class="w-5 h-5"></i>
+        <div class="bg-white rounded-xl sm:rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-2.5 sm:p-6 shadow-sm flex flex-col items-center justify-start">
+          <div class="w-7 h-7 sm:w-11 sm:h-11 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-parrilla-gold mb-1.5 sm:mb-3">
+            <i data-lucide="salad" class="w-3.5 h-3.5 sm:w-5 sm:h-5"></i>
           </div>
-          <span class="text-xs font-bold uppercase tracking-widest text-parrilla-muted mb-3">
+          <span class="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-parrilla-muted mb-1.5 sm:mb-3 text-center">
             ACOMPAÑAMIENTOS
           </span>
-          <ul class="space-y-2.5 text-left w-full max-w-[240px]">
+          <ul class="space-y-1 sm:space-y-2 text-left w-full">
             {dailySpecials.acompanamientos.map((a) => (
-              <li class="flex items-center gap-2.5 text-base font-medium text-parrilla-ivory">
-                <i data-lucide="check" class="w-4 h-4 text-parrilla-gold flex-shrink-0"></i>
+              <li class="flex items-start gap-1 sm:gap-2 text-[11px] sm:text-sm font-medium text-parrilla-ivory leading-tight">
+                <i data-lucide="check" class="w-3 h-3 sm:w-4 sm:h-4 text-parrilla-gold flex-shrink-0 mt-0.5"></i>
                 <span>{a}</span>
               </li>
             ))}
@@ -133,26 +132,27 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
 
   <!-- =========================================================
        2. SECCIÓN CENTRAL: ELIGE TU PROTEÍNA - Nuestro Menú
+          (Obligatorio 2 columnas desde móvil: grid-cols-2)
        ========================================================= -->
-  <section aria-labelledby="heading-nuestro-menu" class="space-y-8">
-    <div class="text-center max-w-2xl mx-auto">
-      <span class="text-xs font-extrabold uppercase tracking-[0.2em] text-parrilla-gold block mb-1.5">
+  <section aria-labelledby="heading-nuestro-menu" class="space-y-4 sm:space-y-6">
+    <div class="text-center max-w-2xl mx-auto px-2">
+      <span class="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-parrilla-gold block mb-1">
         ELIGE TU PROTEÍNA
       </span>
-      <h2 id="heading-nuestro-menu" class="font-display font-black text-3xl sm:text-4xl text-parrilla-ivory">
+      <h2 id="heading-nuestro-menu" class="font-display font-black text-2xl sm:text-4xl text-parrilla-ivory">
         Nuestro Menú
       </h2>
-      <p class="text-sm sm:text-base text-parrilla-muted mt-2">
+      <p class="text-xs sm:text-sm text-parrilla-muted mt-1">
         Selecciona tu plato fuerte. Los precios corresponden a la categoría de la proteína elegida.
       </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 items-start">
+    <div class="grid grid-cols-2 gap-2.5 sm:gap-5 px-1 sm:px-2 items-start">
       {priceColumns.map((col) => (
-        <div class="bg-white rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-5 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col">
+        <div class="bg-white rounded-xl sm:rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-2.5 sm:p-5 shadow-sm flex flex-col">
           <!-- Encabezado con Precio en Grande y Naranja -->
-          <div class="text-center border-b border-parrilla-border pb-4 mb-2">
-            <span class="font-display font-black text-3xl sm:text-4xl text-parrilla-gold tracking-tight">
+          <div class="text-center border-b border-parrilla-border pb-2 sm:pb-3 mb-1.5 sm:mb-2">
+            <span class="font-display font-black text-lg sm:text-3xl text-parrilla-gold tracking-tight">
               {col.label}
             </span>
           </div>
@@ -160,8 +160,8 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
           <!-- Lista de platos del rango de precio -->
           <ul>
             {col.regularItems.map((item) => (
-              <li class="py-3 border-b border-gray-100 last:border-b-0 flex items-center justify-between gap-3">
-                <span class="text-base font-medium text-parrilla-ivory leading-snug">
+              <li class="flex items-center justify-between gap-1.5 py-1.5 sm:py-2.5 border-b border-gray-100 last:border-b-0">
+                <span class="text-xs sm:text-sm font-medium text-parrilla-ivory leading-tight min-w-0 flex-1">
                   {item.name}
                 </span>
 
@@ -171,9 +171,9 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
                   data-price={item.price}
                   data-customizable="true"
                   aria-label={`Agregar ${item.name} al pedido`}
-                  class="btn-add-cart flex-shrink-0 w-11 h-11 min-w-[44px] min-h-[44px] p-2.5 rounded-xl bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center shadow-2xs transition active:scale-95 cursor-pointer"
+                  class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
                 >
-                  <i data-lucide="plus" class="w-5 h-5"></i>
+                  <i data-lucide="plus" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
                 </button>
               </li>
             ))}
@@ -181,15 +181,15 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
 
           <!-- Recuadro de Destacados del Día (ej. ⭐ SOLO POR HOY / ⭐ SOLO LOS LUNES) -->
           {col.specialItems.length > 0 && (
-            <div class="relative mt-5 pt-4 pb-1 px-4 rounded-xl border-2 border-parrilla-gold/60 bg-orange-50/40">
-              <span class="absolute -top-3 left-3.5 bg-parrilla-gold text-white text-[11px] font-extrabold uppercase tracking-wider px-3 py-0.5 rounded-md shadow-xs">
+            <div class="relative mt-3 sm:mt-4 pt-3 pb-1 px-2 sm:px-3.5 rounded-lg sm:rounded-xl border border-parrilla-gold/70 bg-orange-50/40">
+              <span class="absolute -top-2.5 left-2 bg-parrilla-gold text-white text-[8px] sm:text-[10px] font-extrabold uppercase tracking-wider px-1.5 sm:px-2.5 py-0.5 rounded shadow-2xs">
                 {col.badgeLabel}
               </span>
 
               <ul>
                 {col.specialItems.map((item) => (
-                  <li class="py-3 border-b border-orange-200/50 last:border-b-0 flex items-center justify-between gap-3">
-                    <span class="text-base font-bold text-parrilla-ivory leading-snug">
+                  <li class="flex items-center justify-between gap-1.5 py-1.5 sm:py-2 border-b border-orange-200/50 last:border-b-0">
+                    <span class="text-xs sm:text-sm font-bold text-parrilla-ivory leading-tight min-w-0 flex-1">
                       {item.name}
                     </span>
 
@@ -199,9 +199,9 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
                       data-price={item.price}
                       data-customizable="true"
                       aria-label={`Agregar ${item.name} al pedido`}
-                      class="btn-add-cart flex-shrink-0 w-11 h-11 min-w-[44px] min-h-[44px] p-2.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white border border-parrilla-gold flex items-center justify-center shadow-xs transition active:scale-95 cursor-pointer"
+                      class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-parrilla-gold hover:bg-parrilla-goldLight text-white border border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
                     >
-                      <i data-lucide="plus" class="w-5 h-5"></i>
+                      <i data-lucide="plus" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
                     </button>
                   </li>
                 ))}
@@ -215,49 +215,50 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
 
   <!-- =========================================================
        3. SECCIÓN INFERIOR: PARA COMPARTIR - Picadas Especiales
+          (2 columnas también en móvil: grid-cols-2)
        ========================================================= -->
   {picadas.length > 0 && (
-    <section aria-labelledby="heading-picadas" class="space-y-8">
-      <div class="text-center max-w-2xl mx-auto">
-        <span class="text-xs font-extrabold uppercase tracking-[0.2em] text-parrilla-gold block mb-1.5">
+    <section aria-labelledby="heading-picadas" class="space-y-4 sm:space-y-6">
+      <div class="text-center max-w-2xl mx-auto px-2">
+        <span class="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-parrilla-gold block mb-1">
           PARA COMPARTIR
         </span>
-        <h2 id="heading-picadas" class="font-display font-black text-3xl sm:text-4xl text-parrilla-ivory">
+        <h2 id="heading-picadas" class="font-display font-black text-2xl sm:text-4xl text-parrilla-ivory">
           Picadas Especiales
         </h2>
-        <p class="text-sm sm:text-base text-parrilla-muted mt-2">
+        <p class="text-xs sm:text-sm text-parrilla-muted mt-1">
           Las mejores combinaciones de carne para compartir.
         </p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="grid grid-cols-2 gap-2.5 sm:gap-5 px-1 sm:px-2">
         {picadas.map((item) => (
           <div
             class:list={[
-              'bg-white rounded-2xl border p-5 sm:p-6 shadow-sm hover:shadow-md transition flex items-center justify-between gap-4',
+              'bg-white rounded-xl sm:rounded-2xl border p-3 sm:p-5 shadow-sm flex flex-col justify-between gap-2.5',
               item.is_featured === 1
                 ? 'border-parrilla-gold bg-orange-50/20'
                 : 'border-parrilla-border',
             ]}
           >
-            <div class="min-w-0 flex-1">
+            <div>
               {item.is_featured === 1 && (
-                <span class="inline-block bg-parrilla-gold text-white text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-1.5">
+                <span class="inline-block bg-parrilla-gold text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full mb-1">
                   ⭐ ¡La más buscada!
                 </span>
               )}
-              <h3 class="font-display font-black text-xl text-parrilla-ivory">
+              <h3 class="font-display font-black text-sm sm:text-xl text-parrilla-ivory leading-tight">
                 {item.name}
               </h3>
               {item.description && (
-                <p class="text-xs sm:text-sm text-parrilla-muted mt-1 leading-relaxed">
+                <p class="text-[11px] sm:text-sm text-parrilla-muted mt-1 leading-snug">
                   {item.description}
                 </p>
               )}
             </div>
 
-            <div class="flex items-center gap-3 flex-shrink-0">
-              <span class="font-display font-black text-xl sm:text-2xl text-parrilla-gold">
+            <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
+              <span class="font-display font-black text-sm sm:text-xl text-parrilla-gold">
                 {formatPrice(item.price)}
               </span>
               <button
@@ -266,9 +267,9 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
                 data-price={item.price}
                 data-customizable="false"
                 aria-label={`Agregar ${item.name} al pedido`}
-                class="btn-add-cart flex-shrink-0 w-11 h-11 min-w-[44px] min-h-[44px] p-2.5 rounded-xl bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center shadow-2xs transition active:scale-95 cursor-pointer"
+                class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
               >
-                <i data-lucide="plus" class="w-5 h-5"></i>
+                <i data-lucide="plus" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
               </button>
             </div>
           </div>
@@ -279,30 +280,27 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
 
   <!-- Bebidas y Adicionales -->
   {bebidas.length > 0 && (
-    <section aria-labelledby="heading-bebidas" class="space-y-6">
+    <section aria-labelledby="heading-bebidas" class="space-y-4 px-1 sm:px-2">
       <div class="text-center max-w-2xl mx-auto">
-        <span class="text-xs font-extrabold uppercase tracking-[0.2em] text-parrilla-gold block mb-1.5">
+        <span class="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-parrilla-gold block mb-1">
           PARA ACOMPAÑAR
         </span>
-        <h2 id="heading-bebidas" class="font-display font-black text-2xl sm:text-3xl text-parrilla-ivory">
+        <h2 id="heading-bebidas" class="font-display font-black text-xl sm:text-3xl text-parrilla-ivory">
           Bebidas y Adicionales
         </h2>
       </div>
 
-      <div class="bg-white rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-5 sm:p-6 shadow-sm">
-        <ul class="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+      <div class="bg-white rounded-xl sm:rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-3 sm:p-5 shadow-sm">
+        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
           {bebidas.map((item) => (
-            <li class="py-3 flex items-center justify-between gap-3 border-b border-gray-100 last:border-b-0">
+            <li class="py-2 flex items-center justify-between gap-2 border-b border-gray-100 last:border-b-0">
               <div class="min-w-0 flex-1">
-                <span class="text-base font-medium text-parrilla-ivory block">
+                <span class="text-xs sm:text-sm font-medium text-parrilla-ivory block truncate">
                   {item.name}
                 </span>
-                {item.description && (
-                  <span class="text-xs text-parrilla-muted block truncate">{item.description}</span>
-                )}
               </div>
-              <div class="flex items-center gap-3 flex-shrink-0">
-                <span class="font-display font-bold text-base sm:text-lg text-parrilla-gold">
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <span class="font-display font-bold text-xs sm:text-base text-parrilla-gold">
                   {formatPrice(item.price)}
                 </span>
                 <button
@@ -311,9 +309,9 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
                   data-price={item.price}
                   data-customizable="false"
                   aria-label={`Agregar ${item.name} al pedido`}
-                  class="btn-add-cart w-10 h-10 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center shadow-2xs transition active:scale-90 cursor-pointer"
+                  class="btn-add-cart w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
                 >
-                  <i data-lucide="plus" class="w-5 h-5"></i>
+                  <i data-lucide="plus" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
                 </button>
               </div>
             </li>
