@@ -195,6 +195,84 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1';
     let cart = [];
 
     // ==========================================
+    // MEMORIA DEL PEDIDO EN CURSO (localStorage)
+    // Si el cliente recarga la página por accidente, el carrito sigue ahí.
+    // ==========================================
+    const CART_STATE_KEY = 'sanParrillaCart';
+    const CART_STATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 horas
+
+    function saveCartState() {
+      try {
+        if (cart.length === 0) {
+          localStorage.removeItem(CART_STATE_KEY);
+          return;
+        }
+        localStorage.setItem(
+          CART_STATE_KEY,
+          JSON.stringify({
+            savedAt: Date.now(),
+            cart,
+            service: serviceSelect.value,
+            payment: paymentSelect.value,
+            table: tableInput.value,
+            cutlery: cutlerySelect.value,
+            cash: cashAmountInput.value,
+          })
+        );
+      } catch (err) {
+        // localStorage no disponible: el carrito funciona igual, solo no se recuerda
+      }
+    }
+
+    // Corrige elecciones que ya no existan (p. ej. si cambió el menú del día)
+    function sanitizeItem(raw) {
+      if (!raw || typeof raw.name !== 'string' || !Number.isFinite(raw.price)) return null;
+      const item = {
+        id: typeof raw.id === 'string' ? raw.id : `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
+        name: raw.name,
+        price: raw.price,
+        customizable: Boolean(raw.customizable),
+        soup: null,
+        principle: null,
+        side: null,
+        salad: null,
+      };
+      if (item.customizable) {
+        const soups = [specials.sopa, 'Sin Sopa'];
+        const principles = [...specials.principios, 'Sin Principio'];
+        const sides = [...specials.acompanamientos, 'Sin Acompañamiento'];
+        const salads = ['Con ensalada', 'Sin ensalada'];
+        item.soup = soups.includes(raw.soup) ? raw.soup : specials.sopa;
+        item.principle = principles.includes(raw.principle) ? raw.principle : principles[0];
+        item.side = sides.includes(raw.side) ? raw.side : sides[0];
+        item.salad = salads.includes(raw.salad) ? raw.salad : 'Con ensalada';
+      }
+      return item;
+    }
+
+    function restoreCartState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(CART_STATE_KEY) || 'null');
+        if (!saved || !Array.isArray(saved.cart) || Date.now() - saved.savedAt > CART_STATE_TTL_MS) {
+          localStorage.removeItem(CART_STATE_KEY);
+          return;
+        }
+        cart = saved.cart.map(sanitizeItem).filter(Boolean);
+
+        const setIfValid = (select, value) => {
+          if (typeof value === 'string' && [...select.options].some((o) => o.value === value)) select.value = value;
+        };
+        setIfValid(serviceSelect, saved.service);
+        setIfValid(paymentSelect, saved.payment);
+        setIfValid(cutlerySelect, saved.cutlery);
+        if (typeof saved.table === 'string') tableInput.value = saved.table;
+        if (typeof saved.cash === 'string') cashAmountInput.value = saved.cash;
+      } catch (err) {
+        cart = [];
+      }
+    }
+
+    // ==========================================
     // MEMORIA DEL CLIENTE (localStorage)
     // ==========================================
     const STORAGE_KEY = 'sanParrillaCustomer';
@@ -368,6 +446,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1';
         summaryTrigger.setAttribute('aria-expanded', 'false');
         chevron.setAttribute('data-lucide', 'chevron-up');
         document.body.classList.remove('pb-28');
+        saveCartState();
         refreshIcons();
         return;
       }
@@ -395,6 +474,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1';
       countEl.textContent = `${cart.length} plato${cart.length > 1 ? 's' : ''}`;
       totalEl.textContent = money(total);
 
+      saveCartState();
       refreshIcons();
     }
 
@@ -422,7 +502,12 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1';
       if (!select) return;
       const item = cart.find((i) => i.id === select.dataset.id);
       if (item) item[select.dataset.field] = select.value;
+      saveCartState();
     });
+
+    // Guarda también los campos del pedido (servicio, mesa, pago, cubiertos, monto)
+    drawer.addEventListener('input', saveCartState);
+    drawer.addEventListener('change', saveCartState);
 
     summaryTrigger.addEventListener('click', () => {
       detailsPanel.classList.toggle('hidden');
@@ -519,8 +604,10 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1';
       window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
     });
 
-    // Estado inicial
+    // Estado inicial: datos del cliente + pedido en curso (si lo había)
     loadSavedCustomer();
+    restoreCartState();
     updateOrderFields();
+    updateCartUI();
   }
 </script>
