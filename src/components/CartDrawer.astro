@@ -1,0 +1,526 @@
+---
+/**
+ * Carrito flotante de la carta del cliente.
+ * 100% local (sin backend ni base de datos): el pedido se arma en el navegador
+ * y se envía formateado por WhatsApp.
+ *
+ * Botones que lo alimentan: cualquier elemento con la clase `.btn-add-cart` y los
+ * atributos `data-name`, `data-price` y `data-customizable="true|false"`.
+ */
+interface Props {
+  specials: {
+    sopa: string;
+    principios: string[];
+    acompanamientos: string[];
+  };
+  whatsappNumber?: string;
+}
+
+const { specials, whatsappNumber = '573183821787' } = Astro.props;
+
+const fieldClass =
+  'w-full min-h-[44px] px-3 py-2 bg-white rounded-lg border border-parrilla-border text-base text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-2 focus:ring-orange-200 outline-none transition';
+const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1';
+---
+
+<div
+  id="cart-drawer"
+  class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-50 bg-white border border-parrilla-gold rounded-2xl shadow-2xl overflow-hidden no-print"
+  data-specials={JSON.stringify(specials)}
+  data-whatsapp={whatsappNumber}
+>
+  <!-- Barra resumen -->
+  <button
+    type="button"
+    id="cart-summary-trigger"
+    class="w-full flex items-center justify-between gap-3 px-5 py-3.5 min-h-[56px] bg-orange-50 hover:bg-orange-100 transition-colors text-left"
+    aria-expanded="false"
+    aria-controls="cart-details-panel"
+  >
+    <span class="flex items-center gap-3">
+      <i data-lucide="shopping-bag" class="w-5 h-5 text-parrilla-gold"></i>
+      <span id="cart-count" class="font-semibold text-sm text-parrilla-ivory">0 platos</span>
+      <span class="text-parrilla-muted">|</span>
+      <span id="cart-total" class="font-display font-extrabold text-lg text-parrilla-gold">$0</span>
+    </span>
+    <span class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-parrilla-ivory">
+      <span>Ver mi pedido</span>
+      <i data-lucide="chevron-up" id="cart-chevron" class="w-4 h-4"></i>
+    </span>
+  </button>
+
+  <!-- Detalle -->
+  <div id="cart-details-panel" class="hidden border-t border-parrilla-border p-5 max-h-[70vh] overflow-y-auto">
+    <div class="flex items-center justify-between border-b border-parrilla-border pb-2 mb-4">
+      <h3 class="font-display font-bold text-lg text-parrilla-ivory">Tu Pedido</h3>
+      <button type="button" id="clear-cart-btn" class="text-xs font-semibold text-parrilla-muted hover:text-red-600 transition px-2 py-2 min-h-[44px]">Vaciar</button>
+    </div>
+
+    <div id="cart-items-list" class="flex flex-col gap-3 mb-5"></div>
+
+    <!-- Tipo de servicio -->
+    <div class="border-t border-parrilla-border pt-4 mb-4">
+      <label for="cart-service-type" class={labelClass}>Tipo de Servicio</label>
+      <select id="cart-service-type" class={`${fieldClass} cursor-pointer`}>
+        <option value="Mesa">Mesa (Comer en restaurante)</option>
+        <option value="Domicilio">Domicilio (A casa)</option>
+        <option value="Recoger">Recoger (Para llevar)</option>
+      </select>
+    </div>
+
+    <!-- Datos del cliente / entrega / pago -->
+    <div class="flex flex-col gap-3 mb-5">
+      <div>
+        <label for="cart-customer-name" class={labelClass}>Nombre</label>
+        <input type="text" id="cart-customer-name" autocomplete="name" placeholder="Tu nombre" class={fieldClass} />
+      </div>
+      <div>
+        <label for="cart-customer-phone" class={labelClass}>Teléfono</label>
+        <input type="tel" id="cart-customer-phone" autocomplete="tel" inputmode="tel" placeholder="Ej: 300 123 4567" class={fieldClass} />
+      </div>
+
+      <!-- Solo Mesa -->
+      <div id="field-table" class="hidden">
+        <label for="cart-table-number" class={labelClass}>Número de mesa</label>
+        <input type="text" id="cart-table-number" inputmode="numeric" maxlength="10" placeholder="Ej: 5" class={fieldClass} />
+      </div>
+
+      <!-- Solo Domicilio -->
+      <div id="field-address" class="hidden">
+        <label for="cart-customer-address" class={labelClass}>Dirección completa</label>
+        <input type="text" id="cart-customer-address" autocomplete="street-address" placeholder="Calle / Carrera, número, apto o casa" class={fieldClass} />
+      </div>
+      <div id="field-neighborhood" class="hidden">
+        <label for="cart-customer-neighborhood" class={labelClass}>Barrio / Indicaciones de entrega</label>
+        <input type="text" id="cart-customer-neighborhood" placeholder="Barrio y referencias para encontrarte" class={fieldClass} />
+      </div>
+      <div id="field-cutlery" class="hidden">
+        <label for="cart-cutlery" class={labelClass}>¿Incluir cubiertos plásticos?</label>
+        <select id="cart-cutlery" class={`${fieldClass} cursor-pointer`}>
+          <option value="No" selected>No</option>
+          <option value="Sí">Sí</option>
+        </select>
+      </div>
+
+      <!-- Método de pago -->
+      <div>
+        <label for="cart-payment-method" class={labelClass}>Método de pago</label>
+        <select id="cart-payment-method" class={`${fieldClass} cursor-pointer`}>
+          <option value="Efectivo">Efectivo</option>
+          <option value="Nequi">Nequi</option>
+          <option value="Daviplata">Daviplata</option>
+          <option value="Bancolombia">Bancolombia</option>
+        </select>
+      </div>
+      <!-- Solo Domicilio + Efectivo -->
+      <div id="field-cash-amount" class="hidden">
+        <label for="cart-cash-amount" class={labelClass}>¿Con cuánto vas a pagar? <span class="font-normal text-parrilla-muted">(Opcional, para llevar cambio)</span></label>
+        <input type="text" id="cart-cash-amount" inputmode="numeric" placeholder="Ej: 50000" class={fieldClass} />
+      </div>
+
+      <p id="cart-form-error" class="hidden text-sm font-semibold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2" role="alert"></p>
+    </div>
+
+    <!-- Desglose de precios -->
+    <div class="flex flex-col gap-1.5 bg-slate-50 border border-parrilla-border rounded-xl px-4 py-3 mb-4 text-sm text-parrilla-muted">
+      <div class="flex items-center justify-between">
+        <span>Subtotal:</span>
+        <span id="summary-subtotal" class="font-semibold text-parrilla-ivory">$0</span>
+      </div>
+      <div id="empaque-row" class="hidden items-center justify-between">
+        <span>Empaque:</span>
+        <span id="summary-empaque" class="font-semibold text-parrilla-ivory">$0</span>
+      </div>
+      <div class="flex items-center justify-between border-t border-parrilla-border pt-2 mt-1 font-bold text-parrilla-ivory">
+        <span>Total a pagar:</span>
+        <span id="summary-total" class="font-display font-extrabold text-xl text-parrilla-gold">$0</span>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      id="whatsapp-checkout-btn"
+      class="w-full inline-flex items-center justify-center gap-2 min-h-[48px] bg-parrilla-accent hover:bg-green-800 text-white font-display font-extrabold text-base px-4 py-3 rounded-xl shadow-md transition active:scale-95"
+    >
+      <i data-lucide="send" class="w-5 h-5"></i>
+      <span>Enviar pedido por WhatsApp</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  // @ts-nocheck
+  const drawer = document.getElementById('cart-drawer');
+  if (drawer) {
+    const specials = JSON.parse(drawer.dataset.specials || '{}');
+    const whatsappNumber = drawer.dataset.whatsapp;
+
+    const $ = (id) => document.getElementById(id);
+    const summaryTrigger = $('cart-summary-trigger');
+    const detailsPanel = $('cart-details-panel');
+    const itemsList = $('cart-items-list');
+    const countEl = $('cart-count');
+    const totalEl = $('cart-total');
+    const chevron = $('cart-chevron');
+    const clearBtn = $('clear-cart-btn');
+    const checkoutBtn = $('whatsapp-checkout-btn');
+
+    const serviceSelect = $('cart-service-type');
+    const nameInput = $('cart-customer-name');
+    const phoneInput = $('cart-customer-phone');
+    const tableInput = $('cart-table-number');
+    const addressInput = $('cart-customer-address');
+    const neighborhoodInput = $('cart-customer-neighborhood');
+    const cutlerySelect = $('cart-cutlery');
+    const paymentSelect = $('cart-payment-method');
+    const cashAmountInput = $('cart-cash-amount');
+    const fieldTable = $('field-table');
+    const fieldAddress = $('field-address');
+    const fieldNeighborhood = $('field-neighborhood');
+    const fieldCutlery = $('field-cutlery');
+    const fieldCashAmount = $('field-cash-amount');
+    const formError = $('cart-form-error');
+
+    const summarySubtotal = $('summary-subtotal');
+    const summaryEmpaque = $('summary-empaque');
+    const summaryTotal = $('summary-total');
+    const empaqueRow = $('empaque-row');
+
+    const PACKAGING_FEE = 1000;
+    const money = (n) => `$${n.toLocaleString('es-CO')}`;
+    const escapeHtml = (s) =>
+      String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const refreshIcons = () => { if (window.lucide) window.lucide.createIcons(); };
+
+    let cart = [];
+
+    // ==========================================
+    // MEMORIA DEL CLIENTE (localStorage)
+    // ==========================================
+    const STORAGE_KEY = 'sanParrillaCustomer';
+    const customerInputs = {
+      name: nameInput,
+      phone: phoneInput,
+      address: addressInput,
+      neighborhood: neighborhoodInput,
+    };
+
+    function loadSavedCustomer() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        Object.keys(customerInputs).forEach((key) => {
+          const input = customerInputs[key];
+          // Solo rellena campos vacíos para no pisar lo que el cliente está escribiendo
+          if (input && !input.value && typeof saved[key] === 'string') input.value = saved[key];
+        });
+      } catch (err) {
+        // localStorage no disponible o dañado: se ignora
+      }
+    }
+
+    function saveCustomer() {
+      try {
+        const data = {};
+        Object.keys(customerInputs).forEach((key) => {
+          data[key] = customerInputs[key].value.trim();
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (err) {
+        // Modo privado / cuota llena: se ignora
+      }
+    }
+
+    Object.values(customerInputs).forEach((input) => input.addEventListener('input', saveCustomer));
+
+    // ==========================================
+    // VALIDACIÓN / CAMPOS DINÁMICOS
+    // ==========================================
+    function hideFormError() {
+      formError.classList.add('hidden');
+      formError.textContent = '';
+      drawer.querySelectorAll('input.border-red-500').forEach((el) => {
+        el.classList.remove('border-red-500');
+        el.classList.add('border-parrilla-border');
+      });
+    }
+
+    function showFormError(message, field) {
+      formError.textContent = message;
+      formError.classList.remove('hidden');
+      if (field) {
+        field.classList.remove('border-parrilla-border');
+        field.classList.add('border-red-500');
+        field.focus();
+      }
+    }
+
+    function updateOrderFields() {
+      const service = serviceSelect.value;
+      const isDelivery = service === 'Domicilio';
+      const isTable = service === 'Mesa';
+      const isCash = paymentSelect.value === 'Efectivo';
+
+      fieldTable.classList.toggle('hidden', !isTable);
+      fieldAddress.classList.toggle('hidden', !isDelivery);
+      fieldNeighborhood.classList.toggle('hidden', !isDelivery);
+      fieldCutlery.classList.toggle('hidden', !isDelivery);
+      fieldCashAmount.classList.toggle('hidden', !(isDelivery && isCash));
+      hideFormError();
+    }
+
+    [nameInput, phoneInput, tableInput, addressInput, neighborhoodInput, cashAmountInput].forEach((input) =>
+      input.addEventListener('input', hideFormError)
+    );
+
+    // ==========================================
+    // CARRITO
+    // ==========================================
+    const isToGo = () => serviceSelect.value === 'Domicilio' || serviceSelect.value === 'Recoger';
+
+    function addToCart(name, price, customizable) {
+      cart.push({
+        id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
+        name,
+        price,
+        customizable,
+        soup: customizable ? specials.sopa : null,
+        principle: customizable ? specials.principios?.[0] ?? 'Sin Principio' : null,
+        side: customizable ? specials.acompanamientos?.[0] ?? 'Sin Acompañamiento' : null,
+        salad: customizable ? 'Con ensalada' : null,
+      });
+      flashSummary();
+      updateCartUI();
+    }
+
+    function removeFromCart(id) {
+      cart = cart.filter((item) => item.id !== id);
+      updateCartUI();
+    }
+
+    function flashSummary() {
+      summaryTrigger.classList.add('bg-green-100');
+      setTimeout(() => summaryTrigger.classList.remove('bg-green-100'), 300);
+    }
+
+    const selectClass =
+      'w-40 min-h-[36px] px-2 py-1 bg-white rounded-md border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none cursor-pointer';
+
+    function selectGroup(label, field, id, optionsHtml) {
+      return `
+        <div class="flex items-center justify-between gap-2 text-sm">
+          <label class="text-parrilla-muted font-medium">${label}:</label>
+          <select class="item-select ${selectClass}" data-field="${field}" data-id="${id}">${optionsHtml}</select>
+        </div>`;
+    }
+
+    const optionsHtml = (values, current) =>
+      values
+        .map((v) => `<option value="${escapeHtml(v.value)}" ${current === v.value ? 'selected' : ''}>${escapeHtml(v.label)}</option>`)
+        .join('');
+
+    function renderItem(item) {
+      let html = `
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <span class="block font-semibold text-sm text-parrilla-ivory">${escapeHtml(item.name)}</span>
+            <span class="block text-xs font-bold text-parrilla-gold mt-0.5">${money(item.price)}</span>
+          </div>
+          <button type="button" class="btn-remove-item flex items-center justify-center w-11 h-11 text-parrilla-muted hover:text-red-600 transition" data-id="${item.id}" aria-label="Quitar ${escapeHtml(item.name)}">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </div>`;
+
+      if (item.customizable) {
+        const soup = optionsHtml(
+          [{ value: specials.sopa, label: specials.sopa }, { value: 'Sin Sopa', label: 'Sin sopa' }],
+          item.soup
+        );
+        const principle = optionsHtml(
+          [...specials.principios.map((p) => ({ value: p, label: p })), { value: 'Sin Principio', label: 'Sin principio' }],
+          item.principle
+        );
+        const side = optionsHtml(
+          [...specials.acompanamientos.map((a) => ({ value: a, label: a })), { value: 'Sin Acompañamiento', label: 'Sin acompañamiento' }],
+          item.side
+        );
+        const salad = optionsHtml(
+          [{ value: 'Con ensalada', label: 'Con ensalada' }, { value: 'Sin ensalada', label: 'Sin ensalada' }],
+          item.salad
+        );
+
+        html += `
+          <div class="flex flex-col gap-1.5 mt-2.5 pt-2.5 border-t border-dashed border-parrilla-border">
+            ${selectGroup('Sopa', 'soup', item.id, soup)}
+            ${selectGroup('Principio', 'principle', item.id, principle)}
+            ${selectGroup('Acompañamiento', 'side', item.id, side)}
+            ${selectGroup('Ensalada', 'salad', item.id, salad)}
+          </div>`;
+      }
+      return html;
+    }
+
+    function updateCartUI() {
+      itemsList.innerHTML = '';
+
+      if (cart.length === 0) {
+        drawer.classList.add('hidden');
+        detailsPanel.classList.add('hidden');
+        summaryTrigger.setAttribute('aria-expanded', 'false');
+        chevron.setAttribute('data-lucide', 'chevron-up');
+        document.body.classList.remove('pb-28');
+        refreshIcons();
+        return;
+      }
+
+      drawer.classList.remove('hidden');
+      document.body.classList.add('pb-28'); // evita que el carrito tape el pie de página
+
+      cart.forEach((item) => {
+        const container = document.createElement('div');
+        container.className = 'bg-slate-50 border border-parrilla-border rounded-lg p-3';
+        container.innerHTML = renderItem(item);
+        itemsList.appendChild(container);
+      });
+
+      const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
+      const packagingFee = isToGo() ? cart.length * PACKAGING_FEE : 0;
+      const total = subtotal + packagingFee;
+
+      summarySubtotal.textContent = money(subtotal);
+      summaryEmpaque.textContent = money(packagingFee);
+      summaryTotal.textContent = money(total);
+      empaqueRow.classList.toggle('hidden', packagingFee === 0);
+      empaqueRow.classList.toggle('flex', packagingFee > 0);
+
+      countEl.textContent = `${cart.length} plato${cart.length > 1 ? 's' : ''}`;
+      totalEl.textContent = money(total);
+
+      refreshIcons();
+    }
+
+    // ==========================================
+    // EVENTOS
+    // ==========================================
+    // Agregar platos desde la carta (delegación: funciona con cualquier .btn-add-cart)
+    document.addEventListener('click', (event) => {
+      const btn = event.target.closest('.btn-add-cart');
+      if (!btn || btn.disabled) return;
+      const price = parseInt(btn.dataset.price, 10);
+      if (Number.isNaN(price)) return;
+      addToCart(btn.dataset.name, price, btn.dataset.customizable === 'true');
+    });
+
+    // Quitar plato
+    itemsList.addEventListener('click', (event) => {
+      const btn = event.target.closest('.btn-remove-item');
+      if (btn) removeFromCart(btn.dataset.id);
+    });
+
+    // Cambiar elección de un plato (sopa, principio, acompañamiento, ensalada)
+    itemsList.addEventListener('change', (event) => {
+      const select = event.target.closest('.item-select');
+      if (!select) return;
+      const item = cart.find((i) => i.id === select.dataset.id);
+      if (item) item[select.dataset.field] = select.value;
+    });
+
+    summaryTrigger.addEventListener('click', () => {
+      detailsPanel.classList.toggle('hidden');
+      const open = !detailsPanel.classList.contains('hidden');
+      summaryTrigger.setAttribute('aria-expanded', String(open));
+      chevron.setAttribute('data-lucide', open ? 'chevron-down' : 'chevron-up');
+      if (open) loadSavedCustomer();
+      refreshIcons();
+    });
+
+    serviceSelect.addEventListener('change', () => {
+      updateOrderFields();
+      updateCartUI();
+    });
+    paymentSelect.addEventListener('change', updateOrderFields);
+
+    clearBtn.addEventListener('click', () => {
+      cart = [];
+      updateCartUI();
+    });
+
+    // ==========================================
+    // ENVÍO POR WHATSAPP
+    // ==========================================
+    checkoutBtn.addEventListener('click', () => {
+      if (cart.length === 0) return;
+
+      const service = serviceSelect.value;
+      const isDelivery = service === 'Domicilio';
+      const isTable = service === 'Mesa';
+      const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
+      const packagingFee = isToGo() ? cart.length * PACKAGING_FEE : 0;
+      const total = subtotal + packagingFee;
+      const paymentMethod = paymentSelect.value;
+      const isCash = paymentMethod === 'Efectivo';
+
+      hideFormError();
+      const customerName = nameInput.value.trim();
+      const customerPhone = phoneInput.value.trim();
+      const tableNumber = tableInput.value.trim();
+      const address = addressInput.value.trim();
+      const neighborhood = neighborhoodInput.value.trim();
+      const cashDigits = cashAmountInput.value.replace(/\D/g, '');
+      const cashAmount = cashDigits ? parseInt(cashDigits, 10) : 0;
+
+      if (!customerName) return showFormError('Por favor escribe tu nombre.', nameInput);
+      if (!customerPhone) return showFormError('Por favor escribe tu teléfono.', phoneInput);
+      if (isTable && !tableNumber) return showFormError('Indica el número de tu mesa.', tableInput);
+      if (isDelivery && !address) return showFormError('Escribe la dirección completa de entrega.', addressInput);
+      if (isDelivery && !neighborhood) return showFormError('Escribe tu barrio o indicaciones de entrega.', neighborhoodInput);
+      if (isDelivery && isCash && cashAmount > 0 && cashAmount < total) {
+        return showFormError(`El monto con el que pagas debe ser mayor o igual al total (${money(total)}).`, cashAmountInput);
+      }
+
+      saveCustomer();
+
+      let text = '🛒 *NUEVO PEDIDO - SAN PARRILLA*\n\n';
+      text += `👤 *Nombre:* ${customerName}\n`;
+      text += `📞 *Teléfono:* ${customerPhone}\n`;
+
+      const serviceEmoji = isDelivery ? '🛵' : service === 'Recoger' ? '🛍️' : '🍽️';
+      text += `${serviceEmoji} *Tipo de Servicio:* ${service}\n`;
+      if (isTable) text += `🪑 *Mesa:* ${tableNumber}\n`;
+      if (isDelivery) {
+        text += `📍 *Dirección:* ${address}\n`;
+        text += `🏘️ *Barrio / Indicaciones:* ${neighborhood}\n`;
+        text += `🍴 *Cubiertos plásticos:* ${cutlerySelect.value}\n`;
+      }
+
+      text += `\n💳 *Método de pago:* ${paymentMethod}\n`;
+      if (isDelivery && isCash && cashAmount > 0) {
+        text += `💵 *Paga con:* ${money(cashAmount)} (cambio: ${money(cashAmount - total)})\n`;
+      }
+
+      text += '\n📋 *PEDIDO*\n\n';
+      cart.forEach((item, index) => {
+        text += `*${index + 1}. ${item.name}* (${money(item.price)})\n`;
+        if (item.customizable) {
+          text += `   🥣 Sopa: ${item.soup || 'No elegida'}\n`;
+          text += `   🍚 Principio: ${item.principle || 'No elegido'}\n`;
+          text += `   🍟 Acompañante: ${item.side || 'No elegido'}\n`;
+          text += `   🥗 Ensalada: ${item.salad || 'Con ensalada'}\n`;
+        }
+        text += '\n';
+      });
+
+      text += `🧾 *Subtotal:* ${money(subtotal)}\n`;
+      if (packagingFee > 0) {
+        text += `📦 *Costo de Empaque:* ${money(packagingFee)} ($1.000 x ${cart.length} artículo${cart.length > 1 ? 's' : ''})\n`;
+      }
+      text += `💰 *TOTAL A PAGAR:* ${money(total)}\n\n`;
+      text += '¡Muchas gracias! Espero mi confirmación del pedido por este medio.';
+
+      window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
+    });
+
+    // Estado inicial
+    loadSavedCustomer();
+    updateOrderFields();
+  }
+</script>

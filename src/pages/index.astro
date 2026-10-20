@@ -1,6 +1,7 @@
 ---
 export const prerender = true;
 import PublicLayout from '../layouts/PublicLayout.astro';
+import CartDrawer from '../components/CartDrawer.astro';
 import { getCategories, getPublicProducts, getDailySpecials, fallbackCategories, fallbackDailySpecials } from '../lib/db.js';
 
 const rawCategories = getCategories();
@@ -10,6 +11,10 @@ const categories = (rawCategories && rawCategories.length > 0) ? rawCategories :
 const products = getPublicProducts();
 
 const dailySpecials = getDailySpecials() || fallbackDailySpecials;
+
+// Platos fuertes: llevan sopa, principio, acompañamiento y ensalada a elección en el carrito.
+// Picadas y bebidas se agregan tal cual, sin esas opciones.
+const customizableCategories = new Set(['especiales_hoy', 'fuertes_165', 'fuertes_175', 'especiales_21']);
 
 // Group products by category
 const productsByCat = {};
@@ -191,14 +196,16 @@ const formatPrice = (val) => {
               </span>
             </div>
 
-            <a 
-              href={`https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20quiero%20pedir:%20${encodeURIComponent(prod.name)}`}
-              target="_blank"
-              class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-parrilla-gold text-parrilla-ivory hover:text-white font-bold text-xs px-3.5 py-2.5 rounded-xl border border-parrilla-border hover:border-parrilla-gold transition active:scale-95"
+            <button
+              type="button"
+              data-name={prod.name}
+              data-price={prod.price}
+              data-customizable={String(customizableCategories.has(prod.category_id))}
+              class="btn-add-cart inline-flex items-center gap-1.5 bg-slate-100 hover:bg-parrilla-gold text-parrilla-ivory hover:text-white font-bold text-xs px-3.5 py-2.5 min-h-[44px] rounded-xl border border-parrilla-border hover:border-parrilla-gold transition active:scale-95"
             >
               <i data-lucide="plus" class="w-3.5 h-3.5"></i>
               <span>Pedir</span>
-            </a>
+            </button>
           </div>
         </div>
       ))}
@@ -235,4 +242,7 @@ const formatPrice = (val) => {
       });
     });
   </script>
+
+  <!-- Carrito flotante (pedido local, se envía por WhatsApp) -->
+  <CartDrawer specials={dailySpecials} />
 </PublicLayout>
