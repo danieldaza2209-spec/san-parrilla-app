@@ -1,4 +1,4 @@
-import { m as getPublicProducts, n as db } from '../../chunks/db_DQ5gn_aw.mjs';
+import { m as getPublicProducts, n as db } from '../../chunks/db_Cq5KNHC_.mjs';
 export { renderers } from '../../renderers.mjs';
 
 // GET es público (es la misma información de la carta). El POST lo restringe el middleware a rol Administrador.

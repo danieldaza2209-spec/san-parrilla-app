@@ -19,8 +19,8 @@ export const fallbackCategories = [
 
 export const fallbackDailySpecials = {
   sopa: 'Campesina',
-  principios: ['Ensalada de atún', 'Garbanzos rancheros', 'Frijoles'],
-  acompanamientos: ['Francesa casera', 'Torta de zanahoria', 'Tajadas maduras'],
+  principios: ['Calabacín al huevo', 'Lentejas caseras', 'Frijoles caseros'],
+  acompanamientos: ['Puré de ahuyama', 'Deditos', 'Tajadas maduras'],
   updated_at: new Date().toISOString()
 };
 
@@ -28,60 +28,77 @@ export const initialProductList = [
   // Plato de Prueba de Impresión Térmica SAT Q22
   { id: 'test-print-sat', name: '🔥 Combo Prueba Impresión SAT Q22', price: 1000, category_id: 'fuertes_165', description: 'Plato de prueba rápida para calibrar corte e impresión en impresora térmica SAT Q22 (80mm).', is_active: 1, is_featured: 1, sort_order: -999 },
 
-  // 16.500
+  // $16.500
   { id: 't1-0', name: 'Milanesa de pollo', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 0 },
   { id: 't1-1', name: 'Nuggets de pollo', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 1 },
   { id: 't1-2', name: 'Pernil frito', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 2 },
   { id: 't1-3', name: 'Pernil bbq', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 3 },
   { id: 't1-4', name: 'Lomo de cerdo a la plancha', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 4 },
   { id: 't1-5', name: 'Hígado en bistec', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 5 },
-  { id: 't1-6', name: 'Lomo a la mostaza', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 6 },
-  { id: 't1-7', name: 'Chuleta en salsa criolla', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 7 },
+  { id: 't1-6', name: 'Chuleta de cerdo', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 6 },
+  { id: 't1-7', name: 'Hígado al ajillo', price: 16500, category_id: 'fuertes_165', description: 'Especial del día. Incluye sopa, principio y acompañamiento.', is_active: 1, is_featured: 1, sort_order: 7, special_badge: '⭐ SOLO POR HOY' },
+  { id: 't1-8', name: 'Desgranado de carne', price: 16500, category_id: 'fuertes_165', description: 'Especial del día. Incluye sopa, principio y acompañamiento.', is_active: 1, is_featured: 1, sort_order: 8, special_badge: '⭐ SOLO POR HOY' },
 
-  // 17.500
+  // $17.500
   { id: 't2-0', name: 'Carne a la plancha', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 0 },
-  { id: 't2-1', name: 'Carne bistec o bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 1 },
-  { id: 't2-2', name: 'Pechuga a la plancha', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 2 },
-  { id: 't2-3', name: 'Pechuga en salsa criolla', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 3 },
-  { id: 't2-4', name: 'Pechuga apanada', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 4 },
-  { id: 't2-5', name: 'Pechuga bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 5 },
-  { id: 't2-6', name: 'Pernil hawaiano', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 6 },
-  { id: 't2-7', name: 'Lomo de cerdo a la bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 7 },
-  { id: 't2-8', name: 'Lomo de cerdo al ajillo', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 8 },
-  { id: 't2-9', name: 'Chuleta de cerdo al ajillo', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 9 },
-  { id: 't2-10', name: 'Chuleta de cerdo a la bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 10 },
-  { id: 't2-11', name: 'Bandeja paisa', price: 17500, category_id: 'fuertes_175', description: 'Plato típico tradicional con carne, chicharrón, huevo, arroz y frijol.', is_active: 1, is_featured: 1, sort_order: 11 },
-  { id: 't2-12', name: 'Alitas bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 12 },
-  { id: 't2-13', name: 'Creps de pollo', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 13 },
-  { id: 't2-14', name: 'Bistec a caballo', price: 17500, category_id: 'fuertes_175', description: 'Carne en salsa criolla coronada con huevo frito.', is_active: 1, is_featured: 0, sort_order: 14 },
-  { id: 't2-15', name: 'Pechuga hawaiana', price: 17500, category_id: 'fuertes_175', description: 'Pechuga gratinada con piña caramelizada y queso.', is_active: 1, is_featured: 0, sort_order: 15 },
-  { id: 't2-16', name: 'Arroz paisa', price: 17500, category_id: 'fuertes_175', description: 'Arroz salteado con chicharrón, plátano maduro y carnes.', is_active: 1, is_featured: 0, sort_order: 16 },
-  { id: 't2-17', name: 'Combo Personal', price: 17500, category_id: 'fuertes_175', description: 'Opción rápida del asador.', is_active: 1, is_featured: 0, sort_order: 17 },
-  { id: 't2-18', name: 'Arroz mixto', price: 17500, category_id: 'fuertes_175', description: 'Arroz frito con variedad de carnes y verduras frescas.', is_active: 1, is_featured: 0, sort_order: 18 },
+  { id: 't2-1', name: 'Carne en bistec', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 1 },
+  { id: 't2-2', name: 'Carne bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 2 },
+  { id: 't2-3', name: 'Pechuga a la plancha', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 3 },
+  { id: 't2-4', name: 'Pechuga en salsa criolla', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 4 },
+  { id: 't2-5', name: 'Pechuga apanada', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 5 },
+  { id: 't2-6', name: 'Pechuga bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 6 },
+  { id: 't2-7', name: 'Pernil hawaiano', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 7 },
+  { id: 't2-8', name: 'Lomo de cerdo a la bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 8 },
+  { id: 't2-9', name: 'Lomo de cerdo al ajillo', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 9 },
+  { id: 't2-10', name: 'Chuleta de cerdo al ajillo', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 10 },
+  { id: 't2-11', name: 'Chuleta de cerdo a la bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 11 },
 
-  // Especiales & Brasas
+  // $18.000
+  { id: 't3-0', name: 'Bandeja paisa', price: 18000, category_id: 'fuertes_175', description: 'Plato típico tradicional con carne, chicharrón, huevo, arroz y frijol.', is_active: 1, is_featured: 1, sort_order: 12 },
+  { id: 't3-1', name: 'Alitas bbq', price: 18000, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 13 },
+  { id: 't3-2', name: 'Creps de pollo', price: 18000, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 14 },
+  { id: 't3-3', name: 'Bistec a caballo', price: 18000, category_id: 'fuertes_175', description: 'Carne en salsa criolla coronada con huevo frito.', is_active: 1, is_featured: 0, sort_order: 15 },
+  { id: 't3-4', name: 'Pechuga hawaiana', price: 18000, category_id: 'fuertes_175', description: 'Pechuga gratinada con piña caramelizada y queso.', is_active: 1, is_featured: 0, sort_order: 16 },
+  { id: 't3-5', name: 'Combo Personal', price: 18000, category_id: 'fuertes_175', description: 'Opción rápida del asador.', is_active: 1, is_featured: 0, sort_order: 17 },
+  { id: 't3-6', name: 'Arroz ranchero', price: 18000, category_id: 'fuertes_175', description: 'Arroz especial de la casa con carnes y maíz.', is_active: 1, is_featured: 1, sort_order: 18, special_badge: '⭐ SOLO LOS LUNES' },
+
+  // $21.000
   { id: 'esp-0', name: 'Sobrebarriga dorada', price: 21000, category_id: 'especiales_21', description: 'Corte suave y dorado a las brasas.', is_active: 1, is_featured: 0, sort_order: 0 },
   { id: 'esp-1', name: 'Bagre frito', price: 21000, category_id: 'especiales_21', description: 'Pescado fresco del día con patacón.', is_active: 1, is_featured: 0, sort_order: 1 },
   { id: 'esp-2', name: 'Bagre al ajillo', price: 21000, category_id: 'especiales_21', description: 'Bañado en reducción cremosa de ajo y finas hierbas.', is_active: 1, is_featured: 0, sort_order: 2 },
   { id: 'esp-3', name: 'Róbalo apanado', price: 21000, category_id: 'especiales_21', description: 'Filete de róbalo crocante.', is_active: 1, is_featured: 0, sort_order: 3 },
   { id: 'esp-4', name: 'Róbalo al ajillo', price: 21000, category_id: 'especiales_21', description: 'Filete bañado en salsa de ajillo.', is_active: 1, is_featured: 0, sort_order: 4 },
-  { id: 'esp-5', name: 'Bagre sudado', price: 21000, category_id: 'especiales_21', description: 'En jugo natural de tomate criollo y cebolla.', is_active: 1, is_featured: 0, sort_order: 5 },
-  { id: 'esp-6', name: 'Mojarra frita', price: 21000, category_id: 'especiales_21', description: 'Mojarra entera frita bien crocante con patacones.', is_active: 1, is_featured: 0, sort_order: 6 },
-  { id: 'esp-7', name: 'Costillas bbq', price: 23000, category_id: 'especiales_21', description: 'Costillas ahumadas bañadas en salsa BBQ casera.', is_active: 1, is_featured: 0, sort_order: 7 },
-  { id: 'esp-8', name: 'Pechuga con maíz gratinada', price: 23000, category_id: 'especiales_21', description: 'Pechuga a la plancha con crema de maíz y queso gratinado.', is_active: 1, is_featured: 0, sort_order: 8 },
-  { id: 'esp-9', name: 'Pechuga en champiñones', price: 23000, category_id: 'especiales_21', description: 'Filete de pechuga con salsa cremosa de champiñones.', is_active: 1, is_featured: 0, sort_order: 9 },
-  { id: 'esp-10', name: 'Churrasco', price: 25000, category_id: 'especiales_21', description: 'Corte de res jugoso asado al carbón.', is_active: 1, is_featured: 1, sort_order: 10 },
-  { id: 'esp-11', name: 'Parrillada', price: 25000, category_id: 'especiales_21', description: 'Combinación de carnes a la parrilla con papa salada y arepa.', is_active: 1, is_featured: 1, sort_order: 11 },
-  { id: 'esp-12', name: 'Pechuga gratinada con tocineta y champiñones', price: 25000, category_id: 'especiales_21', description: 'Especialidad de la casa.', is_active: 1, is_featured: 0, sort_order: 12 },
-  { id: 'esp-13', name: 'Pollo Santo domingo', price: 25000, category_id: 'especiales_21', description: 'Receta tradicional San Parrilla.', is_active: 1, is_featured: 0, sort_order: 13 },
-  { id: 'esp-14', name: 'Llanera mixta', price: 27000, category_id: 'especiales_21', description: 'Carne a la llanera con chunchullo y plátano.', is_active: 1, is_featured: 0, sort_order: 14 },
-  { id: 'esp-15', name: 'Parrilla mixta', price: 27000, category_id: 'especiales_21', description: 'Res, cerdo y pollo a las brasas.', is_active: 1, is_featured: 1, sort_order: 15 },
-  { id: 'esp-16', name: 'Carne grande', price: 27000, category_id: 'especiales_21', description: 'Porción generosa de carne asada para buen apetito.', is_active: 1, is_featured: 0, sort_order: 16 },
-  { id: 'esp-17', name: 'Pechuga grande', price: 27000, category_id: 'especiales_21', description: 'Doble pechuga a la plancha.', is_active: 1, is_featured: 0, sort_order: 17 },
-  { id: 'esp-18', name: 'Cazuela de mariscos', price: 29000, category_id: 'especiales_21', description: 'Cremosa y cargada de mariscos frescos.', is_active: 1, is_featured: 1, sort_order: 18 },
-  { id: 'esp-19', name: 'Róbalo a la marinera', price: 29000, category_id: 'especiales_21', description: 'Filete coronado con mariscos en salsa.', is_active: 1, is_featured: 0, sort_order: 19 },
-  { id: 'esp-20', name: 'Bagre a la marinera', price: 29000, category_id: 'especiales_21', description: 'Bagre bañado en salsa marinera.', is_active: 1, is_featured: 0, sort_order: 20 },
-  { id: 'esp-21', name: 'Róbalo con camarones', price: 29000, category_id: 'especiales_21', description: 'Exquisito filete con camarones salteados.', is_active: 1, is_featured: 0, sort_order: 21 },
+
+  // $22.000
+  { id: 'esp-5', name: 'Bagre sudado', price: 22000, category_id: 'especiales_21', description: 'En jugo natural de tomate criollo y cebolla.', is_active: 1, is_featured: 0, sort_order: 5 },
+  { id: 'esp-6', name: 'Bagre frito sudado', price: 22000, category_id: 'especiales_21', description: 'Bagre frito bañado en salsa criolla sudada.', is_active: 1, is_featured: 0, sort_order: 6 },
+  { id: 'esp-7', name: 'Mojarra frita', price: 22000, category_id: 'especiales_21', description: 'Mojarra entera frita bien crocante con patacones.', is_active: 1, is_featured: 0, sort_order: 7 },
+  { id: 'esp-8', name: 'Mojarra sudada', price: 22000, category_id: 'especiales_21', description: 'Mojarra entera en salsa criolla casera.', is_active: 1, is_featured: 0, sort_order: 8 },
+  { id: 'esp-9', name: 'Mojarra frita sudada', price: 22000, category_id: 'especiales_21', description: 'Mojarra frita bañada en hogao y salsa criolla.', is_active: 1, is_featured: 0, sort_order: 9 },
+  { id: 'esp-10', name: 'Mini cazuela de mariscos', price: 22000, category_id: 'especiales_21', description: 'Porción personal de cazuela cremosa de mariscos.', is_active: 1, is_featured: 0, sort_order: 10 },
+
+  // $23.000
+  { id: 'esp-11', name: 'Costillas bbq', price: 23000, category_id: 'especiales_21', description: 'Costillas ahumadas bañadas en salsa BBQ casera.', is_active: 1, is_featured: 0, sort_order: 11 },
+  { id: 'esp-12', name: 'Pechuga con maíz gratinada', price: 23000, category_id: 'especiales_21', description: 'Pechuga a la plancha con crema de maíz y queso gratinado.', is_active: 1, is_featured: 0, sort_order: 12 },
+  { id: 'esp-13', name: 'Pechuga en champiñones', price: 23000, category_id: 'especiales_21', description: 'Filete de pechuga con salsa cremosa de champiñones.', is_active: 1, is_featured: 0, sort_order: 13 },
+
+  // $27.500
+  { id: 'esp-14', name: 'Churrasco', price: 27500, category_id: 'especiales_21', description: 'Corte de res jugoso asado al carbón.', is_active: 1, is_featured: 1, sort_order: 14 },
+  { id: 'esp-15', name: 'Parrillada', price: 27500, category_id: 'especiales_21', description: 'Combinación de carnes a la parrilla con papa salada y arepa.', is_active: 1, is_featured: 1, sort_order: 15 },
+  { id: 'esp-16', name: 'Pechuga con tocineta y champ.', price: 27500, category_id: 'especiales_21', description: 'Pechuga gratinada con tocineta y champiñones.', is_active: 1, is_featured: 0, sort_order: 16 },
+  { id: 'esp-17', name: 'Pollo Santo domingo', price: 27500, category_id: 'especiales_21', description: 'Receta tradicional San Parrilla.', is_active: 1, is_featured: 0, sort_order: 17 },
+  { id: 'esp-18', name: 'Llanera mixta', price: 27500, category_id: 'especiales_21', description: 'Carne a la llanera con chunchullo y plátano.', is_active: 1, is_featured: 0, sort_order: 18 },
+  { id: 'esp-19', name: 'Parrilla mixta', price: 27500, category_id: 'especiales_21', description: 'Res, cerdo y pollo a las brasas.', is_active: 1, is_featured: 1, sort_order: 19 },
+  { id: 'esp-20', name: 'Carne grande', price: 27500, category_id: 'especiales_21', description: 'Porción generosa de carne asada para buen apetito.', is_active: 1, is_featured: 0, sort_order: 20 },
+  { id: 'esp-21', name: 'Pechuga grande', price: 27500, category_id: 'especiales_21', description: 'Doble pechuga a la plancha.', is_active: 1, is_featured: 0, sort_order: 21 },
+  { id: 'esp-22', name: 'Mini cazuela de camarones', price: 27500, category_id: 'especiales_21', description: 'Cazuela cremosa de camarones al ajillo.', is_active: 1, is_featured: 0, sort_order: 22 },
+  { id: 'esp-23', name: 'Mini cazuela de bagre', price: 27500, category_id: 'especiales_21', description: 'Cazuela tradicional de bagre en leche de coco.', is_active: 1, is_featured: 0, sort_order: 23 },
+
+  // $33.000
+  { id: 'esp-24', name: 'Cazuela de mariscos', price: 33000, category_id: 'especiales_21', description: 'Cremosa y cargada de mariscos frescos.', is_active: 1, is_featured: 1, sort_order: 24 },
+  { id: 'esp-25', name: 'Róbalo a la marinera', price: 33000, category_id: 'especiales_21', description: 'Filete coronado con mariscos en salsa.', is_active: 1, is_featured: 0, sort_order: 25 },
+  { id: 'esp-26', name: 'Bagre a la marinera', price: 33000, category_id: 'especiales_21', description: 'Bagre bañado en salsa marinera.', is_active: 1, is_featured: 0, sort_order: 26 },
+  { id: 'esp-27', name: 'Róbalo con camarones', price: 33000, category_id: 'especiales_21', description: 'Exquisito filete con camarones salteados.', is_active: 1, is_featured: 0, sort_order: 27 },
 
   // Picadas
   { id: 'pic-1', name: 'Picada x 1', price: 27500, category_id: 'picadas', description: 'Variedad de carnes y acompañamiento para una persona.', is_active: 1, is_featured: 0, sort_order: 0 },
@@ -132,24 +149,25 @@ if (!isVercel) {
             insertCat.run(c.id, c.name, c.sort_order);
           }
         }
-        const prodCount = db.prepare('SELECT count(*) as count FROM products').get().count;
-        if (prodCount === 0) {
-          const insertProd = db.prepare(`
-            INSERT INTO products (id, name, price, category_id, description, is_active, is_featured, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `);
-          for (const p of initialProductList) {
-            insertProd.run(p.id, p.name, p.price, p.category_id, p.description || '', p.is_active, p.is_featured, p.sort_order);
-          }
+        // Sync products catalog with initialProductList
+        db.exec('DELETE FROM products');
+        const insertProd = db.prepare(`
+          INSERT INTO products (id, name, price, category_id, description, is_active, is_featured, sort_order)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const p of initialProductList) {
+          insertProd.run(p.id, p.name, p.price, p.category_id, p.description || '', p.is_active, p.is_featured, p.sort_order);
         }
-        // Always ensure test product is available
-        const hasTest = db.prepare("SELECT count(*) as count FROM products WHERE id = 'test-print-sat'").get().count;
-        if (hasTest === 0) {
-          db.prepare(`
-            INSERT OR REPLACE INTO products (id, name, price, category_id, description, is_active, is_featured, sort_order)
-            VALUES ('test-print-sat', '🔥 Combo Prueba Impresión SAT Q22', 1000, 'fuertes_165', 'Plato de prueba rápida para calibrar corte e impresión en impresora térmica SAT Q22 (80mm).', 1, 1, -999)
-          `).run();
-        }
+
+        // Sync default daily specials if empty or outdated
+        db.prepare(`
+          INSERT OR REPLACE INTO daily_specials (id, sopa, principios, acompanamientos, updated_at)
+          VALUES (1, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).run(
+          fallbackDailySpecials.sopa,
+          JSON.stringify(fallbackDailySpecials.principios),
+          JSON.stringify(fallbackDailySpecials.acompanamientos)
+        );
         const cashCount = db.prepare('SELECT count(*) as count FROM cash_registers').get().count;
         if (cashCount === 0) {
           db.prepare("INSERT INTO cash_registers (initial_cash, status, notes) VALUES (100000, 'open', 'Apertura inicial')").run();
@@ -214,10 +232,16 @@ export function getProducts(onlyActive = true) {
 // Productos de uso interno (solo visibles para el personal en el POS, nunca en la carta pública).
 export const INTERNAL_PRODUCT_IDS = new Set(['test-print-sat']);
 
+const badgeById = new Map(
+  initialProductList.filter((p) => p.special_badge).map((p) => [p.id, p.special_badge])
+);
+
 export function getPublicProducts() {
   const rows = getProducts(true) || [];
-  const visible = rows.filter((p) => !INTERNAL_PRODUCT_IDS.has(p.id));
-  return visible.length > 0 ? visible : initialProductList.filter((p) => !INTERNAL_PRODUCT_IDS.has(p.id));
+  const source = rows.length > 0 ? rows : initialProductList;
+  return source
+    .filter((p) => !INTERNAL_PRODUCT_IDS.has(p.id))
+    .map((p) => (badgeById.has(p.id) && !p.special_badge ? { ...p, special_badge: badgeById.get(p.id) } : p));
 }
 
 export function getDailySpecials() {
