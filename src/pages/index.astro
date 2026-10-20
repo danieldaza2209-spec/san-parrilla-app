@@ -2,6 +2,8 @@
 export const prerender = true;
 import PublicLayout from '../layouts/PublicLayout.astro';
 import CartDrawer from '../components/CartDrawer.astro';
+import QuickOrderView from '../components/QuickOrderView.astro';
+import StyledMenuView from '../components/StyledMenuView.astro';
 import { getCategories, getPublicProducts, getDailySpecials, fallbackCategories, fallbackDailySpecials } from '../lib/db.js';
 
 const rawCategories = getCategories();
@@ -144,105 +146,85 @@ const formatPrice = (val) => {
   )}
 
   <!-- Menu Carta Section -->
-  <section id="menu-carta" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-    <div class="text-center max-w-3xl mx-auto mb-10">
-      <span class="text-parrilla-gold text-xs font-extrabold uppercase tracking-widest">Nuestra Oferta Gastronómica</span>
-      <h2 class="font-display font-black text-3xl sm:text-5xl text-parrilla-ivory mt-1">La Carta del Asador</h2>
-      <p class="text-sm sm:text-base text-parrilla-muted mt-2">
-        Selecciona tu corte o preparación favorita. Todos los platos se preparan al instante para garantizar la máxima frescura y sabor.
-      </p>
-    </div>
-
-    <!-- Category Filter Tabs (Sticky on Mobile) -->
-    <div class="sticky top-16 z-30 bg-parrilla-dark/95 backdrop-blur-md py-3 -mx-4 px-4 sm:mx-0 sm:px-0 mb-8 overflow-x-auto no-scrollbar border-b sm:border-b-0 border-parrilla-border">
-      <div class="flex items-center gap-2 min-w-max justify-start sm:justify-center">
-        <button class="cat-filter-btn active px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-parrilla-gold text-white shadow-md transition" data-category="all">
-          Todos los Platos
+  <section id="menu-carta" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+    <!-- Selector de Vista Destacado -->
+    <div class="flex flex-col items-center justify-center mb-10">
+      <span class="text-[11px] font-bold uppercase tracking-widest text-parrilla-muted mb-2">Elige cómo prefieres ver el menú</span>
+      <div
+        class="inline-flex items-center bg-white p-1.5 rounded-2xl border border-parrilla-border shadow-md"
+        role="tablist"
+        aria-label="Selector de vista de la carta"
+      >
+        <button
+          type="button"
+          data-menu-view="quick"
+          role="tab"
+          aria-selected="true"
+          class="menu-view-btn px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition bg-parrilla-gold text-white shadow-sm"
+        >
+          ⚡ Pedidos Rápidos
         </button>
-        {categories.map(cat => (
-          <button class="cat-filter-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border shadow-sm transition" data-category={cat.id}>
-            {cat.name}
-          </button>
-        ))}
+        <button
+          type="button"
+          data-menu-view="styled"
+          role="tab"
+          aria-selected="false"
+          class="menu-view-btn px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition text-parrilla-ivory hover:text-parrilla-gold"
+        >
+          📖 Carta Estilizada
+        </button>
       </div>
     </div>
 
-    <!-- Products Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="products-grid">
-      {products.map(prod => (
-        <div class="product-card group bg-white hover:bg-slate-50 rounded-2xl border border-parrilla-border hover:border-parrilla-gold/60 p-5 flex flex-col justify-between transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-1" data-cat={prod.category_id}>
-          <div>
-            <div class="flex items-start justify-between gap-3 mb-2">
-              <h3 class="font-display font-bold text-lg text-parrilla-ivory group-hover:text-parrilla-gold transition">
-                {prod.name}
-              </h3>
-              {prod.is_featured === 1 && (
-                <span class="flex-shrink-0 bg-orange-100 text-parrilla-gold border border-orange-200 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Estrella ⭐
-                </span>
-              )}
-            </div>
+    <!-- Vista 1 (Por defecto): ⚡ Pedidos Rápidos -->
+    <div id="view-panel-quick">
+      <QuickOrderView products={products} customizableCategories={customizableCategories} />
+    </div>
 
-            <p class="text-xs text-parrilla-muted leading-relaxed line-clamp-2 mb-4">
-              {prod.description || 'Preparado con el toque especial de la casa a fuego de leña.'}
-            </p>
-          </div>
-
-          <div class="pt-4 border-t border-parrilla-border/60 flex items-center justify-between">
-            <div>
-              <span class="text-[10px] text-parrilla-muted uppercase font-medium block">Precio</span>
-              <span class="font-display font-extrabold text-xl text-parrilla-gold">
-                {formatPrice(prod.price)}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              data-name={prod.name}
-              data-price={prod.price}
-              data-customizable={String(customizableCategories.has(prod.category_id))}
-              class="btn-add-cart inline-flex items-center gap-1.5 bg-slate-100 hover:bg-parrilla-gold text-parrilla-ivory hover:text-white font-bold text-xs px-3.5 py-2.5 min-h-[44px] rounded-xl border border-parrilla-border hover:border-parrilla-gold transition active:scale-95"
-            >
-              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-              <span>Pedir</span>
-            </button>
-          </div>
-        </div>
-      ))}
+    <!-- Vista 2 (Alternativa): 📖 Carta Estilizada ("La Carta del Asador") -->
+    <div id="view-panel-styled" class="hidden">
+      <StyledMenuView categories={categories} products={products} customizableCategories={customizableCategories} />
     </div>
   </section>
 
-  <!-- Interactive JavaScript for Category Filtering -->
+  <!-- Alternancia instantánea entre vistas sin recargar ni perder el carrito -->
   <script>
-    const filterButtons = document.querySelectorAll('.cat-filter-btn');
-    const productCards = document.querySelectorAll('.product-card');
+    const viewButtons = document.querySelectorAll('.menu-view-btn');
+    const quickPanel = document.getElementById('view-panel-quick');
+    const styledPanel = document.getElementById('view-panel-styled');
 
-    filterButtons.forEach(btn => {
+    function setActiveMenuView(view: string, scrollIntoMenu = false) {
+      const isQuick = view !== 'styled';
+      quickPanel?.classList.toggle('hidden', !isQuick);
+      styledPanel?.classList.toggle('hidden', isQuick);
+
+      viewButtons.forEach((btn) => {
+        const active = btn.getAttribute('data-menu-view') === (isQuick ? 'quick' : 'styled');
+        btn.setAttribute('aria-selected', String(active));
+        btn.classList.toggle('bg-parrilla-gold', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('shadow-sm', active);
+        btn.classList.toggle('text-parrilla-ivory', !active);
+        btn.classList.toggle('hover:text-parrilla-gold', !active);
+      });
+
+      if (scrollIntoMenu) {
+        const menuSection = document.getElementById('menu-carta');
+        if (menuSection && window.scrollY < menuSection.offsetTop - 140) {
+          menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+
+    viewButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
-        filterButtons.forEach(b => {
-          b.classList.remove('bg-parrilla-gold', 'text-white', 'active');
-          b.classList.add('bg-white', 'text-parrilla-ivory');
-        });
-
-        btn.classList.add('bg-parrilla-gold', 'text-white', 'active');
-        btn.classList.remove('bg-white', 'text-parrilla-ivory');
-
-        const cat = btn.getAttribute('data-category');
-
-        productCards.forEach(card => {
-          const cardCat = card.getAttribute('data-cat');
-          if (cat === 'all' || cardCat === cat) {
-            // @ts-ignore
-            card.style.display = 'flex';
-          } else {
-            // @ts-ignore
-            card.style.display = 'none';
-          }
-        });
+        const targetView = btn.getAttribute('data-menu-view') || 'quick';
+        const inHeader = Boolean(btn.closest('header'));
+        setActiveMenuView(targetView, inHeader);
       });
     });
   </script>
 
-  <!-- Carrito flotante (pedido local, se envía por WhatsApp) -->
+  <!-- Carrito flotante (pedido local compartido por ambas vistas, se envía por WhatsApp) -->
   <CartDrawer specials={dailySpecials} />
 </PublicLayout>

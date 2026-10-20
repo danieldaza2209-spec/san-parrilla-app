@@ -1,0 +1,228 @@
+---
+/**
+ * Vista "⚡ Pedidos Rápidos"
+ * Diseño compacto por columnas de precio en estética clara (blanco / gris suave / acentos naranja).
+ * Comparte el mismo estado de carrito mediante botones `.btn-add-cart`.
+ */
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  category_id: string;
+  description?: string;
+  is_active?: number;
+  is_featured?: number;
+}
+
+interface Props {
+  products: Product[];
+  customizableCategories: Set<string>;
+}
+
+const { products = [], customizableCategories } = Astro.props;
+
+const formatPrice = (val: number) =>
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+
+// Platos que en la carta tradicional aparecen bajo el recuadro "⭐ Solo por hoy"
+const soloPorHoyNames = new Set([
+  'lomo a la mostaza',
+  'chuleta en salsa criolla',
+  'arroz mixto',
+]);
+
+const isSoloPorHoy = (p: Product) =>
+  p.category_id === 'especiales_hoy' || soloPorHoyNames.has(p.name.trim().toLowerCase());
+
+// 1. Platos fuertes agrupados por columna de precio
+const mainDishes = products.filter((p) => customizableCategories.has(p.category_id));
+const priceLevels = Array.from(new Set(mainDishes.map((p) => p.price))).sort((a, b) => a - b);
+
+const priceColumns = priceLevels.map((price) => {
+  const items = mainDishes.filter((p) => p.price === price);
+  const regularItems = items.filter((p) => !isSoloPorHoy(p));
+  const todayItems = items.filter((p) => isSoloPorHoy(p));
+  return {
+    price,
+    label: formatPrice(price),
+    regularItems,
+    todayItems,
+  };
+});
+
+// 2. Picadas y Bebidas para que también estén a un toque en Pedidos Rápidos
+const picadas = products.filter((p) => p.category_id === 'picadas');
+const bebidas = products.filter((p) => p.category_id === 'bebidas');
+---
+
+<div id="quick-order-view" class="space-y-10">
+  <!-- Encabezado compacto -->
+  <div class="text-center max-w-2xl mx-auto">
+    <span class="text-parrilla-gold text-xs font-extrabold uppercase tracking-widest">Selección Ágil por Precio</span>
+    <h2 class="font-display font-black text-2xl sm:text-4xl text-parrilla-ivory mt-1">Pedidos Rápidos</h2>
+    <p class="text-xs sm:text-sm text-parrilla-muted mt-1.5">
+      Toca el botón <span class="inline-flex items-center justify-center w-5 h-5 rounded-md bg-parrilla-gold text-white font-bold text-xs align-middle">+</span> junto a cualquier plato para agregarlo al instante a tu pedido.
+    </p>
+  </div>
+
+  <!-- Grid de Columnas por Precio (Platos Fuertes) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-start">
+    {priceColumns.map((col) => (
+      <div class="bg-white rounded-2xl border border-parrilla-border shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
+        <!-- Cabecera de Precio -->
+        <div class="bg-slate-50 border-b border-parrilla-border px-4 py-3 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-parrilla-muted block">Platos Fuertes</span>
+            <span class="font-display font-black text-2xl text-parrilla-gold">{col.label}</span>
+          </div>
+          <span class="text-[11px] font-semibold text-parrilla-muted bg-white px-2.5 py-1 rounded-full border border-parrilla-border">
+            {col.regularItems.length + col.todayItems.length} opciones
+          </span>
+        </div>
+
+        <!-- Lista compacta de platos -->
+        <ul class="divide-y divide-slate-100 px-3 py-1.5">
+          {col.regularItems.map((item) => (
+            <li class="py-2 px-1 flex items-center justify-between gap-2 hover:bg-slate-50/80 rounded-lg transition">
+              <div class="min-w-0 flex-1">
+                <span class="text-sm font-semibold text-parrilla-ivory leading-snug block truncate" title={item.name}>
+                  {item.name}
+                </span>
+                {item.is_featured === 1 && (
+                  <span class="inline-flex items-center gap-1 text-[10px] font-bold text-parrilla-gold bg-orange-50 border border-orange-200/80 px-1.5 py-0.5 rounded-md mt-0.5">
+                    ⭐ Recomendado
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                data-name={item.name}
+                data-price={item.price}
+                data-customizable="true"
+                aria-label={`Agregar ${item.name} al pedido`}
+                class="btn-add-cart flex-shrink-0 w-9 h-9 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white flex items-center justify-center shadow-sm transition active:scale-90"
+              >
+                <i data-lucide="plus" class="w-4 h-4"></i>
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <!-- Sub-bloque sutil: ⭐ Solo por hoy (si aplica en esta columna de precio) -->
+        {col.todayItems.length > 0 && (
+          <div class="m-3 mt-1 p-3 rounded-xl bg-orange-50/70 border border-orange-200/80">
+            <div class="flex items-center gap-1.5 mb-2">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-parrilla-gold bg-white px-2 py-0.5 rounded-full border border-orange-200 shadow-2xs">
+                ⭐ Solo por hoy
+              </span>
+            </div>
+            <ul class="divide-y divide-orange-200/50">
+              {col.todayItems.map((item) => (
+                <li class="py-1.5 flex items-center justify-between gap-2">
+                  <span class="text-sm font-bold text-parrilla-ivory leading-snug truncate" title={item.name}>
+                    {item.name}
+                  </span>
+                  <button
+                    type="button"
+                    data-name={item.name}
+                    data-price={item.price}
+                    data-customizable="true"
+                    aria-label={`Agregar ${item.name} al pedido`}
+                    class="btn-add-cart flex-shrink-0 w-9 h-9 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white flex items-center justify-center shadow-sm transition active:scale-90"
+                  >
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+
+  <!-- Sección compacta: Picadas Especiales y Bebidas -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+    {picadas.length > 0 && (
+      <div class="bg-white rounded-2xl border border-parrilla-border shadow-sm overflow-hidden">
+        <div class="bg-slate-50 border-b border-parrilla-border px-4 py-3 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-parrilla-gold block">Para Compartir</span>
+            <h3 class="font-display font-black text-xl text-parrilla-ivory">Picadas Especiales</h3>
+          </div>
+          <i data-lucide="flame" class="w-5 h-5 text-parrilla-gold"></i>
+        </div>
+        <ul class="divide-y divide-slate-100 px-4 py-2">
+          {picadas.map((item) => (
+            <li class="py-2.5 flex items-center justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-bold text-parrilla-ivory">{item.name}</span>
+                  {item.is_featured === 1 && (
+                    <span class="text-[10px] font-extrabold text-parrilla-gold bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                      ⭐ ¡La más buscada!
+                    </span>
+                  )}
+                </div>
+                {item.description && (
+                  <p class="text-xs text-parrilla-muted truncate mt-0.5">{item.description}</p>
+                )}
+              </div>
+              <div class="flex items-center gap-2.5 flex-shrink-0">
+                <span class="font-display font-extrabold text-base text-parrilla-gold">{formatPrice(item.price)}</span>
+                <button
+                  type="button"
+                  data-name={item.name}
+                  data-price={item.price}
+                  data-customizable="false"
+                  aria-label={`Agregar ${item.name} al pedido`}
+                  class="btn-add-cart w-9 h-9 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white flex items-center justify-center shadow-sm transition active:scale-90"
+                >
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    {bebidas.length > 0 && (
+      <div class="bg-white rounded-2xl border border-parrilla-border shadow-sm overflow-hidden">
+        <div class="bg-slate-50 border-b border-parrilla-border px-4 py-3 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-parrilla-muted block">Para Acompañar</span>
+            <h3 class="font-display font-black text-xl text-parrilla-ivory">Bebidas y Adicionales</h3>
+          </div>
+          <i data-lucide="cup-soda" class="w-5 h-5 text-parrilla-gold"></i>
+        </div>
+        <ul class="divide-y divide-slate-100 px-4 py-2">
+          {bebidas.map((item) => (
+            <li class="py-2.5 flex items-center justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <span class="text-sm font-semibold text-parrilla-ivory block truncate">{item.name}</span>
+                {item.description && (
+                  <p class="text-xs text-parrilla-muted truncate">{item.description}</p>
+                )}
+              </div>
+              <div class="flex items-center gap-2.5 flex-shrink-0">
+                <span class="font-display font-extrabold text-base text-parrilla-gold">{formatPrice(item.price)}</span>
+                <button
+                  type="button"
+                  data-name={item.name}
+                  data-price={item.price}
+                  data-customizable="false"
+                  aria-label={`Agregar ${item.name} al pedido`}
+                  class="btn-add-cart w-9 h-9 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white flex items-center justify-center shadow-sm transition active:scale-90"
+                >
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+</div>

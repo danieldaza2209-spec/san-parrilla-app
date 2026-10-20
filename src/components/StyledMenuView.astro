@@ -1,0 +1,136 @@
+---
+/**
+ * Vista "📖 Carta Estilizada" ("La Carta del Asador")
+ * Tarjetas amplias en cuadrícula clara con descripciones, etiquetas de categoría y botón "+ Pedir".
+ * Comparte el mismo estado de carrito mediante botones `.btn-add-cart`.
+ */
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  category_id: string;
+  description?: string;
+  is_active?: number;
+  is_featured?: number;
+}
+
+interface Props {
+  categories: Category[];
+  products: Product[];
+  customizableCategories: Set<string>;
+}
+
+const { categories = [], products = [], customizableCategories } = Astro.props;
+
+const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
+
+const formatPrice = (val: number) =>
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+---
+
+<div id="styled-menu-view">
+  <div class="text-center max-w-3xl mx-auto mb-10">
+    <span class="text-parrilla-gold text-xs font-extrabold uppercase tracking-widest">Nuestra Oferta Gastronómica</span>
+    <h2 class="font-display font-black text-3xl sm:text-5xl text-parrilla-ivory mt-1">La Carta del Asador</h2>
+    <p class="text-sm sm:text-base text-parrilla-muted mt-2">
+      Selecciona tu corte o preparación favorita. Todos los platos se preparan al instante para garantizar la máxima frescura y sabor.
+    </p>
+  </div>
+
+  <!-- Pestañas de Categorías -->
+  <div class="bg-parrilla-dark/95 backdrop-blur-md py-3 -mx-4 px-4 sm:mx-0 sm:px-0 mb-8 overflow-x-auto no-scrollbar border-b sm:border-b-0 border-parrilla-border">
+    <div class="flex items-center gap-2 min-w-max justify-start sm:justify-center">
+      <button type="button" class="cat-filter-btn active px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-parrilla-gold text-white shadow-md transition" data-category="all">
+        Todos los Platos
+      </button>
+      {categories.map((cat) => (
+        <button type="button" class="cat-filter-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border shadow-sm transition" data-category={cat.id}>
+          {cat.name}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <!-- Cuadrícula de Tarjetas Estilizadas -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="products-grid">
+    {products.map((prod) => (
+      <div class="product-card group bg-white hover:bg-slate-50 rounded-2xl border border-parrilla-border hover:border-parrilla-gold/60 p-5 flex flex-col justify-between transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-1" data-cat={prod.category_id}>
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-parrilla-muted bg-slate-100 px-2.5 py-0.5 rounded-full border border-parrilla-border">
+              {categoryMap.get(prod.category_id) || 'Carta'}
+            </span>
+            {prod.is_featured === 1 && (
+              <span class="flex-shrink-0 bg-orange-100 text-parrilla-gold border border-orange-200 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Estrella ⭐
+              </span>
+            )}
+          </div>
+
+          <h3 class="font-display font-bold text-lg text-parrilla-ivory group-hover:text-parrilla-gold transition mb-1.5">
+            {prod.name}
+          </h3>
+
+          <p class="text-xs text-parrilla-muted leading-relaxed line-clamp-2 mb-4">
+            {prod.description || 'Preparado con el toque especial de la casa a fuego de leña.'}
+          </p>
+        </div>
+
+        <div class="pt-4 border-t border-parrilla-border/60 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] text-parrilla-muted uppercase font-medium block">Precio</span>
+            <span class="font-display font-extrabold text-xl text-parrilla-gold">
+              {formatPrice(prod.price)}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            data-name={prod.name}
+            data-price={prod.price}
+            data-customizable={String(customizableCategories.has(prod.category_id))}
+            class="btn-add-cart inline-flex items-center gap-1.5 bg-slate-100 hover:bg-parrilla-gold text-parrilla-ivory hover:text-white font-bold text-xs px-3.5 py-2.5 min-h-[44px] rounded-xl border border-parrilla-border hover:border-parrilla-gold transition active:scale-95"
+          >
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>Pedir</span>
+          </button>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
+<script>
+  const filterButtons = document.querySelectorAll('.cat-filter-btn');
+  const productCards = document.querySelectorAll('.product-card');
+
+  filterButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      filterButtons.forEach((b) => {
+        b.classList.remove('bg-parrilla-gold', 'text-white', 'active');
+        b.classList.add('bg-white', 'text-parrilla-ivory');
+      });
+
+      btn.classList.add('bg-parrilla-gold', 'text-white', 'active');
+      btn.classList.remove('bg-white', 'text-parrilla-ivory');
+
+      const cat = btn.getAttribute('data-category');
+
+      productCards.forEach((card) => {
+        const cardCat = card.getAttribute('data-cat');
+        if (cat === 'all' || cardCat === cat) {
+          // @ts-ignore
+          card.style.display = 'flex';
+        } else {
+          // @ts-ignore
+          card.style.display = 'none';
+        }
+      });
+    });
+  });
+</script>
