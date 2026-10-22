@@ -583,7 +583,10 @@ import StaffLayout from '../layouts/StaffLayout.astro';
     async function loadActiveCaja() {
       try {
         const res = await fetch('/api/caja/active');
-        if (!res.ok) throw new Error('Error al consultar caja');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || errData.error || ('HTTP ' + res.status));
+        }
         const data = await res.json();
         activeClosure = data;
 
@@ -598,8 +601,8 @@ import StaffLayout from '../layouts/StaffLayout.astro';
       } catch (err) {
         console.error('Error loadActiveCaja:', err);
         cajaLoading.innerHTML = `
-          <div class="text-red-500 font-bold p-4 bg-red-50 rounded-xl border border-red-200">
-            Error al conectar con la API de Caja: ${err.message}. Verifica que el backend FastAPI esté ejecutándose en el puerto 8000.
+          <div class="text-red-600 font-bold p-4 bg-red-50 rounded-xl border border-red-200 text-sm">
+            Error al conectar con la API de Caja: ${err.message}.
           </div>
         `;
       }
