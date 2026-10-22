@@ -4,7 +4,9 @@ const FASTAPI_URL =
   (typeof import.meta !== 'undefined' && import.meta.env
     ? (import.meta.env.PUBLIC_API_URL || import.meta.env.FASTAPI_URL)
     : null) ||
-  'http://127.0.0.1:8000';
+  (process.env.NODE_ENV === 'production' || process.env.VERCEL
+    ? 'https://san-parrilla-backend.onrender.com'
+    : 'http://127.0.0.1:8000');
 
 export async function proxyToFastAPI(request, targetPath) {
   const url = new URL(request.url);
