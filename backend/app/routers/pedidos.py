@@ -33,12 +33,17 @@ def registrar_pedido(
 @router.get("/", response_model=List[schemas.PedidoOut])
 def listar_pedidos(
     limit: int = 50,
-    estado: Optional[models.EstadoPedido] = None,
+    estado: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Pedido)
-    if estado is not None:
-        query = query.filter(models.Pedido.estado == estado)
+    if estado is not None and estado.strip() != "":
+        clean_estado = estado.strip().upper()
+        try:
+            estado_val = models.EstadoPedido(clean_estado)
+        except ValueError:
+            estado_val = clean_estado
+        query = query.filter(models.Pedido.estado == estado_val)
     pedidos = query.order_by(models.Pedido.fecha_hora.desc()).limit(limit).all()
     return pedidos
 

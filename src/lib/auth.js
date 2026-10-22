@@ -122,7 +122,6 @@ const ACCESS_RULES = [
 
   { prefix: '/api/orders', roles: STAFF, kind: 'api' },
   { prefix: '/api/customers', roles: STAFF, kind: 'api' },
-  { prefix: '/api/caja', roles: STAFF, kind: 'api' },
   { prefix: '/api/launcher', roles: ADMIN_ONLY, kind: 'api' },
 
   // Catálogo: lectura pública (la carta), escritura solo Administrador.
