@@ -3,6 +3,8 @@ node_modules/
 
 # Production build output
 dist/
+.vercel/
+.netlify/
 
 # Local database (can be excluded or kept depending on initial seed)
 data/*.db-wal
@@ -10,5 +12,7 @@ data/*.db-shm
 
 # Environment & OS
 .env
+.env.*
+*.env
 .DS_Store
 *.local

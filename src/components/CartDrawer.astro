@@ -532,7 +532,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
     // ==========================================
     // ENVÍO POR WHATSAPP
     // ==========================================
-    checkoutBtn.addEventListener('click', () => {
+    checkoutBtn.addEventListener('click', async () => {
       if (cart.length === 0) return;
 
       const service = serviceSelect.value;
@@ -564,7 +564,65 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
 
       saveCustomer();
 
-      let text = '🛒 *NUEVO PEDIDO - SAN PARRILLA*\n\n';
+      checkoutBtn.disabled = true;
+      const originalBtnText = checkoutBtn.innerHTML;
+      checkoutBtn.innerHTML = '<span>Generando pedido...</span>';
+
+      // 1. Guardar como borrador web en backend (BORRADOR_WEB) para el cajero
+      let generatedCode = '';
+      try {
+        const orderTypeEnum = isDelivery ? 'DOMICILIO' : (service === 'Recoger' ? 'PARA_LLEVAR' : 'EN_MESA');
+        const notesArr = [];
+        if (isDelivery) {
+          notesArr.push(`Dir: ${address}`);
+          if (neighborhood) notesArr.push(`Barrio: ${neighborhood}`);
+          notesArr.push(`Cubiertos: ${cutlerySelect.value}`);
+        }
+        if (isTable) notesArr.push(`Mesa: ${tableNumber}`);
+
+        const draftPayload = {
+          cliente_nombre: customerName,
+          cliente_telefono: customerPhone,
+          mesa: isTable ? tableNumber : null,
+          tipo: orderTypeEnum,
+          delivery_fee: 0,
+          es_borrador_web: true,
+          notas: notesArr.join(' | '),
+          detalles: cart.map(item => {
+            const sideNotes = item.customizable 
+              ? `Sopa: ${item.soup || '-'} | Principio: ${item.principle || '-'} | Acompañante: ${item.side || '-'}`
+              : (item.notes || '');
+            return {
+              plato_id: 1,
+              cantidad: 1,
+              notas_item: `${item.name}${sideNotes ? ' - ' + sideNotes : ''}`
+            };
+          })
+        };
+
+        const draftRes = await fetch('/api/pedidos/?es_borrador_web=true', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(draftPayload)
+        });
+
+        if (draftRes.ok) {
+          const draftData = await draftRes.json();
+          if (draftData && draftData.codigo_pedido) {
+            generatedCode = draftData.codigo_pedido;
+          }
+        }
+      } catch (err) {
+        console.warn('Nota: Envío directo a WhatsApp sin persistir en backend.');
+      }
+
+      // 2. Construir mensaje de WhatsApp
+      let text = '';
+      if (generatedCode) {
+        text += `🔖 *CÓDIGO DE PEDIDO:* ${generatedCode}\n`;
+        text += `_(Dile este código al cajero cuando te contacte)_\n\n`;
+      }
+      text += '🛒 *NUEVO PEDIDO - SAN PARRILLA*\n\n';
       text += `👤 *Nombre:* ${customerName}\n`;
       text += `📞 *Teléfono:* ${customerPhone}\n`;
 
@@ -600,6 +658,9 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       }
       text += `💰 *TOTAL A PAGAR:* ${money(total)}\n\n`;
       text += '¡Muchas gracias! Espero mi confirmación del pedido por este medio.';
+
+      checkoutBtn.disabled = false;
+      checkoutBtn.innerHTML = originalBtnText;
 
       window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
     });

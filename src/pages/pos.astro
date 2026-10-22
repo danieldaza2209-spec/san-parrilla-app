@@ -33,6 +33,20 @@ const formatPrice = (val) => {
       </div>
     )}
 
+    <!-- Top Alert: Pending WhatsApp Drafts -->
+    <div id="pos-drafts-alert" class="hidden mb-4 bg-emerald-50 border border-emerald-300 text-emerald-800 p-3.5 rounded-xl items-center justify-between shadow-sm">
+      <div class="flex items-center gap-3">
+        <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-sm font-bold">
+          📱 Tienes <span id="pos-drafts-count" class="underline">0</span> pedidos web de WhatsApp pendientes de aprobación.
+        </span>
+      </div>
+      <a href="/caja" class="bg-emerald-600 hover:bg-emerald-700 text-white font-display font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5">
+        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+        <span>Ir a Bandeja de Borradores</span>
+      </a>
+    </div>
+
     <!-- Main POS Grid: Left Catalog, Right Order Cart -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 items-start">
       
@@ -308,6 +322,180 @@ const formatPrice = (val) => {
           <span id="btn-reprint-label">Reimprimir último ticket</span>
         </button>
 
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       MODAL DE COBRO Y PAGO MIXTO (POST /api/pedidos/{id}/pagar)
+       ============================================================== -->
+  <div id="modal-cobro-pos" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-parrilla-border max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[95vh] overflow-y-auto">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-parrilla-border pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-orange-100 text-parrilla-gold flex items-center justify-center font-bold">
+            <i data-lucide="credit-card" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-display font-black text-xl text-parrilla-ivory">Cobro de Comanda</h3>
+            <span id="modal-order-subtitle" class="text-xs text-parrilla-muted">Mesa 1 • 0 platos</span>
+          </div>
+        </div>
+        <button type="button" id="btn-close-cobro-modal" class="text-parrilla-muted hover:text-parrilla-ivory">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Resumen de Costos -->
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-parrilla-border space-y-1.5 text-xs">
+        <div class="flex justify-between text-parrilla-muted">
+          <span>Subtotal consumo:</span>
+          <span id="modal-cobro-subtotal" class="font-bold text-parrilla-ivory font-mono">$0</span>
+        </div>
+        <div class="flex justify-between text-parrilla-muted" id="modal-cobro-delivery-row">
+          <span>Domicilio / Entrega:</span>
+          <span id="modal-cobro-delivery" class="font-bold text-parrilla-accent font-mono">$0</span>
+        </div>
+        <div class="flex justify-between text-base font-black text-parrilla-gold border-t border-parrilla-border pt-1.5">
+          <span>TOTAL A COBRAR:</span>
+          <span id="modal-cobro-total" class="font-display text-2xl font-mono text-parrilla-gold">$0</span>
+        </div>
+      </div>
+
+      <!-- Selector de Modo de Pago (Único vs Mixto) -->
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl border border-parrilla-border">
+          <button type="button" id="btn-mode-single" class="py-2 rounded-lg text-xs font-bold bg-white text-parrilla-ivory shadow-sm transition">
+            💵 Pago Único
+          </button>
+          <button type="button" id="btn-mode-split" class="py-2 rounded-lg text-xs font-bold text-parrilla-muted hover:text-parrilla-ivory transition">
+            ⚖️ Pago Mixto / Dividido
+          </button>
+        </div>
+
+        <!-- MODO 1: PAGO ÚNICO -->
+        <div id="cobro-view-single" class="space-y-3">
+          <span class="block text-[11px] font-bold text-parrilla-muted uppercase">Selecciona Método:</span>
+          <div class="grid grid-cols-4 gap-2">
+            <button type="button" class="single-pay-btn active py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-xs flex flex-col items-center gap-1 shadow-sm" data-method="CASH">
+              <span>💵</span>
+              <span>Efectivo</span>
+            </button>
+            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1" data-method="NEQUI">
+              <span>🟣</span>
+              <span>Nequi</span>
+            </button>
+            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1" data-method="DAVIPLATA">
+              <span>🔴</span>
+              <span>Daviplata</span>
+            </button>
+            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1" data-method="CARD">
+              <span>💳</span>
+              <span>Tarjeta</span>
+            </button>
+          </div>
+
+          <!-- Calculadora de Cambio en Efectivo -->
+          <div id="single-cash-calc" class="bg-slate-50 p-3 rounded-xl border border-parrilla-border space-y-2">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex-1">
+                <label class="block text-[10px] font-bold text-parrilla-muted uppercase mb-1">Efectivo recibido ($):</label>
+                <input 
+                  type="number" 
+                  id="single-cash-received" 
+                  placeholder="Ej. 50000" 
+                  step="1000"
+                  class="w-full px-3 py-2 bg-white rounded-lg border border-parrilla-border font-bold text-lg font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                />
+              </div>
+              <div class="flex-1 text-right">
+                <span class="block text-[10px] font-bold text-parrilla-muted uppercase mb-1">Vueltas / Cambio:</span>
+                <span id="single-change-display" class="font-display font-black text-xl text-emerald-600 font-mono block">$0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODO 2: PAGO MIXTO / DIVIDIDO -->
+        <div id="cobro-view-split" class="hidden space-y-3">
+          <div class="bg-amber-50 border border-amber-200 text-amber-800 p-2.5 rounded-xl text-xs">
+            Divide la cuenta en dos medios de pago (ej. parte por Nequi y el resto en Efectivo).
+          </div>
+
+          <!-- Método 1 -->
+          <div class="bg-slate-50 p-3 rounded-xl border border-parrilla-border space-y-2">
+            <span class="text-[10px] font-bold text-parrilla-muted uppercase block">Primer Medio de Pago</span>
+            <div class="grid grid-cols-2 gap-2">
+              <select id="split-method-1" class="px-3 py-2 bg-white rounded-lg border border-parrilla-border text-xs font-bold text-parrilla-ivory outline-none">
+                <option value="NEQUI">🟣 Nequi</option>
+                <option value="CASH">💵 Efectivo</option>
+                <option value="DAVIPLATA">🔴 Daviplata</option>
+                <option value="CARD">💳 Tarjeta</option>
+              </select>
+              <input 
+                type="number" 
+                id="split-amount-1" 
+                placeholder="Monto ($)" 
+                step="500"
+                class="px-3 py-2 bg-white rounded-lg border border-parrilla-border text-xs font-bold font-mono text-parrilla-ivory outline-none focus:border-parrilla-gold"
+              />
+            </div>
+          </div>
+
+          <!-- Método 2 -->
+          <div class="bg-slate-50 p-3 rounded-xl border border-parrilla-border space-y-2">
+            <span class="text-[10px] font-bold text-parrilla-muted uppercase block">Segundo Medio de Pago</span>
+            <div class="grid grid-cols-2 gap-2">
+              <select id="split-method-2" class="px-3 py-2 bg-white rounded-lg border border-parrilla-border text-xs font-bold text-parrilla-ivory outline-none">
+                <option value="CASH">💵 Efectivo</option>
+                <option value="NEQUI">🟣 Nequi</option>
+                <option value="DAVIPLATA">🔴 Daviplata</option>
+                <option value="CARD">💳 Tarjeta</option>
+              </select>
+              <input 
+                type="number" 
+                id="split-amount-2" 
+                placeholder="Monto restante ($)" 
+                step="500"
+                class="px-3 py-2 bg-white rounded-lg border border-parrilla-border text-xs font-bold font-mono text-parrilla-ivory outline-none focus:border-parrilla-gold"
+              />
+            </div>
+          </div>
+
+          <!-- Split Balance Status -->
+          <div class="p-3 rounded-xl border flex items-center justify-between text-xs" id="split-balance-box">
+            <div>
+              <span class="text-[10px] uppercase font-bold text-parrilla-muted block">Suma Pagada:</span>
+              <span id="split-sum-display" class="font-bold font-mono">$0</span>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] uppercase font-bold text-parrilla-muted block">Estado:</span>
+              <span id="split-status-display" class="font-bold text-amber-600">Falta asignar dinero</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="flex items-center gap-2 pt-2">
+        <button 
+          type="button" 
+          id="btn-cancel-cobro" 
+          class="flex-1 py-3 rounded-xl border border-parrilla-border text-parrilla-muted hover:bg-slate-100 font-bold text-xs"
+        >
+          Cancelar
+        </button>
+        <button 
+          type="button" 
+          id="btn-confirm-payment-print" 
+          class="flex-1 py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-xs shadow-lg flex items-center justify-center gap-2 transition active:scale-95"
+        >
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span>Confirmar e Imprimir (SAT Q22)</span>
+        </button>
       </div>
 
     </div>
@@ -753,8 +941,136 @@ const formatPrice = (val) => {
       checkoutPrintBtn?.click();
     });
 
-    // 8. CHECKOUT & INSTANT PRINT TO SAT Q22
-    checkoutPrintBtn?.addEventListener('click', async () => {
+    // 8. CHECKOUT & MODAL DE COBRO / PAGO MIXTO
+    const modalCobro = document.getElementById('modal-cobro-pos');
+    const btnCloseCobro = document.getElementById('btn-close-cobro-modal');
+    const btnCancelCobro = document.getElementById('btn-cancel-cobro');
+    const btnConfirmPayment = document.getElementById('btn-confirm-payment-print');
+
+    const btnModeSingle = document.getElementById('btn-mode-single');
+    const btnModeSplit = document.getElementById('btn-mode-split');
+    const viewSingle = document.getElementById('cobro-view-single');
+    const viewSplit = document.getElementById('cobro-view-split');
+
+    let cobroPaymentMode = 'single'; // 'single' | 'split'
+    let selectedSingleMethod = 'CASH';
+    const singleCashCalc = document.getElementById('single-cash-calc');
+    const singleCashReceived = document.getElementById('single-cash-received');
+    const singleChangeDisplay = document.getElementById('single-change-display');
+
+    const splitMethod1 = document.getElementById('split-method-1');
+    const splitAmount1 = document.getElementById('split-amount-1');
+    const splitMethod2 = document.getElementById('split-method-2');
+    const splitAmount2 = document.getElementById('split-amount-2');
+    const splitSumDisplay = document.getElementById('split-sum-display');
+    const splitStatusDisplay = document.getElementById('split-status-display');
+    const splitBalanceBox = document.getElementById('split-balance-box');
+
+    // Switch between Single and Split payment modes
+    btnModeSingle?.addEventListener('click', () => {
+      cobroPaymentMode = 'single';
+      btnModeSingle.className = 'py-2 rounded-lg text-xs font-bold bg-white text-parrilla-ivory shadow-sm transition';
+      btnModeSplit.className = 'py-2 rounded-lg text-xs font-bold text-parrilla-muted hover:text-parrilla-ivory transition';
+      viewSingle.classList.remove('hidden');
+      viewSplit.classList.add('hidden');
+    });
+
+    btnModeSplit?.addEventListener('click', () => {
+      cobroPaymentMode = 'split';
+      btnModeSplit.className = 'py-2 rounded-lg text-xs font-bold bg-white text-parrilla-ivory shadow-sm transition';
+      btnModeSingle.className = 'py-2 rounded-lg text-xs font-bold text-parrilla-muted hover:text-parrilla-ivory transition';
+      viewSplit.classList.remove('hidden');
+      viewSingle.classList.add('hidden');
+
+      // Pre-fill split amounts if empty
+      const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+      // @ts-ignore
+      const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
+      const total = subtotal + deliveryFee;
+      // @ts-ignore
+      if (!splitAmount1.value && !splitAmount2.value) {
+        // @ts-ignore
+        splitAmount1.value = Math.round(total / 2);
+        // @ts-ignore
+        splitAmount2.value = total - Math.round(total / 2);
+      }
+      updateSplitBalance(total);
+    });
+
+    // Single payment method selector buttons
+    document.querySelectorAll('.single-pay-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.single-pay-btn').forEach(b => {
+          b.className = 'single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1';
+        });
+        btn.className = 'single-pay-btn active py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-xs flex flex-col items-center gap-1 shadow-sm';
+        selectedSingleMethod = btn.getAttribute('data-method') || 'CASH';
+
+        if (selectedSingleMethod === 'CASH') {
+          singleCashCalc.classList.remove('hidden');
+        } else {
+          singleCashCalc.classList.add('hidden');
+        }
+      });
+    });
+
+    // Single cash change calculation
+    singleCashReceived?.addEventListener('input', () => {
+      const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+      // @ts-ignore
+      const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
+      const total = subtotal + deliveryFee;
+      // @ts-ignore
+      const paid = Number(singleCashReceived.value || 0);
+      const diff = paid - total;
+      if (paid > 0) {
+        singleChangeDisplay.textContent = diff >= 0 ? fmt(diff) : 'Faltan ' + fmt(Math.abs(diff));
+        singleChangeDisplay.className = diff >= 0 ? 'font-display font-black text-xl text-emerald-600 font-mono block' : 'font-display font-black text-xl text-red-600 font-mono block';
+      } else {
+        singleChangeDisplay.textContent = '$0';
+        singleChangeDisplay.className = 'font-display font-black text-xl text-emerald-600 font-mono block';
+      }
+    });
+
+    // Split balance calculation
+    function updateSplitBalance(total) {
+      // @ts-ignore
+      const a1 = Number(splitAmount1.value || 0);
+      // @ts-ignore
+      const a2 = Number(splitAmount2.value || 0);
+      const sum = a1 + a2;
+      splitSumDisplay.textContent = fmt(sum);
+
+      if (sum >= total) {
+        splitStatusDisplay.textContent = '✅ Cubre el total ($' + fmt(sum) + ')';
+        splitStatusDisplay.className = 'font-bold text-emerald-600';
+        splitBalanceBox.className = 'p-3 rounded-xl border border-emerald-300 bg-emerald-50 flex items-center justify-between text-xs';
+      } else {
+        const missing = total - sum;
+        splitStatusDisplay.textContent = `❌ Faltan ${fmt(missing)}`;
+        splitStatusDisplay.className = 'font-bold text-red-600';
+        splitBalanceBox.className = 'p-3 rounded-xl border border-red-300 bg-red-50 flex items-center justify-between text-xs';
+      }
+    }
+
+    [splitAmount1, splitAmount2].forEach(input => {
+      input?.addEventListener('input', () => {
+        const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+        // @ts-ignore
+        const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
+        updateSplitBalance(subtotal + deliveryFee);
+      });
+    });
+
+    const closeCobroModal = () => {
+      modalCobro.classList.add('hidden');
+      modalCobro.classList.remove('flex');
+    };
+    btnCloseCobro?.addEventListener('click', closeCobroModal);
+    btnCancelCobro?.addEventListener('click', closeCobroModal);
+
+    // Open Cobro Modal
+    checkoutPrintBtn?.addEventListener('click', () => {
       if (cart.length === 0) {
         alert('Por favor agrega al menos un plato a la comanda.');
         return;
@@ -768,17 +1084,89 @@ const formatPrice = (val) => {
         }
       }
 
-      checkoutPrintBtn.disabled = true;
-      checkoutPrintBtn.innerHTML = '<span class="animate-spin">⏳</span> <span>Guardando e Imprimiendo...</span>';
+      const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+      // @ts-ignore
+      const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
+      const total = subtotal + deliveryFee;
+
+      // Populate modal values
+      document.getElementById('modal-cobro-subtotal').textContent = fmt(subtotal);
+      const deliveryRowModal = document.getElementById('modal-cobro-delivery-row');
+      if (currentOrderType === 'domicilio') {
+        deliveryRowModal.style.display = 'flex';
+        document.getElementById('modal-cobro-delivery').textContent = fmt(deliveryFee);
+      } else {
+        deliveryRowModal.style.display = 'none';
+      }
+      document.getElementById('modal-cobro-total').textContent = fmt(total);
+
+      // Subtitle
+      const titleInfo = currentOrderType === 'mesa' 
+        // @ts-ignore
+        ? `${tableInput.value || 'Mesa'} • ${cart.length} plato(s)`
+        // @ts-ignore
+        : (currentOrderType === 'domicilio' ? `Domicilio para ${custNameInput.value.trim()}` : 'Para Llevar');
+      document.getElementById('modal-order-subtitle').textContent = titleInfo;
+
+      // Set initial single cash input if pre-typed
+      // @ts-ignore
+      if (cashReceivedInput.value) {
+        // @ts-ignore
+        singleCashReceived.value = cashReceivedInput.value;
+      }
+
+      modalCobro.classList.remove('hidden');
+      modalCobro.classList.add('flex');
+    });
+
+    // CONFIRMAR PAGO (POST /api/pedidos/{id}/pagar) E IMPRIMIR SAT Q22
+    btnConfirmPayment?.addEventListener('click', async () => {
+      const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+      // @ts-ignore
+      const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
+      const total = subtotal + deliveryFee;
+
+      let paymentsPayload = [];
+      let cashGiven = 0;
+
+      if (cobroPaymentMode === 'single') {
+        // @ts-ignore
+        const paidCash = Number(singleCashReceived.value || 0);
+        const change = (selectedSingleMethod === 'CASH' && paidCash > total) ? (paidCash - total) : 0;
+        cashGiven = paidCash;
+
+        paymentsPayload = [{
+          method: selectedSingleMethod,
+          amount: total,
+          change_given: change
+        }];
+      } else {
+        // Split mode
+        // @ts-ignore
+        const m1 = splitMethod1.value;
+        // @ts-ignore
+        const a1 = Number(splitAmount1.value || 0);
+        // @ts-ignore
+        const m2 = splitMethod2.value;
+        // @ts-ignore
+        const a2 = Number(splitAmount2.value || 0);
+
+        if ((a1 + a2) < total) {
+          alert(`El total de los pagos divididos ($${fmt(a1 + a2)}) no cubre el total del pedido ($${fmt(total)}).`);
+          return;
+        }
+
+        paymentsPayload = [
+          { method: m1, amount: a1, change_given: 0 },
+          { method: m2, amount: a2, change_given: 0 }
+        ];
+      }
+
+      btnConfirmPayment.disabled = true;
+      btnConfirmPayment.innerHTML = '<span>Procesando pago y comanda...</span>';
 
       try {
-        const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
-        // @ts-ignore
-        const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
-        const total = subtotal + deliveryFee;
-        // @ts-ignore
-        const cashChangeFor = Number(cashReceivedInput.value || 0);
-
+        // 1. Guardar el pedido
         const orderPayload = {
           orderData: {
             orderType: currentOrderType,
@@ -795,8 +1183,8 @@ const formatPrice = (val) => {
             subtotal,
             deliveryFee,
             total,
-            paymentMethod: currentPaymentMethod,
-            paymentChangeFor: cashChangeFor,
+            paymentMethod: cobroPaymentMode === 'single' ? selectedSingleMethod.toLowerCase() : 'mixto',
+            paymentChangeFor: cashGiven,
             status: 'completado'
           },
           items: cart
@@ -815,7 +1203,18 @@ const formatPrice = (val) => {
 
         const savedOrder = resData.order;
 
-        // Un único objeto 'ticket' alimenta la impresión y la reimpresión
+        // 2. Registrar el pago en la caja activa del backend FastAPI (/api/pedidos/{id}/pagar)
+        try {
+          await fetch(`/api/pedidos/${savedOrder.id}/pagar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payments: paymentsPayload })
+          });
+        } catch (e) {
+          console.warn('Nota: Pago registrado localmente en comanda.');
+        }
+
+        // 3. Imprimir comanda en SAT Q22
         const ticket = {
           id: savedOrder.id,
           createdAt: new Date().toISOString(),
@@ -830,30 +1229,54 @@ const formatPrice = (val) => {
           subtotal,
           deliveryFee,
           total,
-          paymentMethod: currentPaymentMethod,
-          cashPaid: cashChangeFor
+          paymentMethod: cobroPaymentMode === 'single' ? selectedSingleMethod : 'MIXTO',
+          cashPaid: cashGiven
         };
 
         saveLastTicket(ticket);
-
-        // IMPRIMIR DE INMEDIATO (con --kiosk-printing sale directo a la SAT Q22 sin ventanas)
         printTicket(ticket);
 
-        // Vaciar la comanda
+        // Vaciar la comanda y cerrar modal
         cart = [];
         // @ts-ignore
         cashReceivedInput.value = '';
         renderCart();
+        closeCobroModal();
 
       } catch (err) {
         alert('Ocurrió un error al cobrar: ' + err.message);
       } finally {
-        checkoutPrintBtn.disabled = false;
-        checkoutPrintBtn.innerHTML = '<i data-lucide="printer" class="w-5 h-5"></i> <span>Cobrar e Imprimir (SAT Q22)</span>';
+        btnConfirmPayment.disabled = false;
+        btnConfirmPayment.innerHTML = '<i data-lucide="printer" class="w-4 h-4"></i><span>Confirmar e Imprimir (SAT Q22)</span>';
         // @ts-ignore
         if (window.lucide) window.lucide.createIcons();
       }
     });
+
+    // 9. CHECK FOR PENDING WHATSAPP DRAFTS
+    async function checkPendingDrafts() {
+      try {
+        const res = await fetch('/api/pedidos/?estado=BORRADOR_WEB&limit=20');
+        if (res.ok) {
+          const drafts = await res.json();
+          const count = (drafts && Array.isArray(drafts)) ? drafts.length : 0;
+          const alertEl = document.getElementById('pos-drafts-alert');
+          const countEl = document.getElementById('pos-drafts-count');
+          if (alertEl && countEl) {
+            if (count > 0) {
+              countEl.textContent = count;
+              alertEl.classList.remove('hidden');
+              alertEl.classList.add('flex');
+            } else {
+              alertEl.classList.add('hidden');
+              alertEl.classList.remove('flex');
+            }
+          }
+        }
+      } catch (e) {}
+    }
+    checkPendingDrafts();
+    setInterval(checkPendingDrafts, 15000);
 
     // ==============================================================
     //  TICKET: armar, imprimir y reimprimir (SAT Q22 - 80mm)

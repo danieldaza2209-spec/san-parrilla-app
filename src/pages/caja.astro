@@ -1,64 +1,70 @@
 ---
-export const prerender = true;
+export const prerender = false;
 import StaffLayout from '../layouts/StaffLayout.astro';
-import { getActiveCashRegister, db } from '../lib/db.js';
-
-const activeCash = getActiveCashRegister();
-
-// Format Colombian Peso
-const formatPrice = (val) => {
-  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
-};
-
-// Recent closed registers
-const pastRegisters = db ? db.prepare(`
-  SELECT * FROM cash_registers 
-  WHERE status = 'closed' 
-  ORDER BY id DESC LIMIT 5
-`).all() : [];
-
-const expectedCash = activeCash ? (activeCash.initial_cash + activeCash.total_cash_sales) : 0;
-const totalDigitalSales = activeCash ? (activeCash.total_nequi_sales + activeCash.total_daviplata_sales + activeCash.total_card_sales) : 0;
-const grandTotalSales = activeCash ? (activeCash.total_cash_sales + totalDigitalSales) : 0;
 ---
 
-<StaffLayout title="Control y Cierre de Caja | San Parrilla">
-  <div class="max-w-6xl mx-auto px-4 py-8 flex-1 flex flex-col no-print">
+<StaffLayout title="Control de Caja y Cierres | San Parrilla">
+  <div class="max-w-6xl mx-auto px-4 py-6 flex-1 flex flex-col no-print" id="caja-app">
 
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-parrilla-border pb-6 mb-8">
+    <!-- Top Navigation Bar & Tabs -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-parrilla-border pb-5 mb-6">
       <div>
-        <span class="text-xs font-bold text-parrilla-gold uppercase tracking-widest">Administración de Efectivo y Turnos</span>
-        <h1 class="font-display font-black text-3xl sm:text-4xl text-parrilla-ivory mt-1">Cuadre y Cierre de Caja</h1>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-parrilla-gold uppercase tracking-widest">Sistema POS & Tesorería</span>
+          <span id="caja-badge-status" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-parrilla-muted border border-parrilla-border">
+            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+            Consultando estado...
+          </span>
+        </div>
+        <h1 class="font-display font-black text-2xl sm:text-3xl text-parrilla-ivory mt-1">Caja, Cierres y WhatsApp</h1>
       </div>
 
-      <div class="flex items-center gap-2">
-        <span class="text-xs text-parrilla-muted">Estado Actual:</span>
-        {activeCash ? (
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-parrilla-accent/20 text-parrilla-accent border border-parrilla-accent/40">
-            <span class="w-2 h-2 rounded-full bg-parrilla-accent animate-pulse"></span>
-            Caja Abierta (Turno #{activeCash.id})
+      <!-- Navigation Tabs -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-parrilla-border">
+        <button 
+          type="button" 
+          id="tab-btn-caja" 
+          class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold bg-parrilla-gold text-white shadow-sm transition"
+        >
+          <span class="flex items-center gap-1.5">
+            <i data-lucide="vault" class="w-4 h-4"></i>
+            <span>Turno y Cierre</span>
           </span>
-        ) : (
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/40">
-            Caja Cerrada
-          </span>
-        )}
+        </button>
+        <button 
+          type="button" 
+          id="tab-btn-borradores" 
+          class="tab-btn px-4 py-2 rounded-lg text-xs font-bold text-parrilla-ivory hover:text-parrilla-gold transition flex items-center gap-1.5"
+        >
+          <i data-lucide="message-circle" class="w-4 h-4 text-emerald-600"></i>
+          <span>Borradores WhatsApp</span>
+          <span id="drafts-count-badge" class="hidden px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-600 text-white">0</span>
+        </button>
       </div>
     </div>
 
-    {/* IF NO ACTIVE CASH: SHOW OPEN REGISTER FORM */}
-    {!activeCash && (
-      <div class="max-w-md mx-auto w-full bg-parrilla-surface rounded-2xl border border-parrilla-border p-6 shadow-2xl">
-        <div class="text-center mb-6">
-          <div class="w-14 h-14 mx-auto rounded-2xl bg-parrilla-gold/10 border border-parrilla-gold/30 flex items-center justify-center text-parrilla-gold mb-3">
-            <i data-lucide="unlock" class="w-7 h-7"></i>
-          </div>
-          <h2 class="font-display font-bold text-xl text-parrilla-ivory">Apertura de Turno de Caja</h2>
-          <p class="text-xs text-parrilla-muted mt-1">Ingresa el dinero base en efectivo con el que inicia el cajón hoy.</p>
-        </div>
+    <!-- Loading State -->
+    <div id="caja-loading" class="py-16 text-center text-parrilla-muted">
+      <div class="w-10 h-10 border-4 border-parrilla-gold border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <p class="text-sm font-semibold">Cargando datos de caja y backend...</p>
+    </div>
 
-        <form id="form-open-cash" class="space-y-4">
+    <!-- ==============================================================
+         TAB 1: CONTROL DE CAJA Y ARQUEO
+         ============================================================== -->
+    <div id="tab-caja-content" class="hidden space-y-8">
+      
+      <!-- VIEW A: NO HAY CAJA ABIERTA -> FORMULARIO DE APERTURA -->
+      <div id="view-caja-closed" class="hidden max-w-md mx-auto w-full bg-white rounded-2xl border border-parrilla-border p-6 sm:p-8 shadow-2xl text-center">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 mb-4">
+          <i data-lucide="lock" class="w-8 h-8"></i>
+        </div>
+        <h2 class="font-display font-black text-2xl text-parrilla-ivory">Caja Actualmente Cerrada</h2>
+        <p class="text-xs text-parrilla-muted mt-1 mb-6">
+          Para comenzar a registrar ventas, cobrar pedidos o liquidar domicilios, ingresa la base de efectivo inicial en el cajón.
+        </p>
+
+        <form id="form-open-cash" class="space-y-4 text-left">
           <div>
             <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Base Inicial en Efectivo ($) *</label>
             <input 
@@ -67,158 +73,394 @@ const grandTotalSales = activeCash ? (activeCash.total_cash_sales + totalDigital
               value="100000" 
               step="1000" 
               required
-              class="w-full px-4 py-3 bg-parrilla-dark rounded-xl border border-parrilla-border text-lg font-bold font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              class="w-full px-4 py-3 bg-slate-50 rounded-xl border border-parrilla-border text-xl font-bold font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
             />
+            <span class="text-[11px] text-parrilla-muted mt-1 block">Monedas y billetes para dar vueltas/cambio.</span>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-parrilla-muted mb-1">Notas u observaciones</label>
+            <label class="block text-xs font-semibold text-parrilla-muted mb-1">Observaciones de apertura</label>
             <input 
               type="text" 
               id="open-notes" 
               placeholder="Ej. Billetes de 10k y 20k para cambio" 
-              class="w-full px-4 py-2.5 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              class="w-full px-4 py-2.5 bg-slate-50 rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
             />
           </div>
 
           <button 
             type="submit" 
-            class="w-full py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-sm shadow-md transition active:scale-95"
+            id="btn-submit-open"
+            class="w-full py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-sm shadow-md transition active:scale-95 flex items-center justify-center gap-2"
           >
-            Abrir Caja e Iniciar Turno
+            <i data-lucide="unlock" class="w-4 h-4"></i>
+            <span>Abrir Caja e Iniciar Turno</span>
           </button>
         </form>
       </div>
-    )}
 
-    {activeCash && (
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- VIEW B: CAJA ABIERTA -> PANEL OPERATIVO EN TIEMPO REAL -->
+      <div id="view-caja-open" class="hidden space-y-6">
         
-        {/* Metrics Cards (7 cols) */}
-        <div class="lg:col-span-7 space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            
-            {/* Base Inicial */}
-            <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-border">
-              <span class="text-xs text-parrilla-muted font-semibold uppercase tracking-wider block">Base Inicial</span>
-              <span class="font-display font-black text-2xl text-parrilla-ivory mt-1 block">
-                {formatPrice(activeCash.initial_cash)}
-              </span>
-              <span class="text-[11px] text-parrilla-muted mt-2 block">
-                Abierta: {new Date(activeCash.opened_at).toLocaleTimeString('es-CO')}
-              </span>
-            </div>
+        <!-- Summary Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <!-- Base Inicial -->
+          <div class="bg-white rounded-2xl p-5 border border-parrilla-border shadow-sm">
+            <span class="text-[11px] text-parrilla-muted font-bold uppercase tracking-wider block">Base Inicial</span>
+            <span id="metric-initial-cash" class="font-display font-black text-2xl text-parrilla-ivory mt-1 block">$0</span>
+            <span id="metric-opened-at" class="text-[11px] text-parrilla-muted mt-2 block">Apertura: --:--</span>
+          </div>
 
-            {/* Ventas Efectivo */}
-            <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-border">
-              <span class="text-xs text-parrilla-muted font-semibold uppercase tracking-wider block">Ventas en Efectivo</span>
-              <span class="font-display font-black text-2xl text-parrilla-accent mt-1 block">
-                {formatPrice(activeCash.total_cash_sales)}
-              </span>
-              <span class="text-[11px] text-parrilla-muted mt-2 block">Cobrado directo en caja</span>
-            </div>
+          <!-- Ventas Efectivo -->
+          <div class="bg-white rounded-2xl p-5 border border-parrilla-border shadow-sm">
+            <span class="text-[11px] text-parrilla-muted font-bold uppercase tracking-wider block">Ventas en Efectivo</span>
+            <span id="metric-cash-sales" class="font-display font-black text-2xl text-parrilla-accent mt-1 block">$0</span>
+            <span class="text-[11px] text-parrilla-muted mt-2 block">Ingresado al cajón físico</span>
+          </div>
 
-            {/* Ventas Digitales */}
-            <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-border">
-              <span class="text-xs text-parrilla-muted font-semibold uppercase tracking-wider block">Nequi / Daviplata / Tarjetas</span>
-              <span class="font-display font-black text-2xl text-amber-400 mt-1 block">
-                {formatPrice(totalDigitalSales)}
-              </span>
-              <div class="flex items-center gap-2 mt-2 text-[10px] text-parrilla-muted">
-                <span>Nequi: {formatPrice(activeCash.total_nequi_sales)}</span>
-                <span>•</span>
-                <span>Daviplata: {formatPrice(activeCash.total_daviplata_sales)}</span>
-              </div>
-            </div>
-
-            {/* Gran Total Ventas */}
-            <div class="bg-parrilla-surface rounded-2xl p-5 border border-parrilla-gold/40">
-              <span class="text-xs text-parrilla-gold font-bold uppercase tracking-wider block">Total Ventas del Turno</span>
-              <span class="font-display font-black text-2xl text-parrilla-gold mt-1 block">
-                {formatPrice(grandTotalSales)}
-              </span>
-              <span class="text-[11px] text-parrilla-muted mt-2 block">Efectivo + Medios Digitales</span>
+          <!-- Transferencias y Tarjetas -->
+          <div class="bg-white rounded-2xl p-5 border border-parrilla-border shadow-sm">
+            <span class="text-[11px] text-parrilla-muted font-bold uppercase tracking-wider block">Transferencias / Tarjetas</span>
+            <span id="metric-digital-sales" class="font-display font-black text-2xl text-blue-600 mt-1 block">$0</span>
+            <div class="flex items-center gap-2 mt-2 text-[10px] text-parrilla-muted">
+              <span>N: <strong id="metric-nequi">$0</strong></span>
+              <span>•</span>
+              <span>D: <strong id="metric-daviplata">$0</strong></span>
+              <span>•</span>
+              <span>T: <strong id="metric-card">$0</strong></span>
             </div>
           </div>
 
-          {/* Expected Cash In Drawer Highlight */}
-          <div class="bg-gradient-to-r from-parrilla-dark to-parrilla-surface rounded-2xl p-6 border-2 border-parrilla-accent/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
-            <div>
-              <span class="text-xs font-bold text-parrilla-accent uppercase tracking-wider flex items-center gap-1.5">
-                <i data-lucide="calculator" class="w-4 h-4"></i>
-                <span>Efectivo que DEBE haber en el cajón</span>
-              </span>
-              <p class="text-xs text-parrilla-muted mt-1">Base Inicial ({formatPrice(activeCash.initial_cash)}) + Ventas Efectivo ({formatPrice(activeCash.total_cash_sales)})</p>
-            </div>
-            <div class="text-right">
-              <span class="font-display font-black text-3xl sm:text-4xl text-parrilla-accent">
-                {formatPrice(expectedCash)}
-              </span>
-            </div>
+          <!-- Total Facturado -->
+          <div class="bg-white rounded-2xl p-5 border border-parrilla-gold/40 bg-gradient-to-br from-amber-50/40 to-white shadow-sm">
+            <span class="text-[11px] text-parrilla-gold font-bold uppercase tracking-wider block">Total Ventas Turno</span>
+            <span id="metric-total-sales" class="font-display font-black text-2xl text-parrilla-gold mt-1 block">$0</span>
+            <span class="text-[11px] text-parrilla-muted mt-2 block">Efectivo + Medios Digitales</span>
           </div>
         </div>
 
-        {/* Arqueo & Cierre Form (5 cols) */}
-        <div class="lg:col-span-5 bg-parrilla-surface rounded-2xl border border-parrilla-border p-6 shadow-2xl flex flex-col justify-between">
-          <div>
-            <h2 class="font-display font-bold text-xl text-parrilla-ivory flex items-center gap-2 mb-2">
-              <i data-lucide="lock" class="w-5 h-5 text-parrilla-gold"></i>
-              <span>Arqueo y Cierre de Turno</span>
-            </h2>
-            <p class="text-xs text-parrilla-muted mb-6">
-              Cuenta todos los billetes y monedas del cajón físico e introduce el total para calcular el cuadre.
-            </p>
-
-            <form id="form-close-cash" class="space-y-4">
+        <!-- OPERATIONAL BREAKDOWN: RESTAURANTE VS DOMICILIOS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <div class="bg-slate-50 rounded-2xl p-4 border border-parrilla-border flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-orange-100 text-parrilla-gold flex items-center justify-center font-bold">
+                <i data-lucide="utensils-crossed" class="w-5 h-5"></i>
+              </div>
               <div>
-                <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Efectivo Físico Contado ($) *</label>
-                <input 
-                  type="number" 
-                  id="counted-cash-input" 
-                  placeholder="Ej. 350000" 
-                  required
-                  class="w-full px-4 py-3 bg-parrilla-dark rounded-xl border border-parrilla-border text-xl font-bold font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
-                />
+                <span class="text-xs font-bold text-parrilla-ivory block">Ventas Netas Restaurante</span>
+                <span class="text-[11px] text-parrilla-muted">Consumo exclusivo de platos/bebidas</span>
               </div>
-
-              {/* Diferencia Display */}
-              <div class="bg-parrilla-dark p-3.5 rounded-xl border border-parrilla-border flex items-center justify-between">
-                <div>
-                  <span class="text-[11px] text-parrilla-muted uppercase font-semibold block">Diferencia de Cuadre:</span>
-                  <span id="diff-status" class="text-xs font-bold text-parrilla-muted">Ingresa el valor contado</span>
-                </div>
-                <span id="diff-amount" class="font-display font-black text-2xl text-parrilla-muted">$0</span>
-              </div>
-
-              <div>
-                <label class="block text-xs font-semibold text-parrilla-muted mb-1">Observaciones de cierre</label>
-                <textarea 
-                  id="close-notes" 
-                  rows="2"
-                  placeholder="Ej. Se pagaron $20.000 de hielo en efectivo..."
-                  class="w-full px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none resize-none"
-                ></textarea>
-              </div>
-
-              <button 
-                type="submit" 
-                id="btn-submit-close"
-                class="w-full py-4 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-base shadow-md flex items-center justify-center gap-2 transition active:scale-95"
-              >
-                <i data-lucide="printer" class="w-5 h-5"></i>
-                <span>Cerrar Caja e Imprimir Reporte Z (80mm)</span>
-              </button>
-            </form>
+            </div>
+            <span id="metric-subtotal-sales" class="font-display font-black text-xl text-parrilla-ivory">$0</span>
           </div>
+
+          <div class="bg-slate-50 rounded-2xl p-4 border border-parrilla-border flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                <i data-lucide="bike" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <span class="text-xs font-bold text-parrilla-ivory block">Pagos a Domiciliarios (Efectivo)</span>
+                <span class="text-[11px] text-parrilla-muted">Salidas de cajón por fletes</span>
+              </div>
+            </div>
+            <span id="metric-delivery-payouts" class="font-display font-black text-xl text-red-600">-$0</span>
+          </div>
+
+        </div>
+
+        <!-- HIGHLIGHT: EFECTIVO FÍSICO ESPERADO EN CAJÓN -->
+        <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-6 border-2 border-emerald-500/50 shadow-xl text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <i data-lucide="calculator" class="w-3.5 h-3.5"></i>
+              <span>Efectivo Físico Esperado en Cajón</span>
+            </div>
+            <p class="text-xs text-slate-300 max-w-xl">
+              Fórmula contable: Base Inicial + Ventas en Efectivo - Pagos a Domiciliarios (descuenta automáticamente los fletes entregados a los mensajeros aunque el cliente haya pagado por Nequi/Tarjeta).
+            </p>
+          </div>
+          <div class="text-right">
+            <span id="metric-expected-cash" class="font-display font-black text-3xl sm:text-4xl text-emerald-400 block">$0</span>
+            <span class="text-[10px] text-slate-400 uppercase tracking-widest font-mono">Arqueo esperado</span>
+          </div>
+        </div>
+
+        <!-- ACTION BAR: BOTÓN CERRAR TURNO -->
+        <div class="flex items-center justify-between pt-2">
+          <div class="text-xs text-parrilla-muted flex items-center gap-1.5">
+            <i data-lucide="refresh-cw" class="w-4 h-4 cursor-pointer hover:text-parrilla-gold transition" id="btn-refresh-caja" title="Actualizar datos"></i>
+            <span>Actualizado en tiempo real</span>
+          </div>
+
+          <button 
+            type="button" 
+            id="btn-open-close-modal"
+            class="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-display font-extrabold text-sm shadow-md transition active:scale-95 flex items-center gap-2"
+          >
+            <i data-lucide="lock" class="w-4 h-4"></i>
+            <span>Arqueo y Cierre de Turno</span>
+          </button>
         </div>
 
       </div>
-    )}
+
+      <!-- HISTORIAL DE CIERRES ANTERIORES -->
+      <div class="bg-white rounded-2xl border border-parrilla-border p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-display font-black text-lg text-parrilla-ivory">Historial de Cierres Anteriores</h3>
+            <p class="text-xs text-parrilla-muted">Sesiones de caja cerradas y sus diferencias de cuadre</p>
+          </div>
+          <button type="button" id="btn-reload-history" class="text-xs font-bold text-parrilla-gold hover:underline">
+            Refrescar
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 border-b border-parrilla-border text-parrilla-muted uppercase font-bold">
+              <tr>
+                <th class="py-3 px-3">Turno</th>
+                <th class="py-3 px-3">Fecha y Hora</th>
+                <th class="py-3 px-3 text-right">Base Inicial</th>
+                <th class="py-3 px-3 text-right">Ventas Totales</th>
+                <th class="py-3 px-3 text-right">Pagos Domicilio</th>
+                <th class="py-3 px-3 text-right">Esperado</th>
+                <th class="py-3 px-3 text-right">Contado</th>
+                <th class="py-3 px-3 text-right">Diferencia</th>
+                <th class="py-3 px-3">Notas</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body" class="divide-y divide-parrilla-border/60">
+              <tr>
+                <td colspan="9" class="py-6 text-center text-parrilla-muted italic">Cargando historial de cierres...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==============================================================
+         TAB 2: BANDEJA DE BORRADORES WEB (WHATSAPP)
+         ============================================================== -->
+    <div id="tab-borradores-content" class="hidden space-y-6">
+      
+      <!-- Search & Filters -->
+      <div class="bg-white rounded-2xl p-4 border border-parrilla-border flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+        <div class="relative w-full sm:w-96">
+          <i data-lucide="search" class="w-4 h-4 text-parrilla-muted absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+          <input 
+            type="text" 
+            id="draft-search-input" 
+            placeholder="Buscar por código (ej. SP-A1B2C3), cliente o teléfono..." 
+            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-parrilla-border text-xs text-parrilla-ivory placeholder-parrilla-muted focus:outline-none focus:border-parrilla-gold"
+          />
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-parrilla-muted">Filtrar:</span>
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-700 border border-amber-300">
+            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            Pendientes de Aprobación
+          </span>
+          <button type="button" id="btn-refresh-drafts" class="p-2 rounded-xl border border-parrilla-border hover:bg-slate-100 text-parrilla-muted transition" title="Refrescar borradores">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Drafts List Container -->
+      <div id="drafts-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Draft cards injected dynamically by JS -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="drafts-empty-state" class="hidden py-16 text-center bg-white rounded-2xl border border-parrilla-border p-8 shadow-sm">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+          <i data-lucide="check-circle" class="w-8 h-8"></i>
+        </div>
+        <h3 class="font-display font-black text-lg text-parrilla-ivory">Bandeja de Borradores al Día</h3>
+        <p class="text-xs text-parrilla-muted mt-1 max-w-sm mx-auto">
+          No hay pedidos web pendientes por aprobar en este momento. Cuando un cliente envíe su comanda por WhatsApp, aparecerá aquí automáticamente.
+        </p>
+      </div>
+
+    </div>
 
   </div>
 
   <!-- ==============================================================
-       REPORTE Z TICKET DE CIERRE PARA SAT Q22 (80MM)
+       MODAL: ARQUEO Y CIERRE DE CAJA
+       ============================================================== -->
+  <div id="modal-close-cash" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-parrilla-border max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-parrilla-border pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold">
+            <i data-lucide="lock" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-display font-black text-lg text-parrilla-ivory">Cierre de Turno y Arqueo</h3>
+            <span class="text-[11px] text-parrilla-muted">Verifica el efectivo físico en cajón</span>
+          </div>
+        </div>
+        <button type="button" id="btn-close-modal-cancel" class="text-parrilla-muted hover:text-parrilla-ivory">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="bg-slate-50 p-4 rounded-xl border border-parrilla-border space-y-2 text-xs">
+        <div class="flex justify-between">
+          <span class="text-parrilla-muted">Base Inicial:</span>
+          <span id="close-modal-initial" class="font-bold text-parrilla-ivory">$0</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-parrilla-muted">(+) Ventas en Efectivo:</span>
+          <span id="close-modal-cash-sales" class="font-bold text-emerald-600">$0</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-parrilla-muted">(-) Pagos Domiciliarios en Efectivo:</span>
+          <span id="close-modal-delivery-payouts" class="font-bold text-red-600">-$0</span>
+        </div>
+        <div class="flex justify-between border-t border-parrilla-border pt-2 text-sm font-black">
+          <span class="text-parrilla-gold">(=) EFECTIVO ESPERADO:</span>
+          <span id="close-modal-expected" class="font-display text-emerald-600">$0</span>
+        </div>
+      </div>
+
+      <form id="form-confirm-close-cash" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Efectivo Físico Contado ($) *</label>
+          <input 
+            type="number" 
+            id="modal-counted-cash-input" 
+            placeholder="Ingresa la suma de billetes y monedas" 
+            required
+            class="w-full px-4 py-3 bg-slate-50 rounded-xl border border-parrilla-border text-2xl font-bold font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
+          />
+        </div>
+
+        <!-- Live Discrepancy Display -->
+        <div class="p-3.5 rounded-xl border flex items-center justify-between transition-colors" id="modal-diff-container">
+          <div>
+            <span class="text-[11px] uppercase font-bold text-parrilla-muted block">Diferencia de Cuadre:</span>
+            <span id="modal-diff-status" class="text-xs font-bold text-parrilla-muted">Ingresa el dinero contado</span>
+          </div>
+          <span id="modal-diff-amount" class="font-display font-black text-2xl text-parrilla-muted">$0</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-parrilla-muted mb-1">Observaciones / Novedades</label>
+          <textarea 
+            id="modal-close-notes" 
+            rows="2"
+            placeholder="Ej. Cuadre perfecto, se dejaron $100.000 para el siguiente turno"
+            class="w-full px-3 py-2 bg-slate-50 rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none resize-none"
+          ></textarea>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button 
+            type="button" 
+            id="btn-modal-cancel" 
+            class="flex-1 py-3 rounded-xl border border-parrilla-border text-parrilla-muted hover:bg-slate-100 font-bold text-xs"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            id="btn-confirm-close"
+            class="flex-1 py-3 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-xs shadow-md flex items-center justify-center gap-1.5"
+          >
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>Confirmar Cierre & Reporte Z</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       MODAL: APROBAR BORRADOR WEB (WHATSAPP)
+       ============================================================== -->
+  <div id="modal-approve-draft" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-parrilla-border max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-parrilla-border pb-3">
+        <div>
+          <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase">Borrador Web</span>
+          <h3 class="font-display font-black text-xl text-parrilla-ivory mt-0.5" id="appr-code">SP-000000</h3>
+        </div>
+        <button type="button" id="btn-appr-close" class="text-parrilla-muted hover:text-parrilla-ivory">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-parrilla-muted mb-1">Nombre del Cliente</label>
+          <input type="text" id="appr-name" class="w-full px-3 py-2 bg-slate-50 rounded-xl border border-parrilla-border font-semibold text-parrilla-ivory outline-none focus:border-parrilla-gold" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-parrilla-muted mb-1">Teléfono Confirmado</label>
+            <input type="tel" id="appr-phone" placeholder="3183821787" class="w-full px-3 py-2 bg-slate-50 rounded-xl border border-parrilla-border font-mono text-parrilla-ivory outline-none focus:border-parrilla-gold" />
+          </div>
+          <div>
+            <label class="block font-bold text-parrilla-muted mb-1">Costo Domicilio ($)</label>
+            <input type="number" id="appr-delivery" step="500" class="w-full px-3 py-2 bg-slate-50 rounded-xl border border-parrilla-border font-bold text-parrilla-accent outline-none focus:border-parrilla-gold" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-parrilla-muted mb-1">Notas / Indicaciones del Cliente</label>
+          <textarea id="appr-notes" rows="2" class="w-full px-3 py-2 bg-slate-50 rounded-xl border border-parrilla-border text-parrilla-ivory outline-none focus:border-parrilla-gold resize-none"></textarea>
+        </div>
+
+        <!-- Platos del Pedido -->
+        <div class="border border-parrilla-border rounded-xl p-3 bg-slate-50 space-y-2">
+          <span class="font-bold text-parrilla-muted uppercase text-[10px] block">Platos e Ítems a preparar</span>
+          <div id="appr-items-list" class="space-y-1.5 divide-y divide-parrilla-border/50">
+            <!-- Items injected by JS -->
+          </div>
+        </div>
+
+        <!-- Totales -->
+        <div class="bg-parrilla-dark/5 p-3 rounded-xl border border-parrilla-border space-y-1">
+          <div class="flex justify-between text-xs text-parrilla-muted">
+            <span>Subtotal platos:</span>
+            <span id="appr-subtotal" class="font-bold text-parrilla-ivory">$0</span>
+          </div>
+          <div class="flex justify-between text-xs text-parrilla-muted">
+            <span>Domicilio:</span>
+            <span id="appr-delivery-display" class="font-bold text-parrilla-accent">$0</span>
+          </div>
+          <div class="flex justify-between text-sm font-black text-parrilla-gold border-t border-parrilla-border/60 pt-1">
+            <span>TOTAL:</span>
+            <span id="appr-total" class="font-display text-lg">$0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 pt-2">
+        <button type="button" id="btn-appr-cancel" class="flex-1 py-3 rounded-xl border border-parrilla-border text-parrilla-muted hover:bg-slate-100 font-bold text-xs">
+          Cancelar
+        </button>
+        <button type="button" id="btn-appr-confirm" class="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-display font-black text-xs shadow-md flex items-center justify-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Aprobar y Enviar a Cocina</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       REPORTE Z TICKET DE CIERRE PARA IMPRESORA SAT Q22 (80MM)
        ============================================================== -->
   <div id="z-ticket" class="receipt-ticket hidden">
     <div class="ticket-header">
@@ -226,7 +468,7 @@ const grandTotalSales = activeCash ? (activeCash.total_cash_sales + totalDigital
       <p style="margin: 1mm 0; font-size: 9.5pt;">REPORTE Z - CIERRE DE CAJA</p>
       <div class="ticket-badge" style="border: 2px solid #000; font-size: 13pt;">CIERRE DE TURNO</div>
       <div style="font-size: 9pt; margin-top: 1.5mm;">
-        <span>Turno #: <strong id="z-id">{activeCash?.id || '0'}</strong></span> | 
+        <span>Turno #: <strong id="z-id">0</strong></span> | 
         <span>Fecha: <strong id="z-date">--/--/--</strong></span>
       </div>
     </div>
@@ -234,26 +476,30 @@ const grandTotalSales = activeCash ? (activeCash.total_cash_sales + totalDigital
     <div style="font-size: 10pt; margin: 3mm 0;">
       <div class="total-row">
         <span>Hora Apertura:</span>
-        <span id="z-opened-at">{activeCash?.opened_at || ''}</span>
+        <span id="z-opened-at">--:--</span>
       </div>
       <div class="total-row">
         <span>Hora Cierre:</span>
-        <span id="z-closed-at">--</span>
+        <span id="z-closed-at">--:--</span>
       </div>
     </div>
 
     <div class="totals-box">
       <div class="total-row" style="font-weight: bold;">
         <span>(+) Base Inicial de Caja:</span>
-        <span id="z-initial">{formatPrice(activeCash?.initial_cash)}</span>
+        <span id="z-initial">$0</span>
       </div>
       <div class="total-row" style="font-weight: bold;">
         <span>(+) Ventas en Efectivo:</span>
-        <span id="z-cash-sales">{formatPrice(activeCash?.total_cash_sales)}</span>
+        <span id="z-cash-sales">$0</span>
+      </div>
+      <div class="total-row" style="font-weight: bold; color: #b91c1c;">
+        <span>(-) Pagos a Domiciliarios:</span>
+        <span id="z-delivery-payouts">-$0</span>
       </div>
       <div class="total-row" style="border-top: 1px dashed #000; padding-top: 1mm; font-weight: 900;">
         <span>(=) EFECTIVO ESPERADO:</span>
-        <span id="z-expected">{formatPrice(expectedCash)}</span>
+        <span id="z-expected">$0</span>
       </div>
       <div class="total-row" style="font-size: 12pt; font-weight: 900; margin-top: 1mm;">
         <span>(✓) EFECTIVO CONTADO:</span>
@@ -270,19 +516,19 @@ const grandTotalSales = activeCash ? (activeCash.total_cash_sales + totalDigital
       <div style="font-weight: bold; text-align: center; margin-bottom: 1.5mm;">VENTAS POR OTROS MEDIOS</div>
       <div class="total-row">
         <span>Nequi:</span>
-        <span id="z-nequi">{formatPrice(activeCash?.total_nequi_sales)}</span>
+        <span id="z-nequi">$0</span>
       </div>
       <div class="total-row">
         <span>Daviplata:</span>
-        <span id="z-daviplata">{formatPrice(activeCash?.total_daviplata_sales)}</span>
+        <span id="z-daviplata">$0</span>
       </div>
       <div class="total-row">
         <span>Datáfono / Tarjetas:</span>
-        <span id="z-cards">{formatPrice(activeCash?.total_card_sales)}</span>
+        <span id="z-cards">$0</span>
       </div>
       <div class="total-row grand-total">
         <span>GRAN TOTAL VENDIDO:</span>
-        <span id="z-grand-total">{formatPrice(grandTotalSales)}</span>
+        <span id="z-grand-total">$0</span>
       </div>
     </div>
 
@@ -297,95 +543,487 @@ const grandTotalSales = activeCash ? (activeCash.total_cash_sales + totalDigital
     </div>
   </div>
 
-  <!-- Client Script for Caja -->
-  <script define:vars={{ expectedCash }}>
-    const countedInput = document.getElementById('counted-cash-input');
-    const diffStatus = document.getElementById('diff-status');
-    const diffAmount = document.getElementById('diff-amount');
-    const formOpenCash = document.getElementById('form-open-cash');
-    const formCloseCash = document.getElementById('form-close-cash');
+  <!-- Client Script -->
+  <script is:inline>
+    const fmt = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
 
-    const fmt = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+    let activeClosure = null;
+    let pendingDrafts = [];
+    let selectedDraft = null;
 
-    // Live Difference Calculation
-    if (countedInput) {
-      countedInput.addEventListener('input', (e) => {
-        const val = Number(e.target.value || 0);
-        const diff = val - expectedCash;
+    // Elements
+    const cajaLoading = document.getElementById('caja-loading');
+    const tabCajaContent = document.getElementById('tab-caja-content');
+    const tabBorradoresContent = document.getElementById('tab-borradores-content');
+    const tabBtnCaja = document.getElementById('tab-btn-caja');
+    const tabBtnBorradores = document.getElementById('tab-btn-borradores');
+    const draftsCountBadge = document.getElementById('drafts-count-badge');
+    const cajaBadgeStatus = document.getElementById('caja-badge-status');
 
-        diffAmount.textContent = fmt(diff);
-        if (diff === 0) {
-          diffStatus.textContent = '✅ Cuadre Exacto Perfecto';
-          diffAmount.className = 'font-display font-black text-2xl text-parrilla-accent';
-        } else if (diff > 0) {
-          diffStatus.textContent = '⚠️ Sobrante en caja (+)';
-          diffAmount.className = 'font-display font-black text-2xl text-amber-400';
+    const viewCajaClosed = document.getElementById('view-caja-closed');
+    const viewCajaOpen = document.getElementById('view-caja-open');
+
+    // Tab Navigation
+    tabBtnCaja?.addEventListener('click', () => {
+      tabBtnCaja.className = 'tab-btn active px-4 py-2 rounded-lg text-xs font-bold bg-parrilla-gold text-white shadow-sm transition';
+      tabBtnBorradores.className = 'tab-btn px-4 py-2 rounded-lg text-xs font-bold text-parrilla-ivory hover:text-parrilla-gold transition flex items-center gap-1.5';
+      tabCajaContent.classList.remove('hidden');
+      tabBorradoresContent.classList.add('hidden');
+    });
+
+    tabBtnBorradores?.addEventListener('click', () => {
+      tabBtnBorradores.className = 'tab-btn active px-4 py-2 rounded-lg text-xs font-bold bg-parrilla-gold text-white shadow-sm transition flex items-center gap-1.5';
+      tabBtnCaja.className = 'tab-btn px-4 py-2 rounded-lg text-xs font-bold text-parrilla-ivory hover:text-parrilla-gold transition';
+      tabBorradoresContent.classList.remove('hidden');
+      tabCajaContent.classList.add('hidden');
+      loadPendingDrafts();
+    });
+
+    // 1. CARGAR ESTADO DE CAJA (/api/caja/active)
+    async function loadActiveCaja() {
+      try {
+        const res = await fetch('/api/caja/active');
+        if (!res.ok) throw new Error('Error al consultar caja');
+        const data = await res.json();
+        activeClosure = data;
+
+        cajaLoading.classList.add('hidden');
+        tabCajaContent.classList.remove('hidden');
+
+        if (activeClosure && activeClosure.status === 'OPEN') {
+          renderOpenCaja(activeClosure);
         } else {
-          diffStatus.textContent = '❌ Faltante en caja (-)';
-          diffAmount.className = 'font-display font-black text-2xl text-red-400';
+          renderClosedCaja();
         }
-      });
+      } catch (err) {
+        console.error('Error loadActiveCaja:', err);
+        cajaLoading.innerHTML = `
+          <div class="text-red-500 font-bold p-4 bg-red-50 rounded-xl border border-red-200">
+            Error al conectar con la API de Caja: ${err.message}. Verifica que el backend FastAPI esté ejecutándose en el puerto 8000.
+          </div>
+        `;
+      }
     }
 
-    // Submit Open Cash
-    if (formOpenCash) {
-      formOpenCash.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const initialCash = Number(document.getElementById('open-initial-cash').value);
-        const notes = document.getElementById('open-notes').value;
-
-        const res = await fetch('/api/caja', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'open', initialCash, notes })
-        });
-        const data = await res.json();
-        if (data.success) {
-          window.location.reload();
-        } else {
-          alert('Error al abrir caja: ' + data.error);
-        }
-      });
+    function renderClosedCaja() {
+      cajaBadgeStatus.innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-red-500"></span>
+        <span class="text-red-600">Caja Cerrada</span>
+      `;
+      cajaBadgeStatus.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-200';
+      viewCajaClosed.classList.remove('hidden');
+      viewCajaOpen.classList.add('hidden');
+      loadHistory();
     }
 
-    // Submit Close Cash & Print Report Z
-    if (formCloseCash) {
-      formCloseCash.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const counted = Number(countedInput.value);
-        const notes = document.getElementById('close-notes').value;
-        const diff = counted - expectedCash;
+    function renderOpenCaja(caja) {
+      cajaBadgeStatus.innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-emerald-700">Caja Abierta (Turno #${caja.id})</span>
+      `;
+      cajaBadgeStatus.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300';
 
-        if (!confirm(`¿Confirmas el cierre de caja?\nEfectivo contado: ${fmt(counted)}\nDiferencia: ${fmt(diff)}`)) {
-          return;
-        }
+      document.getElementById('metric-initial-cash').textContent = fmt(caja.initial_cash);
+      document.getElementById('metric-opened-at').textContent = 'Apertura: ' + new Date(caja.opened_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('metric-cash-sales').textContent = fmt(caja.total_cash_sales);
+      
+      const digSales = (caja.total_nequi_sales || 0) + (caja.total_daviplata_sales || 0) + (caja.total_card_sales || 0);
+      document.getElementById('metric-digital-sales').textContent = fmt(digSales);
+      document.getElementById('metric-nequi').textContent = fmt(caja.total_nequi_sales);
+      document.getElementById('metric-daviplata').textContent = fmt(caja.total_daviplata_sales);
+      document.getElementById('metric-card').textContent = fmt(caja.total_card_sales);
 
-        const res = await fetch('/api/caja', {
+      document.getElementById('metric-total-sales').textContent = fmt(caja.total_sales || (caja.total_cash_sales + digSales));
+      document.getElementById('metric-subtotal-sales').textContent = fmt(caja.subtotal_sales || 0);
+      document.getElementById('metric-delivery-payouts').textContent = '-' + fmt(caja.total_delivery_payouts || 0);
+
+      // Expected Cash
+      document.getElementById('metric-expected-cash').textContent = fmt(caja.expected_cash);
+
+      viewCajaClosed.classList.add('hidden');
+      viewCajaOpen.classList.remove('hidden');
+      loadHistory();
+    }
+
+    // 2. ABRIR CAJA (POST /api/caja/open)
+    document.getElementById('form-open-cash')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const initial_cash = Number(document.getElementById('open-initial-cash').value || 0);
+      const notes = document.getElementById('open-notes').value || '';
+
+      const btn = document.getElementById('btn-submit-open');
+      btn.disabled = true;
+      btn.innerHTML = 'Abriendo turno...';
+
+      try {
+        const res = await fetch('/api/caja/open', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'close', countedCash: counted, notes })
+          body: JSON.stringify({ initial_cash, notes })
         });
-
         const data = await res.json();
-        if (!data.success) {
-          alert('Error al cerrar caja: ' + data.error);
-          return;
-        }
+        if (!res.ok) throw new Error(data.detail || data.error || 'Error al abrir caja');
+        await loadActiveCaja();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="unlock" class="w-4 h-4"></i><span>Abrir Caja e Iniciar Turno</span>';
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
 
-        // Fill Z ticket template
-        document.getElementById('z-date').textContent = new Date().toLocaleString('es-CO');
+    // 3. ARQUEO Y CIERRE DE CAJA (POST /api/caja/close)
+    const modalCloseCash = document.getElementById('modal-close-cash');
+    const countedInput = document.getElementById('modal-counted-cash-input');
+    const modalDiffStatus = document.getElementById('modal-diff-status');
+    const modalDiffAmount = document.getElementById('modal-diff-amount');
+    const modalDiffContainer = document.getElementById('modal-diff-container');
+
+    document.getElementById('btn-open-close-modal')?.addEventListener('click', () => {
+      if (!activeClosure) return;
+      document.getElementById('close-modal-initial').textContent = fmt(activeClosure.initial_cash);
+      document.getElementById('close-modal-cash-sales').textContent = fmt(activeClosure.total_cash_sales);
+      document.getElementById('close-modal-delivery-payouts').textContent = '-' + fmt(activeClosure.total_delivery_payouts);
+      document.getElementById('close-modal-expected').textContent = fmt(activeClosure.expected_cash);
+      countedInput.value = '';
+      modalDiffAmount.textContent = '$0';
+      modalDiffStatus.textContent = 'Ingresa el dinero contado';
+      modalDiffContainer.className = 'p-3.5 rounded-xl border border-parrilla-border flex items-center justify-between bg-slate-50';
+      modalCloseCash.classList.remove('hidden');
+      modalCloseCash.classList.add('flex');
+      countedInput.focus();
+    });
+
+    const closeModalCancel = () => {
+      modalCloseCash.classList.add('hidden');
+      modalCloseCash.classList.remove('flex');
+    };
+    document.getElementById('btn-close-modal-cancel')?.addEventListener('click', closeModalCancel);
+    document.getElementById('btn-modal-cancel')?.addEventListener('click', closeModalCancel);
+
+    // Live discrepancy calculation
+    countedInput?.addEventListener('input', (e) => {
+      if (!activeClosure) return;
+      const counted = Number(e.target.value || 0);
+      const expected = Number(activeClosure.expected_cash || 0);
+      const diff = counted - expected;
+
+      modalDiffAmount.textContent = fmt(diff);
+      if (diff === 0) {
+        modalDiffStatus.textContent = '✅ Cuadre Exacto Perfecto';
+        modalDiffAmount.className = 'font-display font-black text-2xl text-emerald-600';
+        modalDiffContainer.className = 'p-3.5 rounded-xl border border-emerald-300 bg-emerald-50 flex items-center justify-between';
+      } else if (diff > 0) {
+        modalDiffStatus.textContent = '⚠️ Sobrante en cajón (+)';
+        modalDiffAmount.className = 'font-display font-black text-2xl text-amber-600';
+        modalDiffContainer.className = 'p-3.5 rounded-xl border border-amber-300 bg-amber-50 flex items-center justify-between';
+      } else {
+        modalDiffStatus.textContent = '❌ Faltante en cajón (-)';
+        modalDiffAmount.className = 'font-display font-black text-2xl text-red-600';
+        modalDiffContainer.className = 'p-3.5 rounded-xl border border-red-300 bg-red-50 flex items-center justify-between';
+      }
+    });
+
+    // Confirm close cash
+    document.getElementById('form-confirm-close-cash')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeClosure) return;
+      const counted_cash = Number(countedInput.value || 0);
+      const notes = document.getElementById('modal-close-notes').value || '';
+      const diff = counted_cash - (activeClosure.expected_cash || 0);
+
+      if (!confirm(`¿Confirmas el cierre del turno #${activeClosure.id}?\n\nEfectivo contado: ${fmt(counted_cash)}\nDiferencia: ${fmt(diff)}`)) {
+        return;
+      }
+
+      const btn = document.getElementById('btn-confirm-close');
+      btn.disabled = true;
+      btn.innerHTML = 'Cerrando caja...';
+
+      try {
+        const res = await fetch('/api/caja/close', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ counted_cash, notes })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || data.error || 'Error al cerrar caja');
+
+        // Llenar e imprimir ticket Z
+        document.getElementById('z-id').textContent = activeClosure.id;
+        document.getElementById('z-date').textContent = new Date().toLocaleDateString('es-CO');
+        document.getElementById('z-opened-at').textContent = new Date(activeClosure.opened_at).toLocaleTimeString('es-CO');
         document.getElementById('z-closed-at').textContent = new Date().toLocaleTimeString('es-CO');
-        document.getElementById('z-counted').textContent = fmt(counted);
+        document.getElementById('z-initial').textContent = fmt(activeClosure.initial_cash);
+        document.getElementById('z-cash-sales').textContent = fmt(activeClosure.total_cash_sales);
+        document.getElementById('z-delivery-payouts').textContent = '-' + fmt(activeClosure.total_delivery_payouts);
+        document.getElementById('z-expected').textContent = fmt(activeClosure.expected_cash);
+        document.getElementById('z-counted').textContent = fmt(counted_cash);
         document.getElementById('z-diff').textContent = fmt(diff);
-        document.getElementById('z-notes').textContent = notes || 'Sin novedades';
+        document.getElementById('z-nequi').textContent = fmt(activeClosure.total_nequi_sales);
+        document.getElementById('z-daviplata').textContent = fmt(activeClosure.total_daviplata_sales);
+        document.getElementById('z-cards').textContent = fmt(activeClosure.total_card_sales);
+        document.getElementById('z-grand-total').textContent = fmt(activeClosure.total_sales);
+        document.getElementById('z-notes').textContent = notes || 'Sin observaciones';
 
-        // PRINT Z REPORT DIRECTLY TO SAT Q22
+        closeModalCancel();
         window.print();
 
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+        setTimeout(async () => {
+          await loadActiveCaja();
+        }, 1200);
+
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="printer" class="w-4 h-4"></i><span>Confirmar Cierre & Reporte Z</span>';
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+
+    // 4. CARGAR HISTORIAL DE CIERRES (/api/caja/history)
+    async function loadHistory() {
+      const tbody = document.getElementById('history-table-body');
+      try {
+        const res = await fetch('/api/caja/history?limit=15');
+        if (!res.ok) return;
+        const closures = await res.json();
+        if (!closures || closures.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" class="py-6 text-center text-parrilla-muted italic">No hay cierres registrados aún.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = closures.map(c => {
+          const diff = c.discrepancy || 0;
+          const diffBadge = diff === 0 
+            ? '<span class="text-emerald-700 font-bold">$0</span>'
+            : (diff > 0 
+              ? `<span class="text-amber-700 font-bold">+${fmt(diff)}</span>`
+              : `<span class="text-red-700 font-bold">${fmt(diff)}</span>`);
+
+          return `
+            <tr class="hover:bg-slate-50 transition">
+              <td class="py-3 px-3 font-mono font-bold text-parrilla-gold">#${c.id}</td>
+              <td class="py-3 px-3 text-parrilla-muted">${new Date(c.opened_at).toLocaleDateString('es-CO')} ${new Date(c.opened_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</td>
+              <td class="py-3 px-3 text-right font-mono">${fmt(c.initial_cash)}</td>
+              <td class="py-3 px-3 text-right font-mono font-bold text-parrilla-ivory">${fmt(c.total_sales)}</td>
+              <td class="py-3 px-3 text-right font-mono text-red-600">-${fmt(c.total_delivery_payouts || 0)}</td>
+              <td class="py-3 px-3 text-right font-mono font-semibold">${fmt(c.expected_cash)}</td>
+              <td class="py-3 px-3 text-right font-mono font-bold">${fmt(c.counted_cash || 0)}</td>
+              <td class="py-3 px-3 text-right font-mono">${diffBadge}</td>
+              <td class="py-3 px-3 text-parrilla-muted truncate max-w-xs">${c.notes || '-'}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="9" class="py-4 text-center text-red-500">Error al cargar historial</td></tr>';
+      }
+    }
+
+    document.getElementById('btn-refresh-caja')?.addEventListener('click', loadActiveCaja);
+    document.getElementById('btn-reload-history')?.addEventListener('click', loadHistory);
+
+    // 5. BANDEJA DE BORRADORES WEB (/api/pedidos/?estado=BORRADOR_WEB)
+    async function loadPendingDrafts() {
+      const container = document.getElementById('drafts-list-container');
+      const emptyState = document.getElementById('drafts-empty-state');
+      try {
+        const res = await fetch('/api/pedidos/?estado=BORRADOR_WEB&limit=50');
+        if (!res.ok) throw new Error('Error al consultar borradores');
+        pendingDrafts = await res.json();
+
+        // Update badge
+        if (pendingDrafts.length > 0) {
+          draftsCountBadge.textContent = pendingDrafts.length;
+          draftsCountBadge.classList.remove('hidden');
+        } else {
+          draftsCountBadge.classList.add('hidden');
+        }
+
+        renderDrafts(pendingDrafts);
+      } catch (err) {
+        container.innerHTML = `<div class="col-span-2 text-center text-red-500 text-xs py-8">Error cargando borradores: ${err.message}</div>`;
+      }
+    }
+
+    function renderDrafts(list) {
+      const container = document.getElementById('drafts-list-container');
+      const emptyState = document.getElementById('drafts-empty-state');
+
+      if (!list || list.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      container.innerHTML = list.map(d => {
+        const itemsSummary = (d.detalles || []).map(item => `
+          <div class="flex justify-between py-1 text-xs border-b border-parrilla-border/40">
+            <span>${item.cantidad}x ${item.plato ? item.plato.nombre : 'Plato'}</span>
+            <span class="font-mono">${fmt(item.precio_unitario * item.cantidad)}</span>
+          </div>
+        `).join('');
+
+        return `
+          <div class="bg-white rounded-2xl border border-parrilla-border p-5 shadow-sm hover:shadow-md transition space-y-3 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between pb-2 border-b border-parrilla-border">
+                <span class="font-mono font-black text-sm text-parrilla-gold bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">${d.codigo_pedido}</span>
+                <span class="text-[11px] text-parrilla-muted">${new Date(d.fecha_hora).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <div class="mt-2.5">
+                <h4 class="font-display font-black text-base text-parrilla-ivory">${d.cliente_nombre || 'Cliente WhatsApp'}</h4>
+                <div class="flex items-center gap-2 text-xs text-parrilla-muted mt-0.5 font-mono">
+                  <span>📞 ${d.cliente_telefono || 'Sin teléfono'}</span>
+                  <span>•</span>
+                  <span class="capitalize">🛵 ${d.tipo.toLowerCase()}</span>
+                </div>
+                ${d.notas ? `<p class="text-xs text-parrilla-muted bg-slate-50 p-2 rounded-lg mt-2 italic">"${d.notas}"</p>` : ''}
+              </div>
+              <div class="mt-3">
+                <span class="text-[10px] font-bold text-parrilla-muted uppercase">Contenido del pedido:</span>
+                <div class="mt-1">${itemsSummary}</div>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-parrilla-border flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-parrilla-muted uppercase block">Total con domicilio:</span>
+                <span class="font-display font-black text-lg text-emerald-600">${fmt(d.total)}</span>
+              </div>
+              <button 
+                type="button" 
+                class="btn-open-approve px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-display font-extrabold text-xs shadow-md flex items-center gap-1.5 transition active:scale-95"
+                data-id="${d.id}"
+              >
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                <span>Revisar y Aprobar</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (window.lucide) window.lucide.createIcons();
+
+      // Bind approve buttons
+      document.querySelectorAll('.btn-open-approve').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.id);
+          const draft = pendingDrafts.find(d => d.id === id);
+          if (draft) openApproveModal(draft);
+        });
       });
     }
+
+    // Filter drafts
+    document.getElementById('draft-search-input')?.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      if (!q) {
+        renderDrafts(pendingDrafts);
+        return;
+      }
+      const filtered = pendingDrafts.filter(d => 
+        (d.codigo_pedido && d.codigo_pedido.toLowerCase().includes(q)) ||
+        (d.cliente_nombre && d.cliente_nombre.toLowerCase().includes(q)) ||
+        (d.cliente_telefono && d.cliente_telefono.toLowerCase().includes(q))
+      );
+      renderDrafts(filtered);
+    });
+
+    document.getElementById('btn-refresh-drafts')?.addEventListener('click', loadPendingDrafts);
+
+    // Modal Approve Draft
+    const modalApprove = document.getElementById('modal-approve-draft');
+    function openApproveModal(draft) {
+      selectedDraft = draft;
+      document.getElementById('appr-code').textContent = draft.codigo_pedido;
+      document.getElementById('appr-name').value = draft.cliente_nombre || 'Cliente';
+      document.getElementById('appr-phone').value = draft.cliente_telefono || '';
+      document.getElementById('appr-delivery').value = draft.delivery_fee || 0;
+      document.getElementById('appr-notes').value = draft.notas || '';
+
+      const itemsList = document.getElementById('appr-items-list');
+      itemsList.innerHTML = (draft.detalles || []).map(it => `
+        <div class="flex justify-between py-1 text-xs">
+          <div>
+            <span class="font-bold text-parrilla-ivory">${it.cantidad}x ${it.plato?.nombre || 'Plato'}</span>
+            ${it.notas_item ? `<span class="block text-[11px] text-parrilla-muted italic">${it.notas_item}</span>` : ''}
+          </div>
+          <span class="font-mono font-bold text-parrilla-gold">${fmt(it.precio_unitario * it.cantidad)}</span>
+        </div>
+      `).join('');
+
+      updateApproveTotals();
+      modalApprove.classList.remove('hidden');
+      modalApprove.classList.add('flex');
+    }
+
+    function updateApproveTotals() {
+      if (!selectedDraft) return;
+      const subtotal = selectedDraft.subtotal || (selectedDraft.detalles || []).reduce((acc, it) => acc + (it.precio_unitario * it.cantidad), 0);
+      const delivery = Number(document.getElementById('appr-delivery').value || 0);
+      const total = subtotal + delivery;
+
+      document.getElementById('appr-subtotal').textContent = fmt(subtotal);
+      document.getElementById('appr-delivery-display').textContent = fmt(delivery);
+      document.getElementById('appr-total').textContent = fmt(total);
+    }
+
+    document.getElementById('appr-delivery')?.addEventListener('input', updateApproveTotals);
+
+    const closeApproveModal = () => {
+      modalApprove.classList.add('hidden');
+      modalApprove.classList.remove('flex');
+      selectedDraft = null;
+    };
+    document.getElementById('btn-appr-close')?.addEventListener('click', closeApproveModal);
+    document.getElementById('btn-appr-cancel')?.addEventListener('click', closeApproveModal);
+
+    // Confirm approve
+    document.getElementById('btn-appr-confirm')?.addEventListener('click', async () => {
+      if (!selectedDraft) return;
+      const btn = document.getElementById('btn-appr-confirm');
+      btn.disabled = true;
+      btn.innerHTML = 'Aprobando pedido...';
+
+      const payload = {
+        cliente_nombre: document.getElementById('appr-name').value,
+        cliente_telefono: document.getElementById('appr-phone').value,
+        delivery_fee: Number(document.getElementById('appr-delivery').value || 0),
+        notas: document.getElementById('appr-notes').value
+      };
+
+      try {
+        const res = await fetch(`/api/pedidos/${selectedDraft.id}/aprobar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || data.error || 'Error al aprobar pedido');
+
+        alert(`✅ Pedido ${selectedDraft.codigo_pedido} aprobado exitosamente y enviado a cocina. El stock ha sido descontado.`);
+        closeApproveModal();
+        await loadPendingDrafts();
+      } catch (err) {
+        alert('Error al aprobar: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Aprobar y Enviar a Cocina</span>';
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+
+    // Auto Init
+    document.addEventListener('DOMContentLoaded', () => {
+      loadActiveCaja();
+      loadPendingDrafts();
+      // Auto-refresh drafts badge every 20 seconds
+      setInterval(loadPendingDrafts, 20000);
+    });
   </script>
 </StaffLayout>
