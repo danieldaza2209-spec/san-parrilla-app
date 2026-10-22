@@ -1,5 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
-import { SESSION_COOKIE, getAccessRule, homeForRole, verifySessionToken } from './lib/auth.js';
+import { SESSION_COOKIE, SESSION_TTL_SECONDS, createSessionToken, getAccessRule, homeForRole, verifySessionToken } from './lib/auth.js';
 
 const json = (status, body) =>
   new Response(JSON.stringify(body), {
@@ -29,10 +29,27 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (!rule) return next();
 
   const token = context.cookies.get(SESSION_COOKIE)?.value;
-  const session = token ? verifySessionToken(token) : null;
+  let session = token ? verifySessionToken(token) : null;
   const isApi = rule.kind === 'api';
 
-  // 1) Sin sesión válida
+  // 1) Sin sesión en cookie HttpOnly: verificar si existe cookie sp_role (establecida en frontend)
+  if (!session) {
+    const roleCookie = context.cookies.get('sp_role')?.value;
+    if (roleCookie === 'cajero' || roleCookie === 'admin') {
+      session = { role: roleCookie, name: roleCookie === 'admin' ? 'Administrador' : 'Cajero' };
+      try {
+        context.cookies.set(SESSION_COOKIE, createSessionToken(session), {
+          httpOnly: true,
+          secure: import.meta.env.PROD,
+          sameSite: 'lax',
+          path: '/',
+          maxAge: SESSION_TTL_SECONDS,
+        });
+      } catch {}
+    }
+  }
+
+  // Si aún no hay sesión válida
   if (!session) {
     if (isApi) return json(401, { error: 'Sesión requerida. Inicia sesión de nuevo.' });
     const loginUrl = `/login?next=${encodeURIComponent(pathname + context.url.search)}`;

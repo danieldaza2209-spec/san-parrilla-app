@@ -129,26 +129,28 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
         const next = new URLSearchParams(window.location.search).get('next') || '';
         let role: string | null = null;
 
-        // Validación de roles por PIN (1111 = Cajero/POS, 2222 = Administrador)
-        if (pin === '1111') {
-          role = 'cajero';
-        } else if (pin === '2222') {
-          role = 'admin';
-        } else {
-          // Intentar validar contra el endpoint por si hay PIN personalizado en variables de entorno
-          try {
-            const res = await fetch('/api/auth/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ pin, next }),
-            });
-            if (res.ok) {
-              const data = await res.json().catch(() => ({}));
-              if (data.success && data.role) {
-                role = data.role;
-              }
+        // Intentar siempre autenticar en el servidor para obtener la cookie de sesión HttpOnly
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin, next }),
+          });
+          if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            if (data.success && data.role) {
+              role = data.role;
             }
-          } catch {}
+          }
+        } catch {}
+
+        // Fallback de contingencia local si la red falla
+        if (!role) {
+          if (pin === '1111') {
+            role = 'cajero';
+          } else if (pin === '2222') {
+            role = 'admin';
+          }
         }
 
         if (role) {
