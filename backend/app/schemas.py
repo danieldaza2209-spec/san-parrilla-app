@@ -211,6 +211,23 @@ class CashClosureOpen(BaseModel):
     initial_cash: float = Field(default=0.0, ge=0, description="Base de efectivo inicial al abrir caja")
     notes: Optional[str] = None
 
+class CashExpenseCreate(BaseModel):
+    description: str = Field(min_length=1, max_length=255, description="Concepto del gasto menor")
+    amount: float = Field(gt=0, description="Monto en efectivo sacado de la caja")
+    category: Optional[str] = Field(default="INSUMOS", max_length=50, description="Categoría opcional (INSUMOS, SERVICIOS, OTROS)")
+
+
+class CashExpenseOut(BaseModel):
+    id: int
+    cash_closure_id: int
+    description: str
+    category: Optional[str] = "INSUMOS"
+    amount: float
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class CashClosureClose(BaseModel):
     counted_cash: float = Field(ge=0, description="Efectivo total contado físicamente en caja")
     notes: Optional[str] = None
@@ -227,6 +244,7 @@ class CashClosureOut(BaseModel):
     total_card_sales: float = 0.0
     total_delivery_fees: float = 0.0
     total_delivery_payouts: float = 0.0
+    total_expenses: float = 0.0
     subtotal_sales: float = 0.0
     total_sales: float = 0.0
     expected_cash: float = 0.0
@@ -234,6 +252,7 @@ class CashClosureOut(BaseModel):
     discrepancy: Optional[float] = None
     notes: Optional[str] = None
     payments: List[PaymentOut] = []
+    expenses: List[CashExpenseOut] = []
 
     model_config = ConfigDict(from_attributes=True)
 

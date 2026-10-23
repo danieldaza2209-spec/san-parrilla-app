@@ -282,48 +282,179 @@ const formatPrice = (val) => {
           </div>
         </div>
 
-        <!-- ACTION BUTTONS: COBRAR E IMPRIMIR SAT Q22 -->
-        <div class="flex items-center gap-2 pt-1">
-          <button 
-            type="button" 
-            id="btn-clear-cart" 
-            class="px-3.5 py-3 rounded-xl bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border text-xs font-bold transition"
-          >
-            Limpiar
-          </button>
+        <!-- ACTION BUTTONS: COBRAR, COMANDA COCINA Y GASTO CAJA -->
+        <div class="space-y-2 pt-1">
+          <div class="grid grid-cols-2 gap-2">
+            <button 
+              type="button" 
+              id="btn-print-kitchen-cart" 
+              class="py-2.5 px-3 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+              title="Imprime la comanda de cocina directamente con los platos en el carrito"
+            >
+              <i data-lucide="utensils" class="w-4 h-4 text-orange-600"></i>
+              <span>🍳 Comanda Cocina</span>
+            </button>
 
-          <button 
-            type="button" 
-            id="btn-quick-test-print" 
-            class="px-3 py-3 rounded-xl bg-orange-50 hover:bg-orange-100 text-parrilla-gold border border-orange-200 text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap"
-            title="Carga automáticamente el combo de prueba y lanza la impresión a la SAT Q22"
-          >
-            <i data-lucide="zap" class="w-4 h-4 text-parrilla-gold"></i>
-            <span>Test SAT Q22</span>
-          </button>
+            <button 
+              type="button" 
+              id="btn-quick-expense-pos" 
+              class="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+              title="Registrar salida de efectivo menor desde la caja"
+            >
+              <i data-lucide="wallet" class="w-4 h-4 text-amber-600"></i>
+              <span>💰 + Gasto Caja</span>
+            </button>
+          </div>
 
-          <button 
-            type="button" 
-            id="btn-checkout-print" 
-            class="flex-1 py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-base shadow-lg shadow-orange-700/20 flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <i data-lucide="printer" class="w-5 h-5"></i>
-            <span>Cobrar e Imprimir (SAT Q22)</span>
-          </button>
+          <div class="flex items-center gap-2">
+            <button 
+              type="button" 
+              id="btn-clear-cart" 
+              class="px-3.5 py-3.5 rounded-xl bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border text-xs font-bold transition"
+              title="Vaciar comanda"
+            >
+              Limpiar
+            </button>
+
+            <button 
+              type="button" 
+              id="btn-quick-test-print" 
+              class="px-3 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-parrilla-muted border border-parrilla-border text-xs font-bold transition flex items-center gap-1"
+              title="Test de impresión térmica"
+            >
+              <i data-lucide="zap" class="w-4 h-4 text-parrilla-gold"></i>
+              <span>Test</span>
+            </button>
+
+            <button 
+              type="button" 
+              id="btn-checkout-print" 
+              class="flex-1 py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-sm shadow-lg shadow-orange-700/20 flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <i data-lucide="printer" class="w-4 h-4"></i>
+              <span>Cobrar e Imprimir</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Reimprimir el último ticket (sin cobrar de nuevo) -->
-        <button
-          type="button"
-          id="btn-reprint"
-          class="hidden w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-parrilla-ivory border border-parrilla-border text-xs font-bold transition items-center justify-center gap-2"
-        >
-          <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-          <span id="btn-reprint-label">Reimprimir último ticket</span>
-        </button>
+        <!-- BARRA DE REIMPRESIÓN (3 FORMATOS TÉRMICOS 80MM) -->
+        <div id="reprint-bar" class="hidden bg-slate-50 border border-parrilla-border rounded-xl p-3 space-y-2">
+          <div class="flex items-center justify-between text-xs font-bold text-parrilla-muted">
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-parrilla-gold"></i>
+              <span id="reprint-order-label">Último Pedido (#000)</span>
+            </span>
+            <span class="text-[10px] text-emerald-600 font-mono font-bold">Cobrado con éxito</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button 
+              type="button" 
+              id="btn-reprint-customer" 
+              class="py-2 px-1 rounded-lg bg-white hover:bg-slate-100 border border-parrilla-border text-[11px] font-bold text-parrilla-ivory hover:text-parrilla-gold transition flex items-center justify-center gap-1 shadow-xs"
+              title="Reimprimir cuenta o recibo para el cliente"
+            >
+              <span>🧾 Cliente</span>
+            </button>
+            <button 
+              type="button" 
+              id="btn-reprint-kitchen" 
+              class="py-2 px-1 rounded-lg bg-white hover:bg-slate-100 border border-parrilla-border text-[11px] font-bold text-parrilla-ivory hover:text-orange-600 transition flex items-center justify-center gap-1 shadow-xs"
+              title="Reimprimir comanda de cocina sin precios"
+            >
+              <span>🍳 Cocina</span>
+            </button>
+            <button 
+              type="button" 
+              id="btn-reprint-courier" 
+              class="py-2 px-1 rounded-lg bg-white hover:bg-slate-100 border border-parrilla-border text-[11px] font-bold text-parrilla-ivory hover:text-emerald-600 transition flex items-center justify-center gap-1 shadow-xs"
+              title="Reimprimir ticket / guía de entrega para mensajero"
+            >
+              <span>🛵 Mensajero</span>
+            </button>
+          </div>
+        </div>
 
       </div>
 
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       MODAL RÁPIDO: REGISTRAR GASTO DE CAJA MENOR (DESDE POS)
+       ============================================================== -->
+  <div id="modal-add-expense-pos" class="no-print fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-parrilla-border max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-parrilla-border pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            <i data-lucide="wallet" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-display font-black text-lg text-parrilla-ivory">Gasto de Caja Menor</h3>
+            <span class="text-[11px] text-parrilla-muted">Registrar salida de efectivo físico</span>
+          </div>
+        </div>
+        <button type="button" id="btn-expense-pos-close" class="text-parrilla-muted hover:text-parrilla-ivory">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-add-expense-pos" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Monto en Efectivo ($) *</label>
+          <input 
+            type="number" 
+            id="expense-pos-amount" 
+            placeholder="Ej. 10000" 
+            step="500" 
+            min="500"
+            required
+            class="w-full px-4 py-3 bg-slate-50 rounded-xl border border-parrilla-border text-2xl font-bold font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
+          />
+          <span class="text-[11px] text-parrilla-muted mt-1 block">Se restará automáticamente del arqueo de caja de hoy.</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-parrilla-muted mb-1">Concepto / Descripción *</label>
+          <input 
+            type="text" 
+            id="expense-pos-description" 
+            placeholder="Ej. Pago verduras, Paca de agua, Bolsas" 
+            required
+            class="w-full px-4 py-2.5 bg-slate-50 rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-parrilla-muted mb-1">Categoría</label>
+          <select 
+            id="expense-pos-category" 
+            class="w-full px-4 py-2.5 bg-slate-50 rounded-xl border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+          >
+            <option value="INSUMOS">🥬 Insumos / Verduras / Carnes</option>
+            <option value="SERVICIOS">💡 Servicios / Domicilios Internos</option>
+            <option value="OTROS" selected>📦 Otros Gastos / Desechables</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button 
+            type="button" 
+            id="btn-expense-pos-cancel" 
+            class="flex-1 py-3 rounded-xl border border-parrilla-border text-parrilla-muted hover:bg-slate-100 font-bold text-xs"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            id="btn-submit-expense-pos"
+            class="flex-1 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-display font-black text-xs shadow-md flex items-center justify-center gap-1.5"
+          >
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Registrar Salida</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -479,12 +610,34 @@ const formatPrice = (val) => {
         </div>
       </div>
 
+      <!-- SELECCIÓN DE TICKETS A IMPRIMIR (80MM) -->
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-parrilla-border space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="block text-[11px] font-bold text-parrilla-gold uppercase tracking-wider">Impresión Térmica 80mm al Confirmar:</span>
+          <span class="text-[10px] text-parrilla-muted font-mono">POS-80C / SAT Q22</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-4 text-xs">
+          <label class="flex items-center gap-2 cursor-pointer font-bold text-parrilla-ivory hover:text-parrilla-gold transition select-none">
+            <input type="checkbox" id="chk-print-customer" checked class="w-4 h-4 rounded text-parrilla-gold focus:ring-0 cursor-pointer" />
+            <span>🧾 Cuenta Cliente</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer font-bold text-parrilla-ivory hover:text-orange-600 transition select-none">
+            <input type="checkbox" id="chk-print-kitchen" checked class="w-4 h-4 rounded text-orange-600 focus:ring-0 cursor-pointer" />
+            <span>🍳 Comanda Cocina</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer font-bold text-parrilla-ivory hover:text-emerald-600 transition select-none" id="chk-courier-wrapper">
+            <input type="checkbox" id="chk-print-courier" class="w-4 h-4 rounded text-emerald-600 focus:ring-0 cursor-pointer" />
+            <span>🛵 Guía Mensajero</span>
+          </label>
+        </div>
+      </div>
+
       <!-- Footer Buttons -->
       <div class="flex items-center gap-2 pt-2">
         <button 
           type="button" 
           id="btn-cancel-cobro" 
-          class="flex-1 py-3 rounded-xl border border-parrilla-border text-parrilla-muted hover:bg-slate-100 font-bold text-xs"
+          class="py-3 px-4 rounded-xl border border-parrilla-border text-parrilla-muted hover:bg-slate-100 font-bold text-xs"
         >
           Cancelar
         </button>
@@ -494,7 +647,7 @@ const formatPrice = (val) => {
           class="flex-1 py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-xs shadow-lg flex items-center justify-center gap-2 transition active:scale-95"
         >
           <i data-lucide="printer" class="w-4 h-4"></i>
-          <span>Confirmar e Imprimir (SAT Q22)</span>
+          <span>Confirmar Pago y Generar Comanda</span>
         </button>
       </div>
 
@@ -502,107 +655,12 @@ const formatPrice = (val) => {
   </div>
 
   <!-- ==============================================================
-       THERMAL TICKET TEMPLATE FOR SAT Q22 (80MM ROLL)
-       Invisible in screen, perfectly formatted for @media print
+       THERMAL TICKET CONTAINER FOR 80MM PRINTER (POS-80C / SAT Q22)
+       Invisible in screen, only element visible in @media print
+       Dynamically filled with: Kitchen, Courier, or Customer template
        ============================================================== -->
   <div id="printable-ticket" class="receipt-ticket hidden">
-    <!-- Header -->
-    <div class="ticket-header">
-      <h1 class="restaurant-name">SAN PARRILLA</h1>
-      <p style="margin: 1mm 0; font-size: 9.5pt;">Fogón, Carbón & Sazón Casero</p>
-      <p style="margin: 0; font-size: 9pt;">Tel / WhatsApp: 318 382 1787</p>
-      <div id="ticket-badge" class="ticket-badge">CUENTA MESA</div>
-      <div style="font-size: 8.5pt; margin-top: 1mm;">
-        <span>Fecha: <strong id="t-date">--/--/--</strong></span> | 
-        <span>Ticket #: <strong id="t-id">000</strong></span>
-      </div>
-    </div>
-
-    <!-- SECCIÓN MENSAJERO / DOMICILIO (RESALTADO EN GRANDE) -->
-    <div id="t-delivery-box" class="delivery-banner" style="display: none;">
-      <div class="delivery-title">DOMICILIO - MENSAJERO</div>
-      <div>
-        <span style="font-size: 9pt;">CLIENTE:</span>
-        <div id="t-cust-name" style="font-size: 13pt; font-weight: 900; text-transform: uppercase;">--</div>
-      </div>
-      <div style="margin-top: 1.5mm;">
-        <span style="font-size: 9pt;">TELÉFONO (LLAMAR):</span>
-        <div id="t-cust-phone" class="delivery-phone">--</div>
-      </div>
-      <div style="margin-top: 1.5mm;">
-        <span style="font-size: 9pt;">DIRECCIÓN DE ENTREGA:</span>
-        <div id="t-cust-address" class="delivery-address">--</div>
-        <div id="t-cust-notes" style="font-size: 10pt; font-style: italic; margin-top: 0.5mm;">--</div>
-      </div>
-      <div style="margin-top: 2mm; border-top: 2px solid #000; padding-top: 1.5mm;">
-        <div style="display: flex; justify-content: space-between; font-size: 13pt; font-weight: 900;">
-          <span>COBRAR:</span>
-          <span id="t-courier-collect">$0</span>
-        </div>
-        <div id="t-courier-change-row" style="display: none; justify-content: space-between; font-size: 11pt; font-weight: bold; margin-top: 0.5mm;">
-          <span>LLEVAR VUELTAS:</span>
-          <span id="t-courier-change">$0</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Mesa si aplica -->
-    <div id="t-mesa-box" style="margin-bottom: 2mm; font-weight: bold; font-size: 11pt;">
-      UBICACIÓN: <span id="t-mesa-val">Mesa 1</span>
-    </div>
-
-    <!-- Items Table -->
-    <table class="items-table">
-      <thead>
-        <tr>
-          <th style="width: 15%;">CANT</th>
-          <th style="width: 55%;">DESCRIPCIÓN</th>
-          <th style="width: 30%; text-align: right;">VALOR</th>
-        </tr>
-      </thead>
-      <tbody id="t-items-body">
-        <!-- Injected by print trigger -->
-      </tbody>
-    </table>
-
-    <!-- Totals -->
-    <div class="totals-box">
-      <div class="total-row">
-        <span>Subtotal:</span>
-        <span id="t-subtotal">$0</span>
-      </div>
-      <div class="total-row" id="t-row-delivery" style="display: none;">
-        <span>Envío Domicilio:</span>
-        <span id="t-delivery-fee">$0</span>
-      </div>
-      <div class="total-row grand-total">
-        <span>TOTAL A COBRAR:</span>
-        <span id="t-total">$0</span>
-      </div>
-      <div class="total-row" style="font-weight: bold; margin-top: 1mm;">
-        <span>FORMA DE PAGO:</span>
-        <span id="t-payment-method" style="text-transform: uppercase;">EFECTIVO</span>
-      </div>
-    </div>
-
-    <!-- Cambio para mensajero/caja si efectivo -->
-    <div id="t-change-box" class="change-box" style="display: none;">
-      <div class="total-row">
-        <span>Cliente paga con:</span>
-        <strong id="t-cash-paid">$0</strong>
-      </div>
-      <div class="total-row" style="font-size: 12pt; font-weight: 900; margin-top: 1mm;">
-        <span>VUELTAS A LLEVAR:</span>
-        <strong id="t-cash-change">$0</strong>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="ticket-footer">
-      <p style="margin: 0; font-weight: bold;">¡MUCHAS GRACIAS POR SU COMPRA!</p>
-      <p style="margin: 1mm 0 0 0; font-size: 8.5pt;">Síguenos y califícanos en redes sociales</p>
-      <p style="margin: 4mm 0 0 0; font-size: 8pt;">- Software San Parrilla POS -</p>
-    </div>
+    <!-- Contenido inyectado dinámicamente según el formato solicitado -->
   </div>
 
   <!-- ==============================================================
@@ -840,6 +898,22 @@ const formatPrice = (val) => {
         formMesa.style.display = 'none';
         formDomicilio.style.display = 'none';
       }
+
+      // Update Courier Checkbox in Modal
+      const chkCourierWrapper = document.getElementById('chk-courier-wrapper');
+      const chkCourier = document.getElementById('chk-print-courier');
+      if (chkCourierWrapper && chkCourier) {
+        if (type === 'domicilio') {
+          chkCourierWrapper.style.display = 'flex';
+          // @ts-ignore
+          chkCourier.checked = true;
+        } else {
+          chkCourierWrapper.style.display = 'none';
+          // @ts-ignore
+          chkCourier.checked = false;
+        }
+      }
+
       renderCart();
     }
 
@@ -1240,22 +1314,140 @@ const formatPrice = (val) => {
         cashReceivedInput.value = '';
         renderCart();
 
-        // Breve espera para que el DOM oculte el modal antes de disparar window.print()
-        setTimeout(() => {
-          printTicket(ticket);
-        }, 120);
+        // Leer opciones de tickets a imprimir marcadas por el cajero
+        // @ts-ignore
+        const wantCustomer = document.getElementById('chk-print-customer')?.checked ?? true;
+        // @ts-ignore
+        const wantKitchen = document.getElementById('chk-print-kitchen')?.checked ?? true;
+        // @ts-ignore
+        const wantCourier = (currentOrderType === 'domicilio') && (document.getElementById('chk-print-courier')?.checked ?? true);
+
+        // Armar cola de impresión
+        const printQueue = [];
+        if (wantKitchen) printQueue.push('kitchen');
+        if (wantCourier) printQueue.push('courier');
+        if (wantCustomer) printQueue.push('customer');
+
+        if (printQueue.length === 0) {
+          printQueue.push('customer');
+        }
+
+        // Ejecutar impresión secuencial para impresora térmica
+        (async () => {
+          for (let i = 0; i < printQueue.length; i++) {
+            printTicketType(ticket, printQueue[i]);
+            if (i < printQueue.length - 1) {
+              await new Promise(r => setTimeout(r, 650));
+            }
+          }
+        })();
 
       } catch (err) {
         alert('Ocurrió un error al cobrar: ' + err.message);
       } finally {
         btnConfirmPayment.disabled = false;
-        btnConfirmPayment.innerHTML = '<i data-lucide="printer" class="w-4 h-4"></i><span>Confirmar e Imprimir (SAT Q22)</span>';
+        btnConfirmPayment.innerHTML = '<i data-lucide="printer" class="w-4 h-4"></i><span>Confirmar Pago y Generar Comanda</span>';
         // @ts-ignore
         if (window.lucide) window.lucide.createIcons();
       }
     });
 
-    // 9. CHECK FOR PENDING WHATSAPP DRAFTS
+    // 9. COMANDA DIRECTA DE COCINA DESDE EL CARRITO
+    document.getElementById('btn-print-kitchen-cart')?.addEventListener('click', () => {
+      if (cart.length === 0) {
+        alert('Por favor agrega al menos un plato a la comanda para imprimir la orden de cocina.');
+        return;
+      }
+
+      const tempTicket = {
+        id: 'COCINA-' + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+        createdAt: new Date().toISOString(),
+        orderType: currentOrderType,
+        // @ts-ignore
+        table: currentOrderType === 'mesa' ? (tableInput.value || 'Mesa 1') : '',
+        // @ts-ignore
+        customerName: currentOrderType === 'domicilio' ? custNameInput.value.trim() : '',
+        // @ts-ignore
+        customerPhone: currentOrderType === 'domicilio' ? custPhoneInput.value.trim() : '',
+        items: cart.map(({ name, price, quantity, notes }) => ({ name, price, quantity, notes: notes || '' })),
+        subtotal: cart.reduce((acc, it) => acc + (it.price * it.quantity), 0),
+        // @ts-ignore
+        deliveryFee: currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0,
+        total: 0,
+        paymentMethod: 'PENDIENTE'
+      };
+
+      printTicketType(tempTicket, 'kitchen');
+    });
+
+    // 10. MODAL RÁPIDO DE GASTO DE CAJA MENOR DESDE POS
+    const modalExpensePos = document.getElementById('modal-add-expense-pos');
+    const openExpensePosModal = () => {
+      // @ts-ignore
+      document.getElementById('expense-pos-amount').value = '';
+      // @ts-ignore
+      document.getElementById('expense-pos-description').value = '';
+      // @ts-ignore
+      document.getElementById('expense-pos-category').value = 'OTROS';
+      modalExpensePos?.classList.remove('hidden');
+      modalExpensePos?.classList.add('flex');
+      // @ts-ignore
+      document.getElementById('expense-pos-amount')?.focus();
+    };
+
+    const closeExpensePosModal = () => {
+      modalExpensePos?.classList.add('hidden');
+      modalExpensePos?.classList.remove('flex');
+    };
+
+    document.getElementById('btn-quick-expense-pos')?.addEventListener('click', openExpensePosModal);
+    document.getElementById('btn-expense-pos-close')?.addEventListener('click', closeExpensePosModal);
+    document.getElementById('btn-expense-pos-cancel')?.addEventListener('click', closeExpensePosModal);
+
+    document.getElementById('form-add-expense-pos')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      // @ts-ignore
+      const amount = Number(document.getElementById('expense-pos-amount').value || 0);
+      // @ts-ignore
+      const description = document.getElementById('expense-pos-description').value.trim();
+      // @ts-ignore
+      const category = document.getElementById('expense-pos-category').value;
+
+      if (!amount || amount <= 0) {
+        alert('Ingresa un monto en efectivo válido mayor a 0');
+        return;
+      }
+      if (!description) {
+        alert('Ingresa una descripción del gasto (ej. verduras, agua)');
+        return;
+      }
+
+      const btn = document.getElementById('btn-submit-expense-pos');
+      btn.disabled = true;
+      btn.innerHTML = 'Guardando...';
+
+      try {
+        const res = await fetch('/api/caja/expenses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount, description, category })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || data.error || 'Error al registrar gasto');
+
+        alert(`✅ Gasto de ${fmt(amount)} registrado exitosamente en la caja activa.`);
+        closeExpensePosModal();
+      } catch (err) {
+        alert('Error al registrar gasto: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Registrar Salida</span>';
+        // @ts-ignore
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+
+    // 11. CHECK FOR PENDING WHATSAPP DRAFTS
     async function checkPendingDrafts() {
       try {
         const res = await fetch('/api/pedidos/?estado=BORRADOR_WEB&limit=20');
@@ -1281,18 +1473,17 @@ const formatPrice = (val) => {
     setInterval(checkPendingDrafts, 15000);
 
     // ==============================================================
-    //  TICKET: armar, imprimir y reimprimir (SAT Q22 - 80mm)
+    //  LOS 3 FORMATOS DE IMPRESIÓN TÉRMICA 80MM (POS-80C / SAT Q22)
+    //  1. Comanda de Cocina (printKitchenTicket)
+    //  2. Ticket Mensajero (printCourierTicket)
+    //  3. Cuenta Cliente (printCustomerReceipt)
     // ==============================================================
     const LAST_TICKET_KEY = 'sp_last_ticket';
-    const reprintBtn = document.getElementById('btn-reprint');
-    const reprintLabel = document.getElementById('btn-reprint-label');
-
-    const byId = (id) => document.getElementById(id);
 
     function saveLastTicket(ticket) {
       try {
         localStorage.setItem(LAST_TICKET_KEY, JSON.stringify(ticket));
-      } catch (e) { /* almacenamiento lleno o bloqueado: no es crítico */ }
+      } catch (e) {}
       refreshReprintButton();
     }
 
@@ -1306,100 +1497,336 @@ const formatPrice = (val) => {
 
     function refreshReprintButton() {
       const last = loadLastTicket();
-      if (!reprintBtn || !last) return;
-      reprintLabel.textContent = 'Reimprimir último ticket (#' + last.id + ')';
-      reprintBtn.classList.remove('hidden');
-      reprintBtn.classList.add('flex');
-    }
+      const reprintBar = document.getElementById('reprint-bar');
+      const reprintLabel = document.getElementById('reprint-order-label');
+      const btnCourier = document.getElementById('btn-reprint-courier');
+      if (!reprintBar || !last) return;
 
-    // Llena el ticket oculto con los datos. Todo se inserta con textContent (nunca HTML crudo).
-    function fillTicket(t, isCopy) {
-      const when = new Date(t.createdAt || Date.now()).toLocaleString('es-CO');
-      byId('t-id').textContent = (t.id && (t.id.toString().startsWith('#') || t.id.toString().startsWith('SP-'))) ? t.id : '#' + (t.id || '001');
-      byId('t-date').textContent = when + (isCopy ? ' - COPIA' : '');
-      byId('t-payment-method').textContent = t.paymentMethod;
+      const codeStr = (last.id && (last.id.toString().startsWith('#') || last.id.toString().startsWith('SP-'))) ? last.id : '#' + (last.id || '001');
+      if (reprintLabel) reprintLabel.textContent = `Último Pedido (${codeStr})`;
 
-      const isDelivery = t.orderType === 'domicilio';
-      byId('ticket-badge').textContent = isDelivery ? 'DOMICILIO' : (t.orderType === 'mesa' ? 'CUENTA MESA' : 'PARA LLEVAR');
-      byId('t-delivery-box').style.display = isDelivery ? 'block' : 'none';
-      byId('t-mesa-box').style.display = isDelivery ? 'none' : 'block';
-      byId('t-row-delivery').style.display = isDelivery ? 'flex' : 'none';
-
-      if (isDelivery) {
-        byId('t-cust-name').textContent = t.customerName;
-        byId('t-cust-phone').textContent = t.customerPhone;
-        byId('t-cust-address').textContent = t.address;
-        byId('t-cust-notes').textContent = t.neighborhood || '';
-        byId('t-delivery-fee').textContent = fmt(t.deliveryFee);
-        byId('t-courier-collect').textContent = fmt(t.total);
-
-        const hasChange = t.paymentMethod === 'efectivo' && t.cashPaid > t.total;
-        byId('t-courier-change-row').style.display = hasChange ? 'flex' : 'none';
-        byId('t-courier-change').textContent = hasChange ? fmt(t.cashPaid - t.total) : '$0';
-      } else {
-        byId('t-mesa-val').textContent = t.table || 'Mesa';
+      // Mostrar botón de mensajero solo si fue domicilio
+      if (btnCourier) {
+        btnCourier.style.display = last.orderType === 'domicilio' ? 'flex' : 'none';
       }
 
-      const body = byId('t-items-body');
-      body.replaceChildren();
-      t.items.forEach((it) => {
-        const row = document.createElement('tr');
+      reprintBar.classList.remove('hidden');
+    }
 
-        const qty = document.createElement('td');
-        qty.className = 'item-qty';
-        qty.textContent = it.quantity;
+    // 1. FORMATO: COMANDA DE COCINA (SIN PRECIOS, LETRA GRANDE, NOTAS RESALTADAS)
+    function renderKitchenTicketHTML(t) {
+      const timeStr = new Date(t.createdAt || Date.now()).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+      const dateStr = new Date(t.createdAt || Date.now()).toLocaleDateString('es-CO');
+      const codeStr = (t.id && (t.id.toString().startsWith('#') || t.id.toString().startsWith('SP-'))) ? t.id : '#' + (t.id || '001');
 
-        const name = document.createElement('td');
-        name.textContent = it.name;
+      let ubicacionStr = 'MESA 1';
+      if (t.orderType === 'mesa') {
+        ubicacionStr = `UBICACIÓN: ${t.table || 'MESA'}`.toUpperCase();
+      } else if (t.orderType === 'domicilio') {
+        ubicacionStr = `🛵 DOMICILIO ${t.customerName ? '- ' + t.customerName : ''}`.toUpperCase();
+      } else {
+        ubicacionStr = '📦 PARA LLEVAR'.toUpperCase();
+      }
+
+      const itemsHtml = (t.items || []).map(it => {
+        let notesHtml = '';
         if (it.notes) {
-          const notesParts = it.notes.split('|');
-          notesParts.forEach((part) => {
-            const trimmed = part.trim();
-            if (trimmed) {
-              const noteDiv = document.createElement('div');
-              noteDiv.className = 'item-note';
-              noteDiv.textContent = '└ ' + trimmed;
-              name.appendChild(noteDiv);
-            }
-          });
+          const parts = it.notes.split('|').map(s => s.trim()).filter(Boolean);
+          notesHtml = parts.map(p => `
+            <div style="font-size: 10pt; font-weight: bold; margin-top: 1mm; padding-left: 2mm;">
+              └ ${p}
+            </div>
+          `).join('');
         }
 
-        const price = document.createElement('td');
-        price.style.cssText = 'text-align: right; font-weight: bold; white-space: nowrap;';
-        price.textContent = fmt(it.price * it.quantity);
+        return `
+          <div style="border-bottom: 1.5px dashed #000; padding: 2.5mm 0; break-inside: avoid;">
+            <div style="display: flex; align-items: flex-start; gap: 2.5mm;">
+              <span style="font-size: 17pt; font-weight: 900; line-height: 1; min-width: 48px; border: 1.5px solid #000; text-align: center; padding: 1mm 0;">
+                ${it.quantity}X
+              </span>
+              <div style="flex: 1;">
+                <div style="font-size: 13pt; font-weight: 900; text-transform: uppercase; line-height: 1.2;">
+                  ${it.name}
+                </div>
+                ${notesHtml}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
 
-        row.append(qty, name, price);
-        body.appendChild(row);
-      });
+      return `
+        <div class="ticket-header" style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 2mm; margin-bottom: 2.5mm;">
+          <div style="display: inline-block; border: 2.5px solid #000; padding: 1.5mm 4mm; font-size: 14pt; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 1.5mm;">
+            🍳 COMANDA DE COCINA
+          </div>
+          <div style="font-size: 14pt; font-weight: 900; margin: 1mm 0; text-transform: uppercase;">
+            ${ubicacionStr}
+          </div>
+          <div style="font-size: 9.5pt; font-family: monospace; margin-top: 1mm;">
+            <span>Orden: <strong>${codeStr}</strong></span> | <span>Hora: <strong>${timeStr}</strong></span>
+          </div>
+        </div>
 
-      byId('t-subtotal').textContent = fmt(t.subtotal);
-      byId('t-total').textContent = fmt(t.total);
+        <div style="margin: 2mm 0;">
+          ${itemsHtml}
+        </div>
 
-      const showChange = (t.paymentMethod === 'efectivo' || t.paymentMethod === 'CASH') && t.cashPaid > 0;
-      byId('t-change-box').style.display = showChange ? 'block' : 'none';
-      if (showChange) {
-        byId('t-cash-paid').textContent = fmt(t.cashPaid);
-        byId('t-cash-change').textContent = fmt(Math.max(0, t.cashPaid - t.total));
-      }
+        <div class="ticket-footer" style="text-align: center; border-top: 2px dashed #000; padding-top: 2mm; margin-top: 4mm; font-size: 9pt; font-weight: bold;">
+          *** PREPARAR CON AGILIDAD Y SAZÓN ***
+        </div>
+      `;
     }
 
-    function printTicket(ticket, isCopy = false) {
-      fillTicket(ticket, isCopy);
-      const printable = byId('printable-ticket');
-      if (printable) {
-        printable.classList.remove('hidden');
+    // 2. FORMATO: TICKET MENSAJERO / DOMICILIO (TELÉFONO GIGANTE, DIRECCIÓN, COBRO/NO COBRAR)
+    function renderCourierTicketHTML(t) {
+      const timeStr = new Date(t.createdAt || Date.now()).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+      const codeStr = (t.id && (t.id.toString().startsWith('#') || t.id.toString().startsWith('SP-'))) ? t.id : '#' + (t.id || '001');
+
+      const isCash = (t.paymentMethod === 'efectivo' || t.paymentMethod === 'CASH');
+      const hasChange = isCash && t.cashPaid > t.total;
+
+      const itemsSummary = (t.items || []).map(it => `
+        <div style="font-size: 10pt; padding: 0.5mm 0;">
+          • <strong>${it.quantity}x</strong> ${it.name}
+        </div>
+      `).join('');
+
+      return `
+        <div class="ticket-header" style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 2mm; margin-bottom: 2mm;">
+          <h1 class="restaurant-name" style="font-size: 16pt; font-weight: 900; margin: 0;">SAN PARRILLA</h1>
+          <div style="display: inline-block; border: 2px solid #000; padding: 1mm 3mm; font-size: 12pt; font-weight: 900; margin: 1.5mm 0;">
+            🛵 GUÍA DOMICILIO / MENSAJERO
+          </div>
+          <div style="font-size: 9pt; font-family: monospace;">
+            <span>Pedido: <strong>${codeStr}</strong></span> | <span>Hora: <strong>${timeStr}</strong></span>
+          </div>
+        </div>
+
+        <!-- DATOS DEL CLIENTE EN GRANDE -->
+        <div class="delivery-banner" style="border: 2px solid #000; padding: 2.5mm; margin: 2mm 0; background: #fff;">
+          <div style="font-size: 9pt; font-weight: bold; text-transform: uppercase;">CLIENTE:</div>
+          <div style="font-size: 14pt; font-weight: 900; text-transform: uppercase; margin-bottom: 2mm;">
+            ${t.customerName || 'Cliente Domicilio'}
+          </div>
+
+          <div style="font-size: 9pt; font-weight: bold; text-transform: uppercase;">TELÉFONO (LLAMAR):</div>
+          <div class="delivery-phone" style="font-size: 17pt; font-weight: 900; font-family: monospace; letter-spacing: 0.5px; margin-bottom: 2mm;">
+            📞 ${t.customerPhone || 'Sin teléfono'}
+          </div>
+
+          <div style="font-size: 9pt; font-weight: bold; text-transform: uppercase;">DIRECCIÓN DE ENTREGA:</div>
+          <div class="delivery-address" style="font-size: 13pt; font-weight: 900; line-height: 1.25;">
+            📍 ${t.address || 'Sin dirección registrada'}
+          </div>
+          ${t.neighborhood ? `<div style="font-size: 10.5pt; font-weight: bold; font-style: italic; margin-top: 1mm;">Ref: ${t.neighborhood}</div>` : ''}
+        </div>
+
+        <!-- FLETE DEL MENSAJERO -->
+        <div style="display: flex; justify-content: space-between; font-size: 11pt; font-weight: bold; border-bottom: 1.5px dashed #000; padding: 1.5mm 0; margin: 2mm 0;">
+          <span>CARRERA / FLETE MENSAJERO:</span>
+          <span style="font-size: 13pt; font-weight: 900;">${fmt(t.deliveryFee)}</span>
+        </div>
+
+        <!-- RESUMEN DEL PAQUETE -->
+        <div style="margin: 2.5mm 0; border-bottom: 1.5px dashed #000; padding-bottom: 2mm;">
+          <div style="font-size: 9.5pt; font-weight: bold; text-transform: uppercase; margin-bottom: 1mm;">
+            CONTENIDO DEL PAQUETE (${(t.items || []).reduce((a, b) => a + b.quantity, 0)} platos):
+          </div>
+          ${itemsSummary}
+        </div>
+
+        <!-- INSTRUCCIÓN DE COBRO EN CUADRO GIGANTE -->
+        ${isCash ? `
+          <div style="border: 3px solid #000; padding: 2.5mm; margin: 3mm 0; text-align: center; background: #fff;">
+            <div style="font-size: 12pt; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 1mm; margin-bottom: 1.5mm;">
+              ⚠️ COBRAR AL CLIENTE EN EFECTIVO
+            </div>
+            <div style="font-size: 19pt; font-weight: 900; margin: 1.5mm 0;">
+              TOTAL: ${fmt(t.total)}
+            </div>
+            ${hasChange ? `
+              <div style="border-top: 1.5px dashed #000; padding-top: 1.5mm; margin-top: 1.5mm; font-size: 11pt; font-weight: 900;">
+                Cliente paga con: ${fmt(t.cashPaid)}<br/>
+                <span style="font-size: 13pt;">👉 LLEVAR VUELTAS: ${fmt(t.cashPaid - t.total)}</span>
+              </div>
+            ` : `
+              <div style="font-size: 9.5pt; font-weight: bold; margin-top: 1mm;">
+                (Cobrar valor exacto en efectivo)
+              </div>
+            `}
+          </div>
+        ` : `
+          <div style="border: 3px solid #000; padding: 3mm 2mm; margin: 3mm 0; text-align: center; background: #fff;">
+            <div style="font-size: 12.5pt; font-weight: 900; text-transform: uppercase; margin-bottom: 1mm;">
+              ✅ PEDIDO YA PAGADO POR TRANSFERENCIA
+            </div>
+            <div style="font-size: 16pt; font-weight: 900; border-top: 2px solid #000; padding-top: 1.5mm; margin-top: 1.5mm;">
+              🚫 NO COBRAR AL CLIENTE
+            </div>
+            <div style="font-size: 9pt; margin-top: 1mm; font-weight: bold;">
+              (Pago confirmado vía ${t.paymentMethod})
+            </div>
+          </div>
+        `}
+
+        <div class="ticket-footer" style="text-align: center; border-top: 1px dashed #000; padding-top: 2mm; margin-top: 3mm; font-size: 8pt;">
+          San Parrilla Domicilios • Teléfono: 318 382 1787
+        </div>
+      `;
+    }
+
+    // 3. FORMATO: CUENTA DEL CLIENTE (RECIBO COMERCIAL COMPLETO)
+    function renderCustomerReceiptHTML(t, isCopy = false) {
+      const timeStr = new Date(t.createdAt || Date.now()).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+      const dateStr = new Date(t.createdAt || Date.now()).toLocaleDateString('es-CO');
+      const codeStr = (t.id && (t.id.toString().startsWith('#') || t.id.toString().startsWith('SP-'))) ? t.id : '#' + (t.id || '001');
+
+      const isDelivery = t.orderType === 'domicilio';
+      const badgeText = isDelivery ? 'DOMICILIO' : (t.orderType === 'mesa' ? ('CUENTA ' + (t.table || 'MESA 1')) : 'PARA LLEVAR');
+
+      const itemsRows = (t.items || []).map(it => {
+        let noteHtml = '';
+        if (it.notes) {
+          const parts = it.notes.split('|').map(s => s.trim()).filter(Boolean);
+          noteHtml = parts.map(p => `<div style="font-size: 8.5pt; font-style: italic; margin-top: 0.5mm;">└ ${p}</div>`).join('');
+        }
+
+        return `
+          <tr style="border-bottom: 1px solid #ddd; break-inside: avoid;">
+            <td style="padding: 1.5mm 0; font-size: 11pt; font-weight: 900; vertical-align: top;">${it.quantity}</td>
+            <td style="padding: 1.5mm 1mm; vertical-align: top;">
+              <div style="font-weight: bold;">${it.name}</div>
+              ${noteHtml}
+            </td>
+            <td style="padding: 1.5mm 0; text-align: right; font-weight: bold; white-space: nowrap; vertical-align: top;">
+              ${fmt(it.price * it.quantity)}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const isCash = (t.paymentMethod === 'efectivo' || t.paymentMethod === 'CASH');
+      const showChange = isCash && t.cashPaid > 0;
+
+      return `
+        <div class="ticket-header" style="text-align: center; border-bottom: 1.5px dashed #000; padding-bottom: 2mm; margin-bottom: 2mm;">
+          <h1 class="restaurant-name" style="font-size: 16pt; font-weight: 900; margin: 0;">SAN PARRILLA</h1>
+          <p style="margin: 1mm 0; font-size: 9.5pt;">Fogón, Carbón & Sazón Casero</p>
+          <p style="margin: 0; font-size: 9pt;">Tel / WhatsApp: 318 382 1787</p>
+          <div class="ticket-badge" style="display: inline-block; border: 2px solid #000; padding: 1mm 3mm; font-size: 11pt; font-weight: bold; margin: 2mm 0;">
+            ${badgeText} ${isCopy ? '- COPIA' : ''}
+          </div>
+          <div style="font-size: 8.5pt; font-family: monospace;">
+            <span>Factura / Pedido: <strong>${codeStr}</strong></span> | <span>Fecha: <strong>${dateStr} ${timeStr}</strong></span>
+          </div>
+          ${isDelivery ? `
+            <div style="font-size: 9pt; margin-top: 1.5mm; text-align: left; border: 1px solid #000; padding: 1.5mm;">
+              <strong>Cliente:</strong> ${t.customerName || 'Cliente'}<br/>
+              <strong>Tel:</strong> ${t.customerPhone || 'Sin teléfono'}<br/>
+              <strong>Dirección:</strong> ${t.address || ''} ${t.neighborhood ? '(' + t.neighborhood + ')' : ''}
+            </div>
+          ` : ''}
+        </div>
+
+        <table class="items-table" style="width: 100%; border-collapse: collapse; margin: 2mm 0; font-size: 9.5pt;">
+          <thead>
+            <tr>
+              <th style="width: 15%; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 1.5mm 0; text-align: left; font-size: 9pt;">CANT</th>
+              <th style="width: 55%; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 1.5mm 1mm; text-align: left; font-size: 9pt;">DESCRIPCIÓN</th>
+              <th style="width: 30%; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 1.5mm 0; text-align: right; font-size: 9pt;">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsRows}
+          </tbody>
+        </table>
+
+        <div class="totals-box" style="border-top: 1.5px dashed #000; padding-top: 2mm; margin-top: 2mm;">
+          <div class="total-row" style="display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 1mm;">
+            <span>Subtotal:</span>
+            <span>${fmt(t.subtotal)}</span>
+          </div>
+          ${t.deliveryFee ? `
+            <div class="total-row" style="display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 1mm;">
+              <span>Envío Domicilio:</span>
+              <span>${fmt(t.deliveryFee)}</span>
+            </div>
+          ` : ''}
+          <div class="total-row grand-total" style="display: flex; justify-content: space-between; font-size: 14pt; font-weight: 900; border-top: 1.5px solid #000; border-bottom: 2px solid #000; padding: 1.5mm 0; margin: 2mm 0;">
+            <span>TOTAL A COBRAR:</span>
+            <span>${fmt(t.total)}</span>
+          </div>
+          <div class="total-row" style="display: flex; justify-content: space-between; font-size: 10.5pt; font-weight: bold; margin-top: 1mm;">
+            <span>FORMA DE PAGO:</span>
+            <span style="text-transform: uppercase;">${t.paymentMethod}</span>
+          </div>
+        </div>
+
+        ${showChange ? `
+          <div class="change-box" style="border: 1.5px solid #000; padding: 2mm; margin-top: 2mm; font-size: 10.5pt;">
+            <div class="total-row" style="display: flex; justify-content: space-between;">
+              <span>Cliente paga con:</span>
+              <strong>${fmt(t.cashPaid)}</strong>
+            </div>
+            <div class="total-row" style="display: flex; justify-content: space-between; font-size: 12pt; font-weight: 900; margin-top: 1mm;">
+              <span>CAMBIO / VUELTAS:</span>
+              <strong>${fmt(Math.max(0, t.cashPaid - t.total))}</strong>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="ticket-footer" style="text-align: center; border-top: 1px dashed #000; margin-top: 4mm; padding-top: 2mm; font-size: 8.5pt;">
+          <p style="margin: 0; font-weight: bold;">¡MUCHAS GRACIAS POR SU COMPRA!</p>
+          <p style="margin: 1mm 0 0 0; font-size: 8pt;">Software San Parrilla POS</p>
+        </div>
+      `;
+    }
+
+    // DISPARADOR DE IMPRESIÓN POR TIPO
+    function printTicketType(ticket, type = 'customer', isCopy = false) {
+      const printable = document.getElementById('printable-ticket');
+      if (!printable) return;
+
+      // Ocultar modales en DOM antes de imprimir
+      closeCobroModal();
+      closeExpensePosModal();
+
+      let html = '';
+      if (type === 'kitchen') {
+        html = renderKitchenTicketHTML(ticket);
+      } else if (type === 'courier') {
+        html = renderCourierTicketHTML(ticket);
+      } else {
+        html = renderCustomerReceiptHTML(ticket, isCopy);
       }
+
+      printable.innerHTML = html;
+      printable.classList.remove('hidden');
+
       setTimeout(() => {
         window.print();
         setTimeout(() => {
-          if (printable) printable.classList.add('hidden');
+          printable.classList.add('hidden');
         }, 1000);
       }, 80);
     }
 
-    reprintBtn?.addEventListener('click', () => {
+    // BOTONES DE REIMPRESIÓN EN BARRA INFERIOR
+    document.getElementById('btn-reprint-customer')?.addEventListener('click', () => {
       const last = loadLastTicket();
-      if (last) printTicket(last, true);
+      if (last) printTicketType(last, 'customer', true);
+    });
+
+    document.getElementById('btn-reprint-kitchen')?.addEventListener('click', () => {
+      const last = loadLastTicket();
+      if (last) printTicketType(last, 'kitchen', true);
+    });
+
+    document.getElementById('btn-reprint-courier')?.addEventListener('click', () => {
+      const last = loadLastTicket();
+      if (last) printTicketType(last, 'courier', true);
     });
 
     refreshReprintButton();

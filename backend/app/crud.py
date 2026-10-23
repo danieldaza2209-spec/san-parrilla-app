@@ -326,11 +326,20 @@ def calcular_resumen_caja(db: Session, closure: models.CashClosure) -> schemas.C
     else:
         pedidos_caja = []
 
+    # Gastos de caja menor registrados en este turno
+    gastos = (
+        db.query(models.CashExpense)
+        .filter(models.CashExpense.cash_closure_id == closure.id)
+        .order_by(models.CashExpense.created_at.asc())
+        .all()
+    )
+    total_expenses = sum(float(g.amount or 0.0) for g in gastos)
+
     total_delivery_payouts = sum(float(ped.delivery_fee or 0.0) for ped in pedidos_caja)
     total_delivery_fees = total_delivery_payouts
     subtotal_sales = sum(float(ped.subtotal or 0.0) for ped in pedidos_caja)
     total_sales = total_cash + total_nequi + total_daviplata + total_card
-    expected_cash = float(closure.initial_cash or 0.0) + total_cash - total_delivery_payouts
+    expected_cash = float(closure.initial_cash or 0.0) + total_cash - total_delivery_payouts - total_expenses
 
     # Sincronizar campos acumulados en el modelo
     closure.total_cash_sales = total_cash
@@ -339,6 +348,7 @@ def calcular_resumen_caja(db: Session, closure: models.CashClosure) -> schemas.C
     closure.total_card_sales = total_card
     closure.total_delivery_fees = total_delivery_fees
     closure.total_delivery_payouts = total_delivery_payouts
+    closure.total_expenses = total_expenses
     closure.expected_cash = expected_cash
 
     return schemas.CashClosureOut(
@@ -353,13 +363,15 @@ def calcular_resumen_caja(db: Session, closure: models.CashClosure) -> schemas.C
         total_card_sales=total_card,
         total_delivery_fees=total_delivery_fees,
         total_delivery_payouts=total_delivery_payouts,
+        total_expenses=total_expenses,
         subtotal_sales=subtotal_sales,
         total_sales=total_sales,
         expected_cash=expected_cash,
         counted_cash=closure.counted_cash,
         discrepancy=closure.discrepancy,
         notes=closure.notes,
-        payments=[schemas.PaymentOut.model_validate(p) for p in pagos]
+        payments=[schemas.PaymentOut.model_validate(p) for p in pagos],
+        expenses=[schemas.CashExpenseOut.model_validate(g) for g in gastos]
     )
 
 
@@ -378,6 +390,7 @@ def open_cash_closure(db: Session, open_in: schemas.CashClosureOpen) -> models.C
         total_card_sales=0.0,
         total_delivery_fees=0.0,
         total_delivery_payouts=0.0,
+        total_expenses=0.0,
         expected_cash=initial_cash,
         notes=open_in.notes
     )
@@ -385,6 +398,28 @@ def open_cash_closure(db: Session, open_in: schemas.CashClosureOpen) -> models.C
     db.commit()
     db.refresh(nueva_caja)
     return nueva_caja
+
+
+def create_cash_expense(db: Session, closure_id: int, expense_in: schemas.CashExpenseCreate) -> models.CashExpense:
+    gasto = models.CashExpense(
+        cash_closure_id=closure_id,
+        description=expense_in.description.strip(),
+        category=(expense_in.category or "INSUMOS").strip().upper(),
+        amount=float(expense_in.amount),
+    )
+    db.add(gasto)
+    db.commit()
+    db.refresh(gasto)
+    return gasto
+
+
+def get_cash_expenses(db: Session, closure_id: int) -> List[models.CashExpense]:
+    return (
+        db.query(models.CashExpense)
+        .filter(models.CashExpense.cash_closure_id == closure_id)
+        .order_by(models.CashExpense.created_at.asc())
+        .all()
+    )
 
 
 def close_cash_closure(db: Session, close_in: schemas.CashClosureClose) -> schemas.CashClosureOut:

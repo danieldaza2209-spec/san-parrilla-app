@@ -205,12 +205,27 @@ class CashClosure(Base):
     total_card_sales = Column(Float, default=0.0)
     total_delivery_fees = Column(Float, default=0.0)
     total_delivery_payouts = Column(Float, default=0.0)
+    total_expenses = Column(Float, default=0.0)
     expected_cash = Column(Float, default=0.0)
     counted_cash = Column(Float, nullable=True)
     discrepancy = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
 
     payments = relationship("Payment", back_populates="cash_closure", cascade="all, delete-orphan")
+    expenses = relationship("CashExpense", back_populates="cash_closure", cascade="all, delete-orphan")
+
+
+class CashExpense(Base):
+    __tablename__ = "cash_expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cash_closure_id = Column(Integer, ForeignKey("cash_closures.id"), nullable=False)
+    description = Column(String(255), nullable=False)
+    category = Column(String(50), default="INSUMOS", nullable=True)
+    amount = Column(Float, nullable=False, default=0.0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    cash_closure = relationship("CashClosure", back_populates="expenses")
 
 
 class Payment(Base):

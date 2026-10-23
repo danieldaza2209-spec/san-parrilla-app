@@ -68,3 +68,32 @@ def listar_historial_cajas(
     Lista el historial de sesiones/cierres de caja ordenados del más reciente al más antiguo.
     """
     return crud.list_cash_closures_history(db, limit=limit)
+
+
+@router.post("/expenses", response_model=schemas.CashExpenseOut)
+def registrar_gasto_caja(
+    expense_in: schemas.CashExpenseCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Registra una salida de dinero en efectivo de la caja activa actual (ej. compra de verduras, agua, insumos).
+    """
+    activa = crud.get_active_cash_closure(db)
+    if not activa:
+        raise HTTPException(
+            status_code=400,
+            detail="No hay una caja abierta (OPEN) para registrar gastos. Abre caja primero."
+        )
+    gasto = crud.create_cash_expense(db, activa.id, expense_in)
+    return gasto
+
+
+@router.get("/expenses", response_model=List[schemas.CashExpenseOut])
+def listar_gastos_caja_activa(db: Session = Depends(get_db)):
+    """
+    Lista los gastos en efectivo registrados en el turno de caja actual.
+    """
+    activa = crud.get_active_cash_closure(db)
+    if not activa:
+        return []
+    return crud.get_cash_expenses(db, activa.id)
