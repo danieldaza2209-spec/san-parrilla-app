@@ -1377,7 +1377,16 @@ const formatPrice = (val) => {
 
     function printTicket(ticket, isCopy = false) {
       fillTicket(ticket, isCopy);
-      window.print();
+      const printable = byId('printable-ticket');
+      if (printable) {
+        printable.classList.remove('hidden');
+      }
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          if (printable) printable.classList.add('hidden');
+        }, 1000);
+      }, 80);
     }
 
     reprintBtn?.addEventListener('click', () => {

@@ -771,7 +771,14 @@ import StaffLayout from '../layouts/StaffLayout.astro';
         document.getElementById('z-notes').textContent = notes || 'Sin observaciones';
 
         closeModalCancel();
-        window.print();
+        const zTicket = document.getElementById('z-ticket');
+        if (zTicket) zTicket.classList.remove('hidden');
+        setTimeout(() => {
+          window.print();
+          setTimeout(() => {
+            if (zTicket) zTicket.classList.add('hidden');
+          }, 1000);
+        }, 80);
 
         setTimeout(async () => {
           await loadActiveCaja();

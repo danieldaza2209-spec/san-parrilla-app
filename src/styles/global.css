@@ -46,12 +46,14 @@
    =================================================== */
 @media print {
   @page {
-    size: 80mm auto;
+    size: auto;
     margin: 0mm;
   }
 
   /* Ocultar interfaz de pantalla */
-  body {
+  html, body {
+    width: 80mm !important;
+    max-width: 80mm !important;
     background: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
@@ -65,9 +67,10 @@
   /* Contenedor del ticket para SAT Q22 */
   .receipt-ticket {
     display: block !important;
+    visibility: visible !important;
     width: 72mm !important;
     margin: 0 auto !important;
-    padding: 4mm 2mm 15mm 2mm !important;
+    padding: 2mm 2mm 15mm 2mm !important;
     background: #ffffff !important;
     color: #000000 !important;
     font-family: 'Courier New', Courier, monospace, sans-serif !important;
