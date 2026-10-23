@@ -47,6 +47,7 @@ export const initialProductList = [
   { id: 't2-4', name: 'Pechuga en salsa criolla', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 4 },
   { id: 't2-5', name: 'Pechuga apanada', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 5 },
   { id: 't2-6', name: 'Pechuga bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 6 },
+  { id: 't2-6b', name: 'Pechuga al ajillo', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 6 },
   { id: 't2-7', name: 'Pernil hawaiano', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 7 },
   { id: 't2-8', name: 'Lomo de cerdo a la bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 8 },
   { id: 't2-9', name: 'Lomo de cerdo al ajillo', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 9 },
@@ -59,6 +60,7 @@ export const initialProductList = [
   { id: 't3-2', name: 'Creps de pollo', price: 18000, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 14 },
   { id: 't3-3', name: 'Bistec a caballo', price: 18000, category_id: 'fuertes_175', description: 'Carne en salsa criolla coronada con huevo frito.', is_active: 1, is_featured: 0, sort_order: 15 },
   { id: 't3-4', name: 'Pechuga hawaiana', price: 18000, category_id: 'fuertes_175', description: 'Pechuga gratinada con piña caramelizada y queso.', is_active: 1, is_featured: 0, sort_order: 16 },
+  { id: 't3-4b', name: 'Pechuga en salsa bechamel', price: 18000, category_id: 'fuertes_175', description: 'Pechuga bañada en salsa bechamel casera. Incluye sopa, principio y acompañamiento.', is_active: 1, is_featured: 0, sort_order: 16 },
   { id: 't3-5', name: 'Combo Personal', price: 18000, category_id: 'fuertes_175', description: 'Opción rápida del asador.', is_active: 1, is_featured: 0, sort_order: 17 },
   { id: 't3-6', name: 'Arroz ranchero', price: 18000, category_id: 'fuertes_175', description: 'Arroz especial de la casa con carnes y maíz.', is_active: 1, is_featured: 1, sort_order: 18, special_badge: '⭐ SOLO LOS LUNES' },
 
@@ -101,9 +103,9 @@ export const initialProductList = [
   { id: 'esp-27', name: 'Róbalo con camarones', price: 33000, category_id: 'especiales_21', description: 'Exquisito filete con camarones salteados.', is_active: 1, is_featured: 0, sort_order: 27 },
 
   // Picadas
-  { id: 'pic-1', name: 'Picada x 1', price: 27500, category_id: 'picadas', description: 'Variedad de carnes y acompañamiento para una persona.', is_active: 1, is_featured: 0, sort_order: 0 },
-  { id: 'pic-2', name: 'Picada x 2', price: 50000, category_id: 'picadas', description: 'Perfecta para compartir en pareja. Incluye carnes, chorizo y papas.', is_active: 1, is_featured: 0, sort_order: 1 },
-  { id: 'pic-3', name: 'Picada x 3', price: 66000, category_id: 'picadas', description: 'Gran porción familiar para tres personas.', is_active: 1, is_featured: 0, sort_order: 2 },
+  { id: 'pic-1', name: 'Picada x 1', price: 19500, category_id: 'picadas', description: 'Variedad de carnes y acompañamiento para una persona.', is_active: 1, is_featured: 0, sort_order: 0 },
+  { id: 'pic-2', name: 'Picada x 2', price: 30000, category_id: 'picadas', description: 'Perfecta para compartir en pareja. Incluye carnes, chorizo y papas.', is_active: 1, is_featured: 0, sort_order: 1 },
+  { id: 'pic-3', name: 'Picada x 3', price: 44000, category_id: 'picadas', description: 'Gran porción familiar para tres personas.', is_active: 1, is_featured: 0, sort_order: 2 },
   { id: 'pic-4', name: 'Picada Berraca', price: 55000, category_id: 'picadas', description: 'Chicharrón crujiente, costilla, lomo y papitas criollas.', is_active: 1, is_featured: 1, sort_order: 3 },
 
   // Bebidas
