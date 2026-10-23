@@ -158,6 +158,7 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         else models.EstadoPedido.PENDIENTE
     )
     delivery_fee = float(pedido_in.delivery_fee or 0.0)
+    packaging_fee = float(pedido_in.packaging_fee or 0.0)
 
     nuevo_pedido = models.Pedido(
         codigo_pedido=codigo,
@@ -169,6 +170,7 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         notas=pedido_in.notas,
         subtotal=0.0,
         delivery_fee=delivery_fee,
+        packaging_fee=packaging_fee,
         total=0.0
     )
     db.add(nuevo_pedido)
@@ -204,7 +206,8 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         _verificar_y_descontar_stock(db, detalles_creados, menu_hoy, verificar_disponibilidad=False)
 
     nuevo_pedido.subtotal = subtotal_calculado
-    nuevo_pedido.total = subtotal_calculado + delivery_fee
+    nuevo_pedido.packaging_fee = packaging_fee
+    nuevo_pedido.total = subtotal_calculado + delivery_fee + packaging_fee
     db.commit()
     db.refresh(nuevo_pedido)
     return nuevo_pedido
@@ -235,6 +238,8 @@ def aprobar_pedido_borrador(
             pedido.tipo = datos_aprobacion.tipo
         if datos_aprobacion.delivery_fee is not None:
             pedido.delivery_fee = float(datos_aprobacion.delivery_fee)
+        if datos_aprobacion.packaging_fee is not None:
+            pedido.packaging_fee = float(datos_aprobacion.packaging_fee)
         if datos_aprobacion.notas is not None:
             pedido.notas = datos_aprobacion.notas
 
@@ -276,7 +281,8 @@ def aprobar_pedido_borrador(
     if not pedido.subtotal and pedido.detalles:
         pedido.subtotal = sum(d.precio_unitario * d.cantidad for d in pedido.detalles)
     pedido.delivery_fee = float(pedido.delivery_fee or 0.0)
-    pedido.total = (pedido.subtotal or 0.0) + pedido.delivery_fee
+    pedido.packaging_fee = float(pedido.packaging_fee or 0.0)
+    pedido.total = (pedido.subtotal or 0.0) + pedido.delivery_fee + pedido.packaging_fee
 
     # Verificar disponibilidad y descontar stock en MenuDiaItem
     hoy = date.today()

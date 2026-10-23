@@ -164,6 +164,7 @@ class Pedido(Base):
     estado = Column(SQLEnum(EstadoPedido), default=EstadoPedido.PENDIENTE)
     subtotal = Column(Float, default=0.0)
     delivery_fee = Column(Float, default=0.0)
+    packaging_fee = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
     notas = Column(Text, nullable=True)
 

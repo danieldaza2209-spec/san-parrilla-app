@@ -297,12 +297,50 @@ const searchableCatalog = publicProducts.map((p) => ({
           </div>
         </div>
 
+        <!-- EMPAQUES CONTROL BOX (DOMICILIO / PARA LLEVAR) -->
+        <div id="packaging-box" class="hidden bg-slate-50 rounded-xl p-3 border border-parrilla-border space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-parrilla-ivory">
+              <i data-lucide="package" class="w-4 h-4 text-amber-600"></i>
+              <span>Cobro de Empaques ($1.000 COP c/u)</span>
+            </div>
+            <span id="packaging-total-badge" class="font-bold font-mono text-xs text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-md border border-amber-200">$0</span>
+          </div>
+          
+          <div class="flex items-center justify-between gap-2 pt-0.5">
+            <!-- Selector Global Caja / Icopor -->
+            <div class="flex items-center gap-1 bg-white p-1 rounded-lg border border-parrilla-border text-xs">
+              <button type="button" id="btn-pack-global-caja" class="px-3 py-1 rounded font-bold text-xs bg-parrilla-gold text-white shadow-xs transition cursor-pointer">
+                📦 Caja
+              </button>
+              <button type="button" id="btn-pack-global-icopor" class="px-3 py-1 rounded font-bold text-xs text-parrilla-muted hover:text-parrilla-ivory transition cursor-pointer">
+                🥡 Icopor
+              </button>
+            </div>
+
+            <!-- Cantidad de Empaques con - / + -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] text-parrilla-muted font-semibold">Cant:</span>
+              <div class="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-parrilla-border">
+                <button type="button" id="btn-pack-minus" class="text-parrilla-muted hover:text-red-500 font-bold px-1.5 text-sm cursor-pointer">-</button>
+                <span id="packaging-qty-display" class="font-bold text-xs text-parrilla-ivory min-w-[20px] text-center font-mono">0</span>
+                <button type="button" id="btn-pack-plus" class="text-parrilla-muted hover:text-amber-600 font-bold px-1.5 text-sm cursor-pointer">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- PAYMENT METHOD & TOTALS -->
         <div class="bg-parrilla-dark/80 rounded-xl p-3 border border-parrilla-border space-y-2">
           
           <div class="flex items-center justify-between text-xs text-parrilla-muted">
-            <span>Subtotal:</span>
+            <span>Subtotal platos:</span>
             <span id="pos-subtotal" class="font-semibold text-parrilla-ivory">$0</span>
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-amber-600 font-medium" id="pos-packaging-row" style="display: none;">
+            <span id="pos-packaging-label">Empaques (Caja x 0):</span>
+            <span id="pos-packaging-fee" class="font-bold font-mono">$0</span>
           </div>
 
           <div class="flex items-center justify-between text-xs text-parrilla-muted" id="delivery-row" style="display: none;">
@@ -467,7 +505,7 @@ const searchableCatalog = publicProducts.map((p) => ({
         </div>
 
         <!-- Selector de cantidad en modal -->
-        <div class="flex items-center gap-2 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-parrilla-border">
+        <div id="garnish-qty-wrapper" class="flex items-center gap-2 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-parrilla-border">
           <button type="button" id="garnish-qty-minus" class="w-7 h-7 rounded-lg bg-white hover:bg-red-50 text-parrilla-ivory hover:text-red-600 font-black text-sm border border-parrilla-border transition cursor-pointer">-</button>
           <span id="garnish-qty-val" class="font-display font-black text-base text-parrilla-ivory min-w-[20px] text-center">1</span>
           <button type="button" id="garnish-qty-plus" class="w-7 h-7 rounded-lg bg-white hover:bg-orange-50 text-parrilla-ivory hover:text-parrilla-gold font-black text-sm border border-parrilla-border transition cursor-pointer">+</button>
@@ -511,7 +549,15 @@ const searchableCatalog = publicProducts.map((p) => ({
           <div id="garnish-salad-options" class="grid grid-cols-2 gap-2"></div>
         </div>
 
-        <!-- 5. Notas del Plato -->
+        <!-- 5. Tipo de Empaque (Caja vs Icopor) -->
+        <div id="garnish-packaging-section" class="pt-1 border-t border-parrilla-border">
+          <label class="block text-[11px] font-extrabold text-parrilla-muted uppercase tracking-wider mb-1.5">
+            📦 5. Tipo de Empaque
+          </label>
+          <div id="garnish-packaging-options" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <!-- 6. Notas del Plato -->
         <div class="pt-1 border-t border-parrilla-border">
           <label for="garnish-extra-notes" class="block text-[11px] font-extrabold text-parrilla-gold uppercase tracking-wider mb-1.5">
             📝 Notas de Cocina / Término (Opcional)
@@ -549,8 +595,8 @@ const searchableCatalog = publicProducts.map((p) => ({
             id="btn-garnish-confirm"
             class="flex-1 py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-sm shadow-lg flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
           >
-            <i data-lucide="plus-circle" class="w-4 h-4"></i>
-            <span>Agregar a la Comanda</span>
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span id="btn-garnish-confirm-label">Guardar Cambios</span>
           </button>
         </div>
       </form>
@@ -663,6 +709,10 @@ const searchableCatalog = publicProducts.map((p) => ({
         <div class="flex justify-between text-parrilla-muted">
           <span>Subtotal consumo:</span>
           <span id="modal-cobro-subtotal" class="font-bold text-parrilla-ivory font-mono">$0</span>
+        </div>
+        <div class="flex justify-between text-amber-700 font-semibold" id="modal-cobro-packaging-row" style="display: none;">
+          <span id="modal-cobro-packaging-label">Empaques:</span>
+          <span id="modal-cobro-packaging" class="font-bold font-mono">$0</span>
         </div>
         <div class="flex justify-between text-parrilla-muted" id="modal-cobro-delivery-row">
           <span>Domicilio / Entrega:</span>
@@ -1104,7 +1154,7 @@ const searchableCatalog = publicProducts.map((p) => ({
       }
     });
 
-    // 2. MODAL RÁPIDO DE GUARNICIONES (SOPA, PRINCIPIO, ACOMPAÑAMIENTO, NOTAS) & AGREGADO AL CARRITO
+    // 2. MODAL RÁPIDO DE GUARNICIONES (SOPA, PRINCIPIO, ACOMPAÑAMIENTO, EMPAQUE, NOTAS)
     const modalGarnish = document.getElementById('modal-garnish-pos');
     const garnishDishName = document.getElementById('garnish-dish-name');
     const garnishDishPrice = document.getElementById('garnish-dish-price');
@@ -1113,15 +1163,24 @@ const searchableCatalog = publicProducts.map((p) => ({
     const garnishPrincipleContainer = document.getElementById('garnish-principle-options');
     const garnishSideContainer = document.getElementById('garnish-side-options');
     const garnishSaladContainer = document.getElementById('garnish-salad-options');
+    const garnishPackagingContainer = document.getElementById('garnish-packaging-options');
     const garnishExtraNotes = document.getElementById('garnish-extra-notes');
 
+    // Estado global de Empaques y Edición de Plato
+    let globalPackagingType = 'Caja'; // 'Caja' | 'Icopor'
+    let packagingFeePerUnit = 1000;
+    let packagingQty = 0;
+    let manualPackagingOverride = false;
+    let editingCartUid = null;
     let pendingGarnishItem = null;
+
     let garnishState = {
       quantity: 1,
       soup: '',
       principle: '',
       side: '',
       salad: 'Con ensalada',
+      packaging: 'Caja'
     };
 
     function renderOptionPills(container, options, currentVal, onSelect) {
@@ -1155,33 +1214,102 @@ const searchableCatalog = publicProducts.map((p) => ({
       });
     }
 
-    function openGarnishModal(item) {
-      pendingGarnishItem = item;
+    // Cuenta cuántos platos de comida hay en la comanda (excluye bebidas/líquidos)
+    function countFoodPlates() {
+      return cart.reduce((acc, it) => {
+        const isDrink = it.category_id === 'bebidas' ||
+          /gaseosa|jugo|agua|cerveza|hit|coca|postobon|speed|red bull|pilsen|aguila|club colombia/i.test(it.name);
+        return isDrink ? acc : acc + it.quantity;
+      }, 0);
+    }
+
+    // Calcula Subtotal, Empaques, Domicilio y Total de forma centralizada
+    function calculateTotals() {
+      const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+      const isDeliveryOrTakeout = currentOrderType === 'domicilio' || currentOrderType === 'para_llevar';
+
+      if (isDeliveryOrTakeout && !manualPackagingOverride) {
+        packagingQty = countFoodPlates();
+      } else if (!isDeliveryOrTakeout) {
+        packagingQty = 0;
+      }
+
+      const packagingFee = isDeliveryOrTakeout ? (packagingQty * packagingFeePerUnit) : 0;
+      // @ts-ignore
+      const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput?.value || 0) : 0;
+      const total = subtotal + packagingFee + deliveryFee;
+
+      return { subtotal, packagingFee, deliveryFee, total, isDeliveryOrTakeout };
+    }
+
+    // Arma el string de notas y guarniciones de un plato
+    function buildPlateNotes(item) {
+      if (!item.isCustomizable) return item.notes || '';
+      const parts = [
+        item.soup || `Sopa ${dailySpecialsData.sopa || 'del Día'}`,
+        `Principio: ${item.principle || (dailySpecialsData.principios?.[0] || 'Sin Principio')}`,
+        `Acomp: ${item.side || (dailySpecialsData.acompanamientos?.[0] || 'Sin Acompañamiento')}`,
+        item.salad || 'Con ensalada'
+      ];
+      if (currentOrderType !== 'mesa') {
+        parts.push(`Empaque: ${item.packaging || globalPackagingType}`);
+      }
+      if (item.extraNotes && item.extraNotes.trim()) {
+        parts.push(`Nota: ${item.extraNotes.trim()}`);
+      }
+      return parts.join(' | ');
+    }
+
+    // Sincroniza las notas de empaque de todos los platos
+    function updateAllItemsPackagingNotes() {
+      cart.forEach((it) => {
+        if (it.isCustomizable) {
+          it.notes = buildPlateNotes(it);
+        }
+      });
+    }
+
+    // Abre el modal para editar o personalizar un ítem específico del carrito
+    function openGarnishModalForCartItem(cartItem) {
+      if (!cartItem) return;
+      editingCartUid = cartItem.uid;
+      pendingGarnishItem = cartItem;
+
       const soupOptions = [`Sopa ${dailySpecialsData.sopa || 'del Día'}`, 'Sin Sopa', 'Solo Bandeja'];
       const principleOptions = [...(dailySpecialsData.principios || []), 'Sin Principio'];
       const sideOptions = [...(dailySpecialsData.acompanamientos || []), 'Sin Acompañamiento'];
       const saladOptions = ['Con ensalada', 'Sin ensalada'];
+      const packagingOptions = ['Caja', 'Icopor'];
 
       garnishState = {
         quantity: 1,
-        soup: soupOptions[0],
-        principle: principleOptions[0] || 'Sin Principio',
-        side: sideOptions[0] || 'Sin Acompañamiento',
-        salad: 'Con ensalada',
+        soup: cartItem.soup || soupOptions[0],
+        principle: cartItem.principle || principleOptions[0] || 'Sin Principio',
+        side: cartItem.side || sideOptions[0] || 'Sin Acompañamiento',
+        salad: cartItem.salad || 'Con ensalada',
+        packaging: cartItem.packaging || globalPackagingType || 'Caja'
       };
 
-      if (garnishDishName) garnishDishName.textContent = item.name;
-      if (garnishDishPrice) garnishDishPrice.textContent = fmt(item.price);
-      if (garnishQtyVal) garnishQtyVal.textContent = '1';
+      if (garnishDishName) garnishDishName.textContent = cartItem.name;
+      if (garnishDishPrice) garnishDishPrice.textContent = fmt(cartItem.price);
+
+      // Ocultar selector de cantidad durante la personalización 1-a-1
+      const qtyWrapper = document.getElementById('garnish-qty-wrapper');
+      if (qtyWrapper) qtyWrapper.style.display = 'none';
+
       if (garnishExtraNotes) {
         // @ts-ignore
-        garnishExtraNotes.value = '';
+        garnishExtraNotes.value = cartItem.extraNotes || '';
       }
+
+      const btnLabel = document.getElementById('btn-garnish-confirm-label');
+      if (btnLabel) btnLabel.textContent = 'Guardar Cambios';
 
       renderOptionPills(garnishSoupContainer, soupOptions, garnishState.soup, (val) => (garnishState.soup = val));
       renderOptionPills(garnishPrincipleContainer, principleOptions, garnishState.principle, (val) => (garnishState.principle = val));
       renderOptionPills(garnishSideContainer, sideOptions, garnishState.side, (val) => (garnishState.side = val));
       renderOptionPills(garnishSaladContainer, saladOptions, garnishState.salad, (val) => (garnishState.salad = val));
+      renderOptionPills(garnishPackagingContainer, packagingOptions, garnishState.packaging, (val) => (garnishState.packaging = val));
 
       modalGarnish?.classList.remove('hidden');
       modalGarnish?.classList.add('flex');
@@ -1190,23 +1318,12 @@ const searchableCatalog = publicProducts.map((p) => ({
     function closeGarnishModal() {
       modalGarnish?.classList.add('hidden');
       modalGarnish?.classList.remove('flex');
+      editingCartUid = null;
       pendingGarnishItem = null;
     }
 
     document.getElementById('btn-garnish-close')?.addEventListener('click', closeGarnishModal);
     document.getElementById('btn-garnish-cancel')?.addEventListener('click', closeGarnishModal);
-
-    document.getElementById('garnish-qty-minus')?.addEventListener('click', () => {
-      if (garnishState.quantity > 1) {
-        garnishState.quantity -= 1;
-        if (garnishQtyVal) garnishQtyVal.textContent = String(garnishState.quantity);
-      }
-    });
-
-    document.getElementById('garnish-qty-plus')?.addEventListener('click', () => {
-      garnishState.quantity += 1;
-      if (garnishQtyVal) garnishQtyVal.textContent = String(garnishState.quantity);
-    });
 
     document.querySelectorAll('.garnish-note-chip').forEach((chipBtn) => {
       chipBtn.addEventListener('click', () => {
@@ -1219,47 +1336,85 @@ const searchableCatalog = publicProducts.map((p) => ({
       });
     });
 
-    function addConfiguredItemToComanda(name, price, quantity, notes) {
-      const cleanNotes = (notes || '').trim();
-      const existing = cart.find((it) => it.name === name && (it.notes || '') === cleanNotes);
-      if (existing) {
-        existing.quantity += quantity;
-      } else {
-        cart.push({
-          id: `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    // Guardar cambios al plato personalizado desde el carrito
+    document.getElementById('form-garnish-pos')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!editingCartUid) {
+        closeGarnishModal();
+        return;
+      }
+
+      const item = cart.find((it) => it.uid === editingCartUid);
+      if (!item) {
+        closeGarnishModal();
+        return;
+      }
+
+      // @ts-ignore
+      const extra = garnishExtraNotes ? garnishExtraNotes.value.trim() : '';
+
+      item.soup = garnishState.soup;
+      item.principle = garnishState.principle;
+      item.side = garnishState.side;
+      item.salad = garnishState.salad;
+      item.packaging = garnishState.packaging;
+      item.extraNotes = extra;
+      item.notes = buildPlateNotes(item);
+
+      renderCart();
+      closeGarnishModal();
+    });
+
+    // 1-CLICK: Agregar plato al carrito sin bloquear con modal
+    function addDishToCartInOneClick({ id, name, price, isCustomizable, category_id }) {
+      const numPrice = Number(price);
+
+      if (isCustomizable) {
+        const soupOptions = [`Sopa ${dailySpecialsData.sopa || 'del Día'}`, 'Sin Sopa', 'Solo Bandeja'];
+        const principleOptions = [...(dailySpecialsData.principios || []), 'Sin Principio'];
+        const sideOptions = [...(dailySpecialsData.acompanamientos || []), 'Sin Acompañamiento'];
+
+        const item = {
+          uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+          id: id || name,
           name,
-          price: Number(price),
-          quantity: Number(quantity),
-          notes: cleanNotes,
-        });
+          price: numPrice,
+          quantity: 1,
+          category_id: category_id || 'fuertes_165',
+          isCustomizable: true,
+          soup: soupOptions[0],
+          principle: principleOptions[0] || 'Sin Principio',
+          side: sideOptions[0] || 'Sin Acompañamiento',
+          salad: 'Con ensalada',
+          packaging: globalPackagingType,
+          extraNotes: '',
+          notes: ''
+        };
+        item.notes = buildPlateNotes(item);
+        cart.push(item);
+      } else {
+        const existing = cart.find((it) => it.name === name && !it.isCustomizable);
+        if (existing) {
+          existing.quantity += 1;
+        } else {
+          cart.push({
+            uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            id: id || name,
+            name,
+            price: numPrice,
+            quantity: 1,
+            category_id: category_id || 'bebidas',
+            isCustomizable: false,
+            notes: ''
+          });
+        }
+      }
+
+      if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
+        packagingQty = countFoodPlates();
       }
       renderCart();
     }
-
-    document.getElementById('form-garnish-pos')?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (!pendingGarnishItem) return;
-
-      const parts = [
-        garnishState.soup,
-        `Principio: ${garnishState.principle}`,
-        `Acomp: ${garnishState.side}`,
-        garnishState.salad,
-      ];
-      // @ts-ignore
-      const extra = garnishExtraNotes ? garnishExtraNotes.value.trim() : '';
-      if (extra) {
-        parts.push(`Nota: ${extra}`);
-      }
-
-      addConfiguredItemToComanda(
-        pendingGarnishItem.name,
-        pendingGarnishItem.price,
-        garnishState.quantity,
-        parts.join(' | ')
-      );
-      closeGarnishModal();
-    });
 
     // Delegación global para botones '+' (.btn-add-cart) tanto del Menú Rápido como del Buscador
     document.addEventListener('click', (e) => {
@@ -1270,105 +1425,247 @@ const searchableCatalog = publicProducts.map((p) => ({
       const name = btn.getAttribute('data-name') || 'Plato';
       const price = Number(btn.getAttribute('data-price') || 0);
       const isCustomizable = btn.getAttribute('data-customizable') === 'true';
+      const id = btn.getAttribute('data-id') || name;
+      const category_id = btn.getAttribute('data-cat') || '';
 
-      if (isCustomizable) {
-        openGarnishModal({ name, price });
+      addDishToCartInOneClick({ id, name, price, isCustomizable, category_id });
+    });
+
+    // Controladores de Empaques Globales (Caja / Icopor y Cantidad)
+    const btnPackGlobalCaja = document.getElementById('btn-pack-global-caja');
+    const btnPackGlobalIcopor = document.getElementById('btn-pack-global-icopor');
+    const btnPackMinus = document.getElementById('btn-pack-minus');
+    const btnPackPlus = document.getElementById('btn-pack-plus');
+
+    function updateGlobalPackagingUI() {
+      if (globalPackagingType === 'Caja') {
+        btnPackGlobalCaja?.classList.add('bg-parrilla-gold', 'text-white', 'shadow-xs');
+        btnPackGlobalCaja?.classList.remove('text-parrilla-muted', 'hover:text-parrilla-ivory');
+        btnPackGlobalIcopor?.classList.remove('bg-parrilla-gold', 'text-white', 'shadow-xs');
+        btnPackGlobalIcopor?.classList.add('text-parrilla-muted', 'hover:text-parrilla-ivory');
       } else {
-        // Bebidas, Picadas y Adicionales se agregan en 1 solo clic directo a la comanda
-        addConfiguredItemToComanda(name, price, 1, '');
+        btnPackGlobalIcopor?.classList.add('bg-parrilla-gold', 'text-white', 'shadow-xs');
+        btnPackGlobalIcopor?.classList.remove('text-parrilla-muted', 'hover:text-parrilla-ivory');
+        btnPackGlobalCaja?.classList.remove('bg-parrilla-gold', 'text-white', 'shadow-xs');
+        btnPackGlobalCaja?.classList.add('text-parrilla-muted', 'hover:text-parrilla-ivory');
       }
+    }
+
+    btnPackGlobalCaja?.addEventListener('click', () => {
+      globalPackagingType = 'Caja';
+      updateGlobalPackagingUI();
+      cart.forEach((it) => {
+        if (it.isCustomizable) it.packaging = 'Caja';
+      });
+      updateAllItemsPackagingNotes();
+      renderCart();
+    });
+
+    btnPackGlobalIcopor?.addEventListener('click', () => {
+      globalPackagingType = 'Icopor';
+      updateGlobalPackagingUI();
+      cart.forEach((it) => {
+        if (it.isCustomizable) it.packaging = 'Icopor';
+      });
+      updateAllItemsPackagingNotes();
+      renderCart();
+    });
+
+    btnPackMinus?.addEventListener('click', () => {
+      manualPackagingOverride = true;
+      packagingQty = Math.max(0, packagingQty - 1);
+      renderCart();
+    });
+
+    btnPackPlus?.addEventListener('click', () => {
+      manualPackagingOverride = true;
+      packagingQty += 1;
+      renderCart();
     });
 
     // 3. RENDER CART & TOTALS
     function renderCart() {
       if (!cartContainer) return;
 
+      const { subtotal, packagingFee, deliveryFee, total, isDeliveryOrTakeout } = calculateTotals();
+
       if (cart.length === 0) {
         cartContainer.innerHTML = '<div class="p-6 text-center text-xs text-parrilla-muted italic">Selecciona productos del catálogo para agregar a la comanda.</div>';
         subtotalEl.textContent = '$0';
         totalEl.textContent = '$0';
         cashChangeDisplay.textContent = '$0';
+
+        const packagingBox = document.getElementById('packaging-box');
+        const posPackagingRow = document.getElementById('pos-packaging-row');
+        if (packagingBox) packagingBox.classList.add('hidden');
+        if (posPackagingRow) posPackagingRow.style.display = 'none';
         return;
       }
 
-      let subtotal = 0;
       cartContainer.innerHTML = cart.map((item, idx) => {
         const itemTotal = item.price * item.quantity;
-        subtotal += itemTotal;
+
+        let notesDisplay = '';
+        if (item.isCustomizable) {
+          notesDisplay = `
+            <div class="text-[10.5px] text-parrilla-muted mt-1 bg-slate-100/90 p-1.5 rounded-lg border border-parrilla-border/60 leading-relaxed">
+              <div class="flex flex-wrap gap-x-2 gap-y-0.5">
+                <span>🥣 <strong>${item.soup || 'Sopa'}</strong></span>
+                <span>• 🍚 <strong>${item.principle || 'Sin Principio'}</strong></span>
+                <span>• 🍟 <strong>${item.side || 'Sin Acompañamiento'}</strong></span>
+                <span>• 🥗 <strong>${item.salad || 'Con ensalada'}</strong></span>
+                ${currentOrderType !== 'mesa' ? `<span>• 📦 <strong>${item.packaging || globalPackagingType}</strong></span>` : ''}
+              </div>
+              ${item.extraNotes ? `<div class="text-orange-700 font-semibold mt-0.5">📝 Nota: ${item.extraNotes}</div>` : ''}
+            </div>
+          `;
+        } else if (item.notes) {
+          notesDisplay = `<div class="text-[10px] text-parrilla-muted mt-0.5 leading-tight bg-slate-100/80 px-1.5 py-0.5 rounded border border-parrilla-border/60">${item.notes}</div>`;
+        }
+
         return `
           <div class="p-2.5 flex items-start justify-between gap-2 hover:bg-parrilla-surface/50 rounded-lg">
             <div class="flex-1 min-w-0">
               <div class="font-bold text-xs text-parrilla-ivory leading-snug">${item.name}</div>
-              ${
-                item.notes
-                  ? `<div class="text-[10px] text-parrilla-muted mt-0.5 leading-tight bg-slate-100/80 px-1.5 py-0.5 rounded border border-parrilla-border/60">${item.notes}</div>`
-                  : ''
-              }
-              <div class="text-[11px] text-parrilla-gold font-semibold mt-0.5">${fmt(item.price)} c/u</div>
+              ${notesDisplay}
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-[11px] text-parrilla-gold font-bold font-mono">${fmt(item.price)}</span>
+                ${
+                  item.isCustomizable
+                    ? `
+                  <button type="button" class="btn-customize-cart-item text-[10px] font-bold text-orange-700 bg-orange-100 hover:bg-orange-200 border border-orange-200 px-2 py-0.5 rounded-md transition flex items-center gap-1 cursor-pointer" data-uid="${item.uid}">
+                    <span>✏️ Personalizar / Cambiar</span>
+                  </button>
+                `
+                    : ''
+                }
+              </div>
             </div>
             
             <!-- Quantity Controls -->
-            <div class="flex items-center gap-1.5 bg-parrilla-dark px-2 py-1 rounded-lg border border-parrilla-border">
-              <button type="button" class="btn-qty-minus text-parrilla-muted hover:text-red-400 font-bold px-1" data-idx="${idx}">-</button>
-              <span class="font-bold text-xs text-parrilla-ivory px-1">${item.quantity}</span>
-              <button type="button" class="btn-qty-plus text-parrilla-muted hover:text-parrilla-gold font-bold px-1" data-idx="${idx}">+</button>
+            <div class="flex items-center gap-1 bg-parrilla-dark px-1.5 py-1 rounded-lg border border-parrilla-border">
+              <button type="button" class="btn-qty-minus text-parrilla-muted hover:text-red-400 font-bold px-1.5 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}">-</button>
+              <span class="font-bold text-xs text-parrilla-ivory px-1 min-w-[14px] text-center">${item.quantity}</span>
+              <button type="button" class="btn-qty-plus text-parrilla-muted hover:text-parrilla-gold font-bold px-1.5 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}">+</button>
             </div>
 
-            <div class="font-bold text-xs text-parrilla-ivory text-right w-16">
+            <div class="font-bold text-xs text-parrilla-ivory text-right w-16 font-mono">
               ${fmt(itemTotal)}
             </div>
 
-            <button type="button" class="btn-remove-item text-parrilla-muted hover:text-red-400 p-1" data-idx="${idx}">
+            <button type="button" class="btn-remove-item text-parrilla-muted hover:text-red-400 p-1 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}">
               ✕
             </button>
           </div>
         `;
       }).join('');
 
-      // Bind dynamic quantity buttons
-      document.querySelectorAll('.btn-qty-minus').forEach(b => {
+      // Enlace para el botón "Personalizar / Cambiar"
+      document.querySelectorAll('.btn-customize-cart-item').forEach((b) => {
         b.addEventListener('click', (e) => {
           // @ts-ignore
-          const i = Number(e.currentTarget.getAttribute('data-idx'));
-          if (cart[i].quantity > 1) {
-            cart[i].quantity -= 1;
+          const uid = e.currentTarget.getAttribute('data-uid');
+          const item = cart.find((it) => it.uid === uid);
+          if (item) openGarnishModalForCartItem(item);
+        });
+      });
+
+      // Bind dynamic quantity buttons
+      document.querySelectorAll('.btn-qty-minus').forEach((b) => {
+        b.addEventListener('click', (e) => {
+          // @ts-ignore
+          const uid = e.currentTarget.getAttribute('data-uid');
+          const idx = cart.findIndex((it) => it.uid === uid);
+          if (idx === -1) return;
+
+          if (cart[idx].quantity > 1) {
+            cart[idx].quantity -= 1;
           } else {
-            cart.splice(i, 1);
+            cart.splice(idx, 1);
+          }
+
+          if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
+            packagingQty = countFoodPlates();
           }
           renderCart();
         });
       });
 
-      document.querySelectorAll('.btn-qty-plus').forEach(b => {
+      document.querySelectorAll('.btn-qty-plus').forEach((b) => {
         b.addEventListener('click', (e) => {
           // @ts-ignore
-          const i = Number(e.currentTarget.getAttribute('data-idx'));
-          cart[i].quantity += 1;
+          const uid = e.currentTarget.getAttribute('data-uid');
+          const item = cart.find((it) => it.uid === uid);
+          if (!item) return;
+
+          if (item.isCustomizable) {
+            // Duplica el plato como un nuevo plato independiente para poder personalizarlo
+            const cloned = {
+              ...item,
+              uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+              quantity: 1
+            };
+            cloned.notes = buildPlateNotes(cloned);
+            cart.push(cloned);
+          } else {
+            item.quantity += 1;
+          }
+
+          if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
+            packagingQty = countFoodPlates();
+          }
           renderCart();
         });
       });
 
-      document.querySelectorAll('.btn-remove-item').forEach(b => {
+      document.querySelectorAll('.btn-remove-item').forEach((b) => {
         b.addEventListener('click', (e) => {
           // @ts-ignore
-          const i = Number(e.currentTarget.getAttribute('data-idx'));
-          cart.splice(i, 1);
-          renderCart();
+          const uid = e.currentTarget.getAttribute('data-uid');
+          const idx = cart.findIndex((it) => it.uid === uid);
+          if (idx !== -1) {
+            cart.splice(idx, 1);
+            if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
+              packagingQty = countFoodPlates();
+            }
+            renderCart();
+          }
         });
       });
 
-      // Calculate Total
-      // @ts-ignore
-      const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
-      const total = subtotal + deliveryFee;
-
+      // Actualizar Subtotal y Desglose de Empaques
       subtotalEl.textContent = fmt(subtotal);
+
+      const packagingBox = document.getElementById('packaging-box');
+      const packagingQtyDisplay = document.getElementById('packaging-qty-display');
+      const packagingTotalBadge = document.getElementById('packaging-total-badge');
+      const posPackagingRow = document.getElementById('pos-packaging-row');
+      const posPackagingLabel = document.getElementById('pos-packaging-label');
+      const posPackagingFee = document.getElementById('pos-packaging-fee');
+
+      if (isDeliveryOrTakeout) {
+        packagingBox?.classList.remove('hidden');
+        if (packagingQtyDisplay) packagingQtyDisplay.textContent = String(packagingQty);
+        if (packagingTotalBadge) packagingTotalBadge.textContent = fmt(packagingFee);
+        if (posPackagingRow) {
+          posPackagingRow.style.display = 'flex';
+          if (posPackagingLabel) posPackagingLabel.textContent = `Empaques (${globalPackagingType} x ${packagingQty}):`;
+          if (posPackagingFee) posPackagingFee.textContent = fmt(packagingFee);
+        }
+      } else {
+        packagingBox?.classList.add('hidden');
+        if (posPackagingRow) posPackagingRow.style.display = 'none';
+      }
+
+      // Actualizar Domicilio
       if (currentOrderType === 'domicilio') {
         deliveryRow.style.display = 'flex';
         deliveryEl.textContent = fmt(deliveryFee);
       } else {
         deliveryRow.style.display = 'none';
       }
+
+      // Actualizar Total
       totalEl.textContent = fmt(total);
 
       calculateChange(total);
@@ -1389,10 +1686,8 @@ const searchableCatalog = publicProducts.map((p) => ({
 
     if (cashReceivedInput) {
       cashReceivedInput.addEventListener('input', () => {
-        const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
-        // @ts-ignore
-        const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
-        calculateChange(subtotal + deliveryFee);
+        const { total } = calculateTotals();
+        calculateChange(total);
       });
     }
 
@@ -1405,7 +1700,7 @@ const searchableCatalog = publicProducts.map((p) => ({
     // 4. ORDER TYPE SWITCHER
     function setOrderType(type) {
       currentOrderType = type;
-      [typeMesaBtn, typeDomicilioBtn, typeLlevarBtn].forEach(b => {
+      [typeMesaBtn, typeDomicilioBtn, typeLlevarBtn].forEach((b) => {
         b.className = 'order-type-btn flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-parrilla-border bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold font-extrabold text-xs transition';
       });
 
@@ -1413,15 +1708,26 @@ const searchableCatalog = publicProducts.map((p) => ({
         typeMesaBtn.className = 'order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-extrabold text-xs shadow-sm transition';
         formMesa.style.display = 'flex';
         formDomicilio.style.display = 'none';
+        packagingQty = 0;
+        manualPackagingOverride = false;
       } else if (type === 'domicilio') {
         typeDomicilioBtn.className = 'order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-parrilla-accent bg-parrilla-accent text-white font-extrabold text-xs shadow-sm transition';
         formMesa.style.display = 'none';
         formDomicilio.style.display = 'flex';
+        if (!manualPackagingOverride) {
+          packagingQty = countFoodPlates();
+        }
       } else {
         typeLlevarBtn.className = 'order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-amber-600 bg-amber-600 text-white font-extrabold text-xs shadow-sm transition';
         formMesa.style.display = 'none';
         formDomicilio.style.display = 'none';
+        if (!manualPackagingOverride) {
+          packagingQty = countFoodPlates();
+        }
       }
+
+      // Sincronizar notas de empaque según el nuevo tipo de pedido
+      updateAllItemsPackagingNotes();
 
       // Update Courier Checkbox in Modal
       const chkCourierWrapper = document.getElementById('chk-courier-wrapper');
@@ -1614,10 +1920,7 @@ const searchableCatalog = publicProducts.map((p) => ({
 
     // Single cash change calculation
     singleCashReceived?.addEventListener('input', () => {
-      const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
-      // @ts-ignore
-      const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
-      const total = subtotal + deliveryFee;
+      const { total } = calculateTotals();
       // @ts-ignore
       const paid = Number(singleCashReceived.value || 0);
       const diff = paid - total;
@@ -1653,10 +1956,8 @@ const searchableCatalog = publicProducts.map((p) => ({
 
     [splitAmount1, splitAmount2].forEach(input => {
       input?.addEventListener('input', () => {
-        const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
-        // @ts-ignore
-        const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
-        updateSplitBalance(subtotal + deliveryFee);
+        const { total } = calculateTotals();
+        updateSplitBalance(total);
       });
     });
 
@@ -1682,13 +1983,22 @@ const searchableCatalog = publicProducts.map((p) => ({
         }
       }
 
-      const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
-      // @ts-ignore
-      const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
-      const total = subtotal + deliveryFee;
+      const { subtotal, packagingFee, deliveryFee, total, isDeliveryOrTakeout } = calculateTotals();
 
       // Populate modal values
       document.getElementById('modal-cobro-subtotal').textContent = fmt(subtotal);
+
+      const modalPackagingRow = document.getElementById('modal-cobro-packaging-row');
+      const modalPackagingLabel = document.getElementById('modal-cobro-packaging-label');
+      const modalPackagingVal = document.getElementById('modal-cobro-packaging');
+      if (isDeliveryOrTakeout && packagingFee > 0) {
+        if (modalPackagingRow) modalPackagingRow.style.display = 'flex';
+        if (modalPackagingLabel) modalPackagingLabel.textContent = `Empaques (${globalPackagingType} x ${packagingQty}):`;
+        if (modalPackagingVal) modalPackagingVal.textContent = fmt(packagingFee);
+      } else {
+        if (modalPackagingRow) modalPackagingRow.style.display = 'none';
+      }
+
       const deliveryRowModal = document.getElementById('modal-cobro-delivery-row');
       if (currentOrderType === 'domicilio') {
         deliveryRowModal.style.display = 'flex';
@@ -1719,10 +2029,7 @@ const searchableCatalog = publicProducts.map((p) => ({
 
     // CONFIRMAR PAGO (POST /api/pedidos/{id}/pagar) E IMPRIMIR SAT Q22
     btnConfirmPayment?.addEventListener('click', async () => {
-      const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
-      // @ts-ignore
-      const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0;
-      const total = subtotal + deliveryFee;
+      const { subtotal, packagingFee, deliveryFee, total } = calculateTotals();
 
       let paymentsPayload = [];
       let cashGiven = 0;
@@ -1779,6 +2086,7 @@ const searchableCatalog = publicProducts.map((p) => ({
             // @ts-ignore
             deliveryNeighborhood: currentOrderType === 'domicilio' ? custNeighborhoodInput.value.trim() : '',
             subtotal,
+            packagingFee,
             deliveryFee,
             total,
             paymentMethod: cobroPaymentMode === 'single' ? selectedSingleMethod.toLowerCase() : 'mixto',
@@ -1823,8 +2131,17 @@ const searchableCatalog = publicProducts.map((p) => ({
           customerPhone: orderPayload.orderData.customerPhone,
           address: orderPayload.orderData.deliveryAddress,
           neighborhood: orderPayload.orderData.deliveryNeighborhood,
-          items: cart.map(({ name, price, quantity, notes }) => ({ name, price, quantity, notes: notes || '' })),
+          items: cart.map(({ name, price, quantity, notes, packaging }) => ({
+            name,
+            price,
+            quantity,
+            notes: notes || '',
+            packaging: packaging || globalPackagingType
+          })),
           subtotal,
+          packagingFee,
+          packagingType: globalPackagingType,
+          packagingQty,
           deliveryFee,
           total,
           paymentMethod: cobroPaymentMode === 'single' ? selectedSingleMethod : 'MIXTO',
@@ -1834,6 +2151,8 @@ const searchableCatalog = publicProducts.map((p) => ({
         saveLastTicket(ticket);
         closeCobroModal();
         cart = [];
+        manualPackagingOverride = false;
+        packagingQty = 0;
         // @ts-ignore
         cashReceivedInput.value = '';
         renderCart();
@@ -1883,6 +2202,8 @@ const searchableCatalog = publicProducts.map((p) => ({
         return;
       }
 
+      const { subtotal, packagingFee, deliveryFee } = calculateTotals();
+
       const tempTicket = {
         id: 'COCINA-' + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
         createdAt: new Date().toISOString(),
@@ -1893,10 +2214,18 @@ const searchableCatalog = publicProducts.map((p) => ({
         customerName: currentOrderType === 'domicilio' ? custNameInput.value.trim() : '',
         // @ts-ignore
         customerPhone: currentOrderType === 'domicilio' ? custPhoneInput.value.trim() : '',
-        items: cart.map(({ name, price, quantity, notes }) => ({ name, price, quantity, notes: notes || '' })),
-        subtotal: cart.reduce((acc, it) => acc + (it.price * it.quantity), 0),
-        // @ts-ignore
-        deliveryFee: currentOrderType === 'domicilio' ? Number(deliveryFeeInput.value || 0) : 0,
+        items: cart.map(({ name, price, quantity, notes, packaging }) => ({
+          name,
+          price,
+          quantity,
+          notes: notes || '',
+          packaging: packaging || globalPackagingType
+        })),
+        subtotal,
+        packagingFee,
+        packagingType: globalPackagingType,
+        packagingQty,
+        deliveryFee,
         total: 0,
         paymentMethod: 'PENDIENTE'
       };
@@ -2080,6 +2409,17 @@ const searchableCatalog = publicProducts.map((p) => ({
         `;
       }).join('');
 
+      let packagingBanner = '';
+      if (t.orderType !== 'mesa' || (t.packagingFee && t.packagingFee > 0)) {
+        packagingBanner = `
+          <div style="border: 2px solid #000; padding: 1.5mm 3mm; margin: 1.5mm 0; text-align: center; background: #fff;">
+            <div style="font-size: 13pt; font-weight: 900; letter-spacing: 0.5px;">
+              📦 EMPACAR EN: ${(t.packagingType || 'CAJA').toUpperCase()} (${t.packagingQty || (t.items ? t.items.length : 1)} EMPAQUES)
+            </div>
+          </div>
+        `;
+      }
+
       return `
         <div class="ticket-header" style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 2mm; margin-bottom: 2.5mm;">
           <div style="display: inline-block; border: 2.5px solid #000; padding: 1.5mm 4mm; font-size: 14pt; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 1.5mm;">
@@ -2088,6 +2428,7 @@ const searchableCatalog = publicProducts.map((p) => ({
           <div style="font-size: 14pt; font-weight: 900; margin: 1mm 0; text-transform: uppercase;">
             ${ubicacionStr}
           </div>
+          ${packagingBanner}
           <div style="font-size: 9.5pt; font-family: monospace; margin-top: 1mm;">
             <span>Orden: <strong>${codeStr}</strong></span> | <span>Hora: <strong>${timeStr}</strong></span>
           </div>
@@ -2159,6 +2500,11 @@ const searchableCatalog = publicProducts.map((p) => ({
             CONTENIDO DEL PAQUETE (${(t.items || []).reduce((a, b) => a + b.quantity, 0)} platos):
           </div>
           ${itemsSummary}
+          ${t.packagingFee ? `
+            <div style="font-size: 10pt; font-weight: 900; margin-top: 1.5mm; padding-top: 1mm; border-top: 1px dotted #000;">
+              📦 Empaques: ${t.packagingQty || 1}x (${t.packagingType || 'Caja'}) - ${fmt(t.packagingFee)}
+            </div>
+          ` : ''}
         </div>
 
         <!-- INSTRUCCIÓN DE COBRO EN CUADRO GIGANTE -->
@@ -2269,9 +2615,15 @@ const searchableCatalog = publicProducts.map((p) => ({
 
         <div class="totals-box" style="border-top: 1.5px dashed #000; padding-top: 2mm; margin-top: 2mm;">
           <div class="total-row" style="display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 1mm;">
-            <span>Subtotal:</span>
+            <span>Subtotal platos:</span>
             <span>${fmt(t.subtotal)}</span>
           </div>
+          ${t.packagingFee ? `
+            <div class="total-row" style="display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 1mm; font-weight: bold;">
+              <span>Empaques (${t.packagingType || 'Caja'} x ${t.packagingQty || Math.round(t.packagingFee / 1000)}):</span>
+              <span>${fmt(t.packagingFee)}</span>
+            </div>
+          ` : ''}
           ${t.deliveryFee ? `
             <div class="total-row" style="display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 1mm;">
               <span>Envío Domicilio:</span>

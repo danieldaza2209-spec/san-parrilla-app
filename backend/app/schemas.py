@@ -171,6 +171,7 @@ class PedidoCreate(BaseModel):
     mesa: Optional[str] = None
     tipo: TipoPedido = TipoPedido.EN_MESA
     delivery_fee: float = 0.0
+    packaging_fee: float = 0.0
     es_borrador_web: bool = False
     notas: Optional[str] = None
     detalles: List[DetallePedidoCreate]
@@ -182,6 +183,7 @@ class PedidoApprove(BaseModel):
     mesa: Optional[str] = None
     tipo: Optional[TipoPedido] = None
     delivery_fee: Optional[float] = None
+    packaging_fee: Optional[float] = None
     notas: Optional[str] = None
     detalles: Optional[List[DetallePedidoCreate]] = None
 
@@ -197,6 +199,7 @@ class PedidoOut(BaseModel):
     estado: EstadoPedido
     subtotal: float = 0.0
     delivery_fee: float = 0.0
+    packaging_fee: float = 0.0
     total: float
     notas: Optional[str] = None
     detalles: List[DetallePedidoOut] = []
