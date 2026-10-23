@@ -330,7 +330,7 @@ const formatPrice = (val) => {
   <!-- ==============================================================
        MODAL DE COBRO Y PAGO MIXTO (POST /api/pedidos/{id}/pagar)
        ============================================================== -->
-  <div id="modal-cobro-pos" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+  <div id="modal-cobro-pos" class="no-print fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl border border-parrilla-border max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[95vh] overflow-y-auto">
       
       <!-- Modal Header -->
@@ -1234,14 +1234,16 @@ const formatPrice = (val) => {
         };
 
         saveLastTicket(ticket);
-        printTicket(ticket);
-
-        // Vaciar la comanda y cerrar modal
+        closeCobroModal();
         cart = [];
         // @ts-ignore
         cashReceivedInput.value = '';
         renderCart();
-        closeCobroModal();
+
+        // Breve espera para que el DOM oculte el modal antes de disparar window.print()
+        setTimeout(() => {
+          printTicket(ticket);
+        }, 120);
 
       } catch (err) {
         alert('Ocurrió un error al cobrar: ' + err.message);
@@ -1312,8 +1314,8 @@ const formatPrice = (val) => {
 
     // Llena el ticket oculto con los datos. Todo se inserta con textContent (nunca HTML crudo).
     function fillTicket(t, isCopy) {
-      const when = new Date(t.createdAt).toLocaleString('es-CO');
-      byId('t-id').textContent = '#' + t.id;
+      const when = new Date(t.createdAt || Date.now()).toLocaleString('es-CO');
+      byId('t-id').textContent = (t.id && (t.id.toString().startsWith('#') || t.id.toString().startsWith('SP-'))) ? t.id : '#' + (t.id || '001');
       byId('t-date').textContent = when + (isCopy ? ' - COPIA' : '');
       byId('t-payment-method').textContent = t.paymentMethod;
 
@@ -1350,14 +1352,20 @@ const formatPrice = (val) => {
         const name = document.createElement('td');
         name.textContent = it.name;
         if (it.notes) {
-          const note = document.createElement('span');
-          note.className = 'item-note';
-          note.textContent = '* ' + it.notes;
-          name.appendChild(note);
+          const notesParts = it.notes.split('|');
+          notesParts.forEach((part) => {
+            const trimmed = part.trim();
+            if (trimmed) {
+              const noteDiv = document.createElement('div');
+              noteDiv.className = 'item-note';
+              noteDiv.textContent = '└ ' + trimmed;
+              name.appendChild(noteDiv);
+            }
+          });
         }
 
         const price = document.createElement('td');
-        price.style.cssText = 'text-align: right; font-weight: bold;';
+        price.style.cssText = 'text-align: right; font-weight: bold; white-space: nowrap;';
         price.textContent = fmt(it.price * it.quantity);
 
         row.append(qty, name, price);
@@ -1367,7 +1375,7 @@ const formatPrice = (val) => {
       byId('t-subtotal').textContent = fmt(t.subtotal);
       byId('t-total').textContent = fmt(t.total);
 
-      const showChange = t.paymentMethod === 'efectivo' && t.cashPaid > 0;
+      const showChange = (t.paymentMethod === 'efectivo' || t.paymentMethod === 'CASH') && t.cashPaid > 0;
       byId('t-change-box').style.display = showChange ? 'block' : 'none';
       if (showChange) {
         byId('t-cash-paid').textContent = fmt(t.cashPaid);
