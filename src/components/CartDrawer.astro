@@ -67,6 +67,40 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       <button type="button" id="clear-cart-btn" class="text-xs font-semibold text-parrilla-muted hover:text-red-600 transition px-2 py-2 min-h-[44px]">Vaciar</button>
     </div>
 
+    <!-- Bloque Superior de Empaques en el Carrito (Solo Domicilio / Para Llevar) -->
+    <div id="cart-top-packaging-box" class="hidden mb-4 bg-orange-50/80 border border-parrilla-gold/40 rounded-xl p-3.5 space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-extrabold uppercase tracking-wider text-parrilla-gold flex items-center gap-1.5">
+          <i data-lucide="package" class="w-4 h-4 text-parrilla-gold"></i>
+          <span>Empaques ($1.000 c/u)</span>
+        </span>
+        <span id="cart-top-packaging-count" class="text-xs font-bold text-parrilla-ivory bg-white border border-parrilla-gold/30 px-2 py-0.5 rounded-md shadow-2xs font-mono">
+          0 empaques ($0)
+        </span>
+      </div>
+      <p class="text-[11px] text-parrilla-muted leading-tight">
+        Se cobra $1.000 por empaque en cada plato fuerte. Selecciona el empaque preferido para tu pedido:
+      </p>
+      <div class="grid grid-cols-2 gap-2 pt-0.5">
+        <button
+          type="button"
+          id="btn-cart-pack-icopor"
+          class="cart-pack-btn py-2 px-3 rounded-lg border text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer bg-parrilla-gold text-white border-parrilla-gold shadow-xs"
+          data-type="Icopor"
+        >
+          <span>🥡 Icopor (Térmico)</span>
+        </button>
+        <button
+          type="button"
+          id="btn-cart-pack-caja"
+          class="cart-pack-btn py-2 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer bg-white text-parrilla-ivory hover:text-parrilla-gold border-parrilla-border"
+          data-type="Caja"
+        >
+          <span>📦 Caja</span>
+        </button>
+      </div>
+    </div>
+
     <div id="cart-items-list" class="flex flex-col gap-3 mb-5"></div>
 
     <!-- Tipo de servicio -->
@@ -198,6 +232,45 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
     const summaryTotal = $('summary-total');
     const empaqueRow = $('empaque-row');
 
+    const topPackagingBox = $('cart-top-packaging-box');
+    const topPackagingCount = $('cart-top-packaging-count');
+    const btnCartPackIcopor = $('btn-cart-pack-icopor');
+    const btnCartPackCaja = $('btn-cart-pack-caja');
+    let currentGlobalPackaging = 'Icopor'; // 'Icopor' | 'Caja' (Icopor por defecto)
+
+    function updateTopPackagingButtonsUI() {
+      if (!btnCartPackIcopor || !btnCartPackCaja) return;
+      if (currentGlobalPackaging === 'Icopor') {
+        btnCartPackIcopor.className =
+          'cart-pack-btn py-2 px-3 rounded-lg border text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer bg-parrilla-gold text-white border-parrilla-gold shadow-xs';
+        btnCartPackCaja.className =
+          'cart-pack-btn py-2 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer bg-white text-parrilla-ivory hover:text-parrilla-gold border-parrilla-border';
+      } else {
+        btnCartPackCaja.className =
+          'cart-pack-btn py-2 px-3 rounded-lg border text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer bg-parrilla-gold text-white border-parrilla-gold shadow-xs';
+        btnCartPackIcopor.className =
+          'cart-pack-btn py-2 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer bg-white text-parrilla-ivory hover:text-parrilla-gold border-parrilla-border';
+      }
+    }
+
+    btnCartPackIcopor?.addEventListener('click', () => {
+      currentGlobalPackaging = 'Icopor';
+      updateTopPackagingButtonsUI();
+      cart.forEach((it) => {
+        if (it.customizable) it.packaging = 'Icopor';
+      });
+      updateCartUI();
+    });
+
+    btnCartPackCaja?.addEventListener('click', () => {
+      currentGlobalPackaging = 'Caja';
+      updateTopPackagingButtonsUI();
+      cart.forEach((it) => {
+        if (it.customizable) it.packaging = 'Caja';
+      });
+      updateCartUI();
+    });
+
     const PACKAGING_FEE = 1000;
     const money = (n) => `$${n.toLocaleString('es-CO')}`;
     const escapeHtml = (s) =>
@@ -256,6 +329,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
           JSON.stringify({
             savedAt: Date.now(),
             cart,
+            globalPackaging: currentGlobalPackaging,
             service: serviceSelect.value,
             payment: paymentSelect.value,
             table: tableInput.value,
@@ -271,7 +345,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
     // Corrige elecciones que ya no existan (p. ej. si cambió el menú del día)
     function sanitizeItem(raw) {
       if (!raw || typeof raw.name !== 'string' || !Number.isFinite(raw.price)) return null;
-      const soupDefault = `Sopa ${specials.sopa || 'del Día'}`;
+      const soupDefault = specials.sopa ? `Con Sopa (${specials.sopa})` : 'Con Sopa';
       const item = {
         id: typeof raw.id === 'string' ? raw.id : `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
         name: raw.name,
@@ -285,17 +359,16 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         notes: typeof raw.notes === 'string' ? raw.notes : '',
       };
       if (item.customizable) {
-        const soups = [soupDefault, specials.sopa, 'Sin Sopa', 'Solo Bandeja'].filter(Boolean);
         const principles = [...(specials.principios || []), 'Sin Principio'];
         const sides = [...(specials.acompanamientos || []), 'Sin Acompañamiento'];
         const salads = ['Con ensalada', 'Sin ensalada'];
-        const packagings = ['Caja', 'Icopor'];
+        const packagings = ['Icopor', 'Caja'];
 
-        item.soup = soups.includes(raw.soup) ? raw.soup : soupDefault;
+        item.soup = raw.soup === 'Sin Sopa' ? 'Sin Sopa' : soupDefault;
         item.principle = principles.includes(raw.principle) ? raw.principle : (principles[0] || 'Sin Principio');
         item.side = sides.includes(raw.side) ? raw.side : (sides[0] || 'Sin Acompañamiento');
         item.salad = salads.includes(raw.salad) ? raw.salad : 'Con ensalada';
-        item.packaging = packagings.includes(raw.packaging) ? raw.packaging : 'Caja';
+        item.packaging = packagings.includes(raw.packaging) ? raw.packaging : 'Icopor';
       }
       return item;
     }
@@ -306,6 +379,9 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         if (!saved || !Array.isArray(saved.cart) || Date.now() - saved.savedAt > CART_STATE_TTL_MS) {
           localStorage.removeItem(CART_STATE_KEY);
           return;
+        }
+        if (saved.globalPackaging === 'Caja' || saved.globalPackaging === 'Icopor') {
+          currentGlobalPackaging = saved.globalPackaging;
         }
         cart = saved.cart.map(sanitizeItem).filter(Boolean);
 
@@ -406,7 +482,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
     const isToGo = () => serviceSelect.value === 'Domicilio' || serviceSelect.value === 'Recoger';
 
     function addToCart(name, price, customizable) {
-      const soupDefault = `Sopa ${specials.sopa || 'del Día'}`;
+      const soupDefault = specials.sopa ? `Con Sopa (${specials.sopa})` : 'Con Sopa';
       cart.push({
         id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
         name,
@@ -416,7 +492,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         principle: customizable ? (specials.principios?.[0] ?? 'Sin Principio') : null,
         side: customizable ? (specials.acompanamientos?.[0] ?? 'Sin Acompañamiento') : null,
         salad: customizable ? 'Con ensalada' : null,
-        packaging: customizable ? 'Caja' : null,
+        packaging: customizable ? currentGlobalPackaging : null,
         notes: '',
       });
       pulseCartSummary();
@@ -434,7 +510,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         .join('');
 
     function renderItem(item, index) {
-      const soupDefault = `Sopa ${specials.sopa || 'del Día'}`;
+      const soupDefault = specials.sopa ? `Con Sopa (${specials.sopa})` : 'Con Sopa';
       let html = `
         <div class="flex items-center justify-between gap-2">
           <div class="min-w-0 flex-1">
@@ -453,7 +529,6 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         const soupOptionsList = [
           { value: soupDefault, label: soupDefault },
           { value: 'Sin Sopa', label: 'Sin Sopa' },
-          { value: 'Solo Bandeja', label: 'Solo Bandeja' },
         ];
         const soupHtml = optionsHtml(soupOptionsList, item.soup);
 
@@ -476,10 +551,10 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         const saladHtml = optionsHtml(saladOptionsList, item.salad);
 
         const packagingOptionsList = [
-          { value: 'Caja', label: 'Caja' },
           { value: 'Icopor', label: 'Icopor' },
+          { value: 'Caja', label: 'Caja' },
         ];
-        const packagingHtml = optionsHtml(packagingOptionsList, item.packaging || 'Caja');
+        const packagingHtml = optionsHtml(packagingOptionsList, item.packaging || currentGlobalPackaging || 'Icopor');
 
         html += `
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5 pt-2.5 border-t border-dashed border-parrilla-border text-xs">
@@ -561,6 +636,16 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       const foodPlatesCount = cart.filter((item) => item.customizable).length;
       const packagingFee = isToGo() ? foodPlatesCount * PACKAGING_FEE : 0;
       const total = subtotal + packagingFee;
+
+      // Actualizar bloque superior de empaques en el carrito del cliente
+      if (topPackagingBox) {
+        const showTopBox = isToGo() && foodPlatesCount > 0;
+        topPackagingBox.classList.toggle('hidden', !showTopBox);
+        if (topPackagingCount) {
+          topPackagingCount.textContent = `${foodPlatesCount} empaque${foodPlatesCount === 1 ? '' : 's'} (${money(packagingFee)})`;
+        }
+        updateTopPackagingButtonsUI();
+      }
 
       summarySubtotal.textContent = money(subtotal);
       summaryEmpaque.textContent = money(packagingFee);
@@ -717,7 +802,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
                 item.side ? `Acomp: ${item.side}` : '',
                 item.salad || 'Con ensalada',
               ];
-              if (isToGo()) parts.push(`Empaque: ${item.packaging || 'Caja'}`);
+              if (isToGo()) parts.push(`Empaque: ${item.packaging || currentGlobalPackaging || 'Icopor'}`);
               if (item.notes && item.notes.trim()) parts.push(`Nota: ${item.notes.trim()}`);
               sideNotes = parts.filter(Boolean).join(' | ');
             } else if (item.notes && item.notes.trim()) {
@@ -780,7 +865,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
           text += `   🍟 Acompañante: ${item.side || 'No elegido'}\n`;
           text += `   🥗 Ensalada: ${item.salad || 'Con ensalada'}\n`;
           if (isToGo()) {
-            text += `   📦 Empaque: ${item.packaging || 'Caja'}\n`;
+            text += `   📦 Empaque: ${item.packaging || currentGlobalPackaging || 'Icopor'}\n`;
           }
           if (item.notes && item.notes.trim()) {
             text += `   📝 Nota: ${item.notes.trim()}\n`;

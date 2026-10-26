@@ -308,13 +308,13 @@ const searchableCatalog = publicProducts.map((p) => ({
           </div>
           
           <div class="flex items-center justify-between gap-2 pt-0.5">
-            <!-- Selector Global Caja / Icopor -->
+            <!-- Selector Global Caja / Icopor (Icopor por defecto) -->
             <div class="flex items-center gap-1 bg-white p-1 rounded-lg border border-parrilla-border text-xs">
-              <button type="button" id="btn-pack-global-caja" class="px-3 py-1 rounded font-bold text-xs bg-parrilla-gold text-white shadow-xs transition cursor-pointer">
-                📦 Caja
-              </button>
-              <button type="button" id="btn-pack-global-icopor" class="px-3 py-1 rounded font-bold text-xs text-parrilla-muted hover:text-parrilla-ivory transition cursor-pointer">
+              <button type="button" id="btn-pack-global-icopor" class="px-3 py-1 rounded font-bold text-xs bg-parrilla-gold text-white shadow-xs transition cursor-pointer">
                 🥡 Icopor
+              </button>
+              <button type="button" id="btn-pack-global-caja" class="px-3 py-1 rounded font-bold text-xs text-parrilla-muted hover:text-parrilla-ivory transition cursor-pointer">
+                📦 Caja
               </button>
             </div>
 
@@ -1167,8 +1167,8 @@ const searchableCatalog = publicProducts.map((p) => ({
     const garnishPackagingContainer = document.getElementById('garnish-packaging-options');
     const garnishExtraNotes = document.getElementById('garnish-extra-notes');
 
-    // Estado global de Empaques y Edición de Plato
-    let globalPackagingType = 'Caja'; // 'Caja' | 'Icopor'
+    // Estado global de Empaques y Edición de Plato (Icopor por defecto)
+    let globalPackagingType = 'Icopor'; // 'Icopor' | 'Caja'
     let packagingFeePerUnit = 1000;
     let packagingQty = 0;
     let manualPackagingOverride = false;
@@ -1181,7 +1181,7 @@ const searchableCatalog = publicProducts.map((p) => ({
       principle: '',
       side: '',
       salad: 'Con ensalada',
-      packaging: 'Caja'
+      packaging: 'Icopor'
     };
 
     function renderOptionPills(container, options, currentVal, onSelect) {
@@ -1246,8 +1246,9 @@ const searchableCatalog = publicProducts.map((p) => ({
     // Arma el string de notas y guarniciones de un plato
     function buildPlateNotes(item) {
       if (!item.isCustomizable) return item.notes || '';
+      const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
       const parts = [
-        item.soup || `Sopa ${dailySpecialsData.sopa || 'del Día'}`,
+        item.soup || soupDefault,
         `Principio: ${item.principle || (dailySpecialsData.principios?.[0] || 'Sin Principio')}`,
         `Acomp: ${item.side || (dailySpecialsData.acompanamientos?.[0] || 'Sin Acompañamiento')}`,
         item.salad || 'Con ensalada'
@@ -1276,11 +1277,12 @@ const searchableCatalog = publicProducts.map((p) => ({
       editingCartUid = cartItem.uid;
       pendingGarnishItem = cartItem;
 
-      const soupOptions = [`Sopa ${dailySpecialsData.sopa || 'del Día'}`, 'Sin Sopa', 'Solo Bandeja'];
+      const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
+      const soupOptions = [soupDefault, 'Sin Sopa'];
       const principleOptions = [...(dailySpecialsData.principios || []), 'Sin Principio'];
       const sideOptions = [...(dailySpecialsData.acompanamientos || []), 'Sin Acompañamiento'];
       const saladOptions = ['Con ensalada', 'Sin ensalada'];
-      const packagingOptions = ['Caja', 'Icopor'];
+      const packagingOptions = ['Icopor', 'Caja'];
 
       garnishState = {
         quantity: 1,
@@ -1288,7 +1290,7 @@ const searchableCatalog = publicProducts.map((p) => ({
         principle: cartItem.principle || principleOptions[0] || 'Sin Principio',
         side: cartItem.side || sideOptions[0] || 'Sin Acompañamiento',
         salad: cartItem.salad || 'Con ensalada',
-        packaging: cartItem.packaging || globalPackagingType || 'Caja'
+        packaging: cartItem.packaging || globalPackagingType || 'Icopor'
       };
 
       if (garnishDishName) garnishDishName.textContent = cartItem.name;
@@ -1371,7 +1373,8 @@ const searchableCatalog = publicProducts.map((p) => ({
       const numPrice = Number(price);
 
       if (isCustomizable) {
-        const soupOptions = [`Sopa ${dailySpecialsData.sopa || 'del Día'}`, 'Sin Sopa', 'Solo Bandeja'];
+        const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
+        const soupOptions = [soupDefault, 'Sin Sopa'];
         const principleOptions = [...(dailySpecialsData.principios || []), 'Sin Principio'];
         const sideOptions = [...(dailySpecialsData.acompanamientos || []), 'Sin Acompañamiento'];
 
@@ -1513,10 +1516,10 @@ const searchableCatalog = publicProducts.map((p) => ({
 
         let inlineControls = '';
         if (item.isCustomizable) {
+          const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
           const soupOptions = [
-            `Sopa ${dailySpecialsData.sopa || 'del Día'}`,
-            'Sin Sopa',
-            'Solo Bandeja'
+            soupDefault,
+            'Sin Sopa'
           ];
           const principleOptions = [
             ...(dailySpecialsData.principios || []),
@@ -1527,7 +1530,7 @@ const searchableCatalog = publicProducts.map((p) => ({
             'Sin Acompañamiento'
           ];
           const saladOptions = ['Con ensalada', 'Sin ensalada'];
-          const packagingOptions = ['Caja', 'Icopor'];
+          const packagingOptions = ['Icopor', 'Caja'];
 
           const optHtml = (arr, sel) =>
             arr
