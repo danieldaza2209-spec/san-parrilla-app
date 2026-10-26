@@ -23,6 +23,17 @@ const fieldClass =
 const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
 ---
 
+<!-- Notificación flotante rápida al agregar plato -->
+<div
+  id="cart-toast"
+  class="fixed top-5 left-1/2 -translate-x-1/2 z-[70] bg-slate-900/95 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 transform -translate-y-16 opacity-0 pointer-events-none transition-all duration-300 no-print"
+  role="status"
+  aria-live="polite"
+>
+  <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+  <span id="cart-toast-msg">Plato agregado al pedido</span>
+</div>
+
 <div
   id="cart-drawer"
   class="hidden fixed bottom-0 left-0 right-0 sm:bottom-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[92%] sm:max-w-lg z-50 bg-white border-t-2 sm:border border-parrilla-gold rounded-t-2xl sm:rounded-2xl shadow-[0_-8px_30px_rgba(15,23,42,0.14)] sm:shadow-2xl overflow-hidden no-print"
@@ -128,7 +139,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         <span id="summary-subtotal" class="font-semibold text-parrilla-ivory">$0</span>
       </div>
       <div id="empaque-row" class="hidden items-center justify-between">
-        <span>Empaque:</span>
+        <span id="summary-empaque-label">Empaques ($1.000 c/u):</span>
         <span id="summary-empaque" class="font-semibold text-parrilla-ivory">$0</span>
       </div>
       <div class="flex items-center justify-between border-t border-parrilla-border pt-2 mt-1 font-bold text-parrilla-ivory">
@@ -183,6 +194,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
 
     const summarySubtotal = $('summary-subtotal');
     const summaryEmpaque = $('summary-empaque');
+    const summaryEmpaqueLabel = $('summary-empaque-label');
     const summaryTotal = $('summary-total');
     const empaqueRow = $('empaque-row');
 
@@ -193,6 +205,38 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
     const refreshIcons = () => { if (window.lucide) window.lucide.createIcons(); };
 
     let cart = [];
+
+    // Feedback visual y micro-notificaciones
+    let toastTimeout = null;
+    function showCartToast(name) {
+      const toast = $('cart-toast');
+      const toastMsg = $('cart-toast-msg');
+      if (!toast || !toastMsg) return;
+      toastMsg.textContent = `✓ ${name} agregado al pedido`;
+      toast.classList.remove('-translate-y-16', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('-translate-y-16', 'opacity-0');
+      }, 2200);
+    }
+
+    function animateAddButton(btn) {
+      if (!btn) return;
+      btn.classList.add('ring-4', 'ring-emerald-400', 'bg-emerald-600', 'text-white', 'scale-110');
+      setTimeout(() => {
+        btn.classList.remove('ring-4', 'ring-emerald-400', 'bg-emerald-600', 'text-white', 'scale-110');
+      }, 400);
+    }
+
+    function pulseCartSummary() {
+      summaryTrigger.classList.add('bg-orange-100', 'scale-[1.02]');
+      setTimeout(() => {
+        summaryTrigger.classList.remove('bg-orange-100', 'scale-[1.02]');
+      }, 350);
+    }
 
     // ==========================================
     // MEMORIA DEL PEDIDO EN CURSO (localStorage)
@@ -227,6 +271,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
     // Corrige elecciones que ya no existan (p. ej. si cambió el menú del día)
     function sanitizeItem(raw) {
       if (!raw || typeof raw.name !== 'string' || !Number.isFinite(raw.price)) return null;
+      const soupDefault = `Sopa ${specials.sopa || 'del Día'}`;
       const item = {
         id: typeof raw.id === 'string' ? raw.id : `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
         name: raw.name,
@@ -236,16 +281,21 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         principle: null,
         side: null,
         salad: null,
+        packaging: null,
+        notes: typeof raw.notes === 'string' ? raw.notes : '',
       };
       if (item.customizable) {
-        const soups = [specials.sopa, 'Sin Sopa'];
-        const principles = [...specials.principios, 'Sin Principio'];
-        const sides = [...specials.acompanamientos, 'Sin Acompañamiento'];
+        const soups = [soupDefault, specials.sopa, 'Sin Sopa', 'Solo Bandeja'].filter(Boolean);
+        const principles = [...(specials.principios || []), 'Sin Principio'];
+        const sides = [...(specials.acompanamientos || []), 'Sin Acompañamiento'];
         const salads = ['Con ensalada', 'Sin ensalada'];
-        item.soup = soups.includes(raw.soup) ? raw.soup : specials.sopa;
-        item.principle = principles.includes(raw.principle) ? raw.principle : principles[0];
-        item.side = sides.includes(raw.side) ? raw.side : sides[0];
+        const packagings = ['Caja', 'Icopor'];
+
+        item.soup = soups.includes(raw.soup) ? raw.soup : soupDefault;
+        item.principle = principles.includes(raw.principle) ? raw.principle : (principles[0] || 'Sin Principio');
+        item.side = sides.includes(raw.side) ? raw.side : (sides[0] || 'Sin Acompañamiento');
         item.salad = salads.includes(raw.salad) ? raw.salad : 'Con ensalada';
+        item.packaging = packagings.includes(raw.packaging) ? raw.packaging : 'Caja';
       }
       return item;
     }
@@ -356,17 +406,20 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
     const isToGo = () => serviceSelect.value === 'Domicilio' || serviceSelect.value === 'Recoger';
 
     function addToCart(name, price, customizable) {
+      const soupDefault = `Sopa ${specials.sopa || 'del Día'}`;
       cart.push({
         id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
         name,
         price,
         customizable,
-        soup: customizable ? specials.sopa : null,
-        principle: customizable ? specials.principios?.[0] ?? 'Sin Principio' : null,
-        side: customizable ? specials.acompanamientos?.[0] ?? 'Sin Acompañamiento' : null,
+        soup: customizable ? soupDefault : null,
+        principle: customizable ? (specials.principios?.[0] ?? 'Sin Principio') : null,
+        side: customizable ? (specials.acompanamientos?.[0] ?? 'Sin Acompañamiento') : null,
         salad: customizable ? 'Con ensalada' : null,
+        packaging: customizable ? 'Caja' : null,
+        notes: '',
       });
-      flashSummary();
+      pulseCartSummary();
       updateCartUI();
     }
 
@@ -375,64 +428,107 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       updateCartUI();
     }
 
-    function flashSummary() {
-      summaryTrigger.classList.add('bg-green-100');
-      setTimeout(() => summaryTrigger.classList.remove('bg-green-100'), 300);
-    }
-
-    const selectClass =
-      'w-full sm:w-56 min-h-[48px] py-3 px-4 bg-white rounded-xl border border-parrilla-border text-base font-medium text-parrilla-ivory focus:border-parrilla-gold focus:ring-2 focus:ring-orange-200 outline-none cursor-pointer transition';
-
-    function selectGroup(label, field, id, optionsHtml) {
-      return `
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-3">
-          <label class="text-xs sm:text-sm font-bold text-parrilla-muted uppercase tracking-wide">${label}</label>
-          <select class="item-select ${selectClass}" data-field="${field}" data-id="${id}">${optionsHtml}</select>
-        </div>`;
-    }
-
     const optionsHtml = (values, current) =>
       values
         .map((v) => `<option value="${escapeHtml(v.value)}" ${current === v.value ? 'selected' : ''}>${escapeHtml(v.label)}</option>`)
         .join('');
 
-    function renderItem(item) {
+    function renderItem(item, index) {
+      const soupDefault = `Sopa ${specials.sopa || 'del Día'}`;
       let html = `
         <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <span class="block font-bold text-base text-parrilla-ivory">${escapeHtml(item.name)}</span>
-            <span class="block text-sm font-extrabold text-parrilla-gold mt-0.5">${money(item.price)}</span>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5">
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-parrilla-gold/15 text-parrilla-gold font-display font-black text-xs">${index + 1}</span>
+              <span class="font-bold text-sm sm:text-base text-parrilla-ivory truncate">${escapeHtml(item.name)}</span>
+            </div>
+            <span class="block text-xs sm:text-sm font-extrabold text-parrilla-gold mt-0.5 ml-6">${money(item.price)}</span>
           </div>
-          <button type="button" class="btn-remove-item flex items-center justify-center w-11 h-11 rounded-full hover:bg-red-50 text-parrilla-muted hover:text-red-600 transition" data-id="${item.id}" aria-label="Quitar ${escapeHtml(item.name)}">
+          <button type="button" class="btn-remove-item flex items-center justify-center w-9 h-9 rounded-full hover:bg-red-50 text-parrilla-muted hover:text-red-600 transition cursor-pointer" data-id="${item.id}" aria-label="Quitar ${escapeHtml(item.name)}">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>
         </div>`;
 
       if (item.customizable) {
-        const soup = optionsHtml(
-          [{ value: specials.sopa, label: specials.sopa }, { value: 'Sin Sopa', label: 'Sin sopa' }],
-          item.soup
-        );
-        const principle = optionsHtml(
-          [...specials.principios.map((p) => ({ value: p, label: p })), { value: 'Sin Principio', label: 'Sin principio' }],
-          item.principle
-        );
-        const side = optionsHtml(
-          [...specials.acompanamientos.map((a) => ({ value: a, label: a })), { value: 'Sin Acompañamiento', label: 'Sin acompañamiento' }],
-          item.side
-        );
-        const salad = optionsHtml(
-          [{ value: 'Con ensalada', label: 'Con ensalada' }, { value: 'Sin ensalada', label: 'Sin ensalada' }],
-          item.salad
-        );
+        const soupOptionsList = [
+          { value: soupDefault, label: soupDefault },
+          { value: 'Sin Sopa', label: 'Sin Sopa' },
+          { value: 'Solo Bandeja', label: 'Solo Bandeja' },
+        ];
+        const soupHtml = optionsHtml(soupOptionsList, item.soup);
+
+        const principleOptionsList = [
+          ...(specials.principios || []).map((p) => ({ value: p, label: p })),
+          { value: 'Sin Principio', label: 'Sin Principio' },
+        ];
+        const principleHtml = optionsHtml(principleOptionsList, item.principle);
+
+        const sideOptionsList = [
+          ...(specials.acompanamientos || []).map((a) => ({ value: a, label: a })),
+          { value: 'Sin Acompañamiento', label: 'Sin Acompañamiento' },
+        ];
+        const sideHtml = optionsHtml(sideOptionsList, item.side);
+
+        const saladOptionsList = [
+          { value: 'Con ensalada', label: 'Con ensalada' },
+          { value: 'Sin ensalada', label: 'Sin ensalada' },
+        ];
+        const saladHtml = optionsHtml(saladOptionsList, item.salad);
+
+        const packagingOptionsList = [
+          { value: 'Caja', label: 'Caja' },
+          { value: 'Icopor', label: 'Icopor' },
+        ];
+        const packagingHtml = optionsHtml(packagingOptionsList, item.packaging || 'Caja');
 
         html += `
-          <div class="flex flex-col gap-2.5 mt-3 pt-3 border-t border-dashed border-parrilla-border">
-            ${selectGroup('Sopa', 'soup', item.id, soup)}
-            ${selectGroup('Principio', 'principle', item.id, principle)}
-            ${selectGroup('Acompañamiento', 'side', item.id, side)}
-            ${selectGroup('Ensalada', 'salad', item.id, salad)}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5 pt-2.5 border-t border-dashed border-parrilla-border text-xs">
+            <div>
+              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🥣 Sopa</label>
+              <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="soup" data-id="${item.id}">
+                ${soupHtml}
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🍚 Principio</label>
+              <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="principle" data-id="${item.id}">
+                ${principleHtml}
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🍟 Acompañamiento</label>
+              <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="side" data-id="${item.id}">
+                ${sideHtml}
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🥗 Ensalada</label>
+              <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="salad" data-id="${item.id}">
+                ${saladHtml}
+              </select>
+            </div>
+            ${
+              isToGo()
+                ? `
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">📦 Empaque</label>
+              <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-id="${item.id}">
+                ${packagingHtml}
+              </select>
+            </div>`
+                : ''
+            }
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">📝 Observaciones / Notas</label>
+              <input type="text" class="item-notes w-full py-1.5 px-2.5 bg-white rounded-lg border border-parrilla-border text-xs text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition" data-id="${item.id}" placeholder="Ej: bien asado, sin cebolla..." value="${escapeHtml(item.notes || '')}">
+            </div>
           </div>`;
+      } else {
+        html += `
+          <div class="mt-2 pt-2 border-t border-dashed border-parrilla-border">
+            <input type="text" class="item-notes w-full py-1.5 px-2.5 bg-white rounded-lg border border-parrilla-border text-xs text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition" data-id="${item.id}" placeholder="Nota opcional (ej: bien fría...)" value="${escapeHtml(item.notes || '')}">
+          </div>
+        `;
       }
       return html;
     }
@@ -454,19 +550,23 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       drawer.classList.remove('hidden');
       document.body.classList.add('pb-28'); // evita que el carrito tape el pie de página
 
-      cart.forEach((item) => {
+      cart.forEach((item, index) => {
         const container = document.createElement('div');
-        container.className = 'bg-slate-50 border border-parrilla-border rounded-lg p-3';
-        container.innerHTML = renderItem(item);
+        container.className = 'bg-slate-50 border border-parrilla-border rounded-xl p-3 shadow-2xs';
+        container.innerHTML = renderItem(item, index);
         itemsList.appendChild(container);
       });
 
       const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
-      const packagingFee = isToGo() ? cart.length * PACKAGING_FEE : 0;
+      const foodPlatesCount = cart.filter((item) => item.customizable).length;
+      const packagingFee = isToGo() ? foodPlatesCount * PACKAGING_FEE : 0;
       const total = subtotal + packagingFee;
 
       summarySubtotal.textContent = money(subtotal);
       summaryEmpaque.textContent = money(packagingFee);
+      if (summaryEmpaqueLabel) {
+        summaryEmpaqueLabel.textContent = `Empaques (${foodPlatesCount} x ${money(PACKAGING_FEE)}):`;
+      }
       summaryTotal.textContent = money(total);
       empaqueRow.classList.toggle('hidden', packagingFee === 0);
       empaqueRow.classList.toggle('flex', packagingFee > 0);
@@ -481,13 +581,18 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
     // ==========================================
     // EVENTOS
     // ==========================================
-    // Agregar platos desde la carta (delegación: funciona con cualquier .btn-add-cart)
+    // Agregar platos desde la carta (1-CLIC: cero modales, respuesta táctil inmediata)
     document.addEventListener('click', (event) => {
       const btn = event.target.closest('.btn-add-cart');
       if (!btn || btn.disabled) return;
       const price = parseInt(btn.dataset.price, 10);
       if (Number.isNaN(price)) return;
-      addToCart(btn.dataset.name, price, btn.dataset.customizable === 'true');
+      const name = btn.dataset.name || 'Plato';
+      const customizable = btn.dataset.customizable === 'true';
+
+      addToCart(name, price, customizable);
+      animateAddButton(btn);
+      showCartToast(name);
     });
 
     // Quitar plato
@@ -496,13 +601,26 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       if (btn) removeFromCart(btn.dataset.id);
     });
 
-    // Cambiar elección de un plato (sopa, principio, acompañamiento, ensalada)
+    // Cambiar elección de un plato (sopa, principio, acompañamiento, ensalada, empaque)
     itemsList.addEventListener('change', (event) => {
       const select = event.target.closest('.item-select');
       if (!select) return;
       const item = cart.find((i) => i.id === select.dataset.id);
-      if (item) item[select.dataset.field] = select.value;
-      saveCartState();
+      if (item) {
+        item[select.dataset.field] = select.value;
+        saveCartState();
+      }
+    });
+
+    // Notas de un plato en tiempo real
+    itemsList.addEventListener('input', (event) => {
+      const input = event.target.closest('.item-notes');
+      if (!input) return;
+      const item = cart.find((i) => i.id === input.dataset.id);
+      if (item) {
+        item.notes = input.value;
+        saveCartState();
+      }
     });
 
     // Guarda también los campos del pedido (servicio, mesa, pago, cubiertos, monto)
@@ -539,7 +657,8 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       const isDelivery = service === 'Domicilio';
       const isTable = service === 'Mesa';
       const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
-      const packagingFee = isToGo() ? cart.length * PACKAGING_FEE : 0;
+      const foodPlatesCount = cart.filter((item) => item.customizable).length;
+      const packagingFee = isToGo() ? foodPlatesCount * PACKAGING_FEE : 0;
       const total = subtotal + packagingFee;
       const paymentMethod = paymentSelect.value;
       const isCash = paymentMethod === 'Efectivo';
@@ -586,12 +705,24 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
           mesa: isTable ? tableNumber : null,
           tipo: orderTypeEnum,
           delivery_fee: 0,
+          packaging_fee: packagingFee,
           es_borrador_web: true,
           notas: notesArr.join(' | '),
           detalles: cart.map(item => {
-            const sideNotes = item.customizable 
-              ? `Sopa: ${item.soup || '-'} | Principio: ${item.principle || '-'} | Acompañante: ${item.side || '-'}`
-              : (item.notes || '');
+            let sideNotes = '';
+            if (item.customizable) {
+              const parts = [
+                item.soup || '',
+                item.principle ? `Principio: ${item.principle}` : '',
+                item.side ? `Acomp: ${item.side}` : '',
+                item.salad || 'Con ensalada',
+              ];
+              if (isToGo()) parts.push(`Empaque: ${item.packaging || 'Caja'}`);
+              if (item.notes && item.notes.trim()) parts.push(`Nota: ${item.notes.trim()}`);
+              sideNotes = parts.filter(Boolean).join(' | ');
+            } else if (item.notes && item.notes.trim()) {
+              sideNotes = item.notes.trim();
+            }
             return {
               plato_id: 1,
               cantidad: 1,
@@ -648,13 +779,21 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
           text += `   🍚 Principio: ${item.principle || 'No elegido'}\n`;
           text += `   🍟 Acompañante: ${item.side || 'No elegido'}\n`;
           text += `   🥗 Ensalada: ${item.salad || 'Con ensalada'}\n`;
+          if (isToGo()) {
+            text += `   📦 Empaque: ${item.packaging || 'Caja'}\n`;
+          }
+          if (item.notes && item.notes.trim()) {
+            text += `   📝 Nota: ${item.notes.trim()}\n`;
+          }
+        } else if (item.notes && item.notes.trim()) {
+          text += `   📝 Nota: ${item.notes.trim()}\n`;
         }
         text += '\n';
       });
 
       text += `🧾 *Subtotal:* ${money(subtotal)}\n`;
       if (packagingFee > 0) {
-        text += `📦 *Costo de Empaque:* ${money(packagingFee)} ($1.000 x ${cart.length} artículo${cart.length > 1 ? 's' : ''})\n`;
+        text += `📦 *Costo de Empaque:* ${money(packagingFee)} ($1.000 x ${foodPlatesCount} plato${foodPlatesCount > 1 ? 's' : ''})\n`;
       }
       text += `💰 *TOTAL A PAGAR:* ${money(total)}\n\n`;
       text += '¡Muchas gracias! Espero mi confirmación del pedido por este medio.';

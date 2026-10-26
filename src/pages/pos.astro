@@ -902,6 +902,7 @@ const searchableCatalog = publicProducts.map((p) => ({
 
     // Format COP Currency
     const fmt = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+    const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     // Elements
     const catalogRoot = document.getElementById('pos-catalog-root');
@@ -1416,11 +1417,16 @@ const searchableCatalog = publicProducts.map((p) => ({
       renderCart();
     }
 
-    // Delegación global para botones '+' (.btn-add-cart) tanto del Menú Rápido como del Buscador
+    // Delegación global para botones '+' (.btn-add-cart) tanto del Menú Rápido como del Buscador (1-CLIC directo)
     document.addEventListener('click', (e) => {
       // @ts-ignore
       const btn = e.target.closest('.btn-add-cart');
       if (!btn || btn.disabled) return;
+
+      btn.classList.add('ring-4', 'ring-emerald-400', 'bg-emerald-600', 'scale-110');
+      setTimeout(() => {
+        btn.classList.remove('ring-4', 'ring-emerald-400', 'bg-emerald-600', 'scale-110');
+      }, 350);
 
       const name = btn.getAttribute('data-name') || 'Plato';
       const price = Number(btn.getAttribute('data-price') || 0);
@@ -1505,57 +1511,122 @@ const searchableCatalog = publicProducts.map((p) => ({
       cartContainer.innerHTML = cart.map((item, idx) => {
         const itemTotal = item.price * item.quantity;
 
-        let notesDisplay = '';
+        let inlineControls = '';
         if (item.isCustomizable) {
-          notesDisplay = `
-            <div class="text-[10.5px] text-parrilla-muted mt-1 bg-slate-100/90 p-1.5 rounded-lg border border-parrilla-border/60 leading-relaxed">
-              <div class="flex flex-wrap gap-x-2 gap-y-0.5">
-                <span>🥣 <strong>${item.soup || 'Sopa'}</strong></span>
-                <span>• 🍚 <strong>${item.principle || 'Sin Principio'}</strong></span>
-                <span>• 🍟 <strong>${item.side || 'Sin Acompañamiento'}</strong></span>
-                <span>• 🥗 <strong>${item.salad || 'Con ensalada'}</strong></span>
-                ${currentOrderType !== 'mesa' ? `<span>• 📦 <strong>${item.packaging || globalPackagingType}</strong></span>` : ''}
+          const soupOptions = [
+            `Sopa ${dailySpecialsData.sopa || 'del Día'}`,
+            'Sin Sopa',
+            'Solo Bandeja'
+          ];
+          const principleOptions = [
+            ...(dailySpecialsData.principios || []),
+            'Sin Principio'
+          ];
+          const sideOptions = [
+            ...(dailySpecialsData.acompanamientos || []),
+            'Sin Acompañamiento'
+          ];
+          const saladOptions = ['Con ensalada', 'Sin ensalada'];
+          const packagingOptions = ['Caja', 'Icopor'];
+
+          const optHtml = (arr, sel) =>
+            arr
+              .map((val) => `<option value="${escapeHtml(val)}" ${val === sel ? 'selected' : ''}>${escapeHtml(val)}</option>`)
+              .join('');
+
+          inlineControls = `
+            <div class="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-dashed border-parrilla-border/70 text-[11px]">
+              <div>
+                <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🥣 Sopa</label>
+                <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="soup" data-uid="${item.uid}">
+                  ${optHtml(soupOptions, item.soup)}
+                </select>
               </div>
-              ${item.extraNotes ? `<div class="text-orange-700 font-semibold mt-0.5">📝 Nota: ${item.extraNotes}</div>` : ''}
+
+              <div>
+                <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🍚 Principio</label>
+                <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="principle" data-uid="${item.uid}">
+                  ${optHtml(principleOptions, item.principle)}
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🍟 Acomp.</label>
+                <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="side" data-uid="${item.uid}">
+                  ${optHtml(sideOptions, item.side)}
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🥗 Ensalada</label>
+                <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="salad" data-uid="${item.uid}">
+                  ${optHtml(saladOptions, item.salad)}
+                </select>
+              </div>
+
+              ${
+                currentOrderType !== 'mesa'
+                  ? `
+              <div class="col-span-2">
+                <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">📦 Empaque</label>
+                <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-uid="${item.uid}">
+                  ${optHtml(packagingOptions, item.packaging || globalPackagingType)}
+                </select>
+              </div>`
+                  : ''
+              }
+
+              <div class="col-span-2">
+                <input
+                  type="text"
+                  class="pos-inline-notes w-full py-1 px-2 bg-slate-50 hover:bg-white focus:bg-white rounded-lg border border-parrilla-border text-[11px] font-medium text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition"
+                  data-uid="${item.uid}"
+                  placeholder="Nota: ej: bien asado, sin cebolla..."
+                  value="${escapeHtml(item.extraNotes || '')}"
+                />
+              </div>
             </div>
           `;
         } else if (item.notes) {
-          notesDisplay = `<div class="text-[10px] text-parrilla-muted mt-0.5 leading-tight bg-slate-100/80 px-1.5 py-0.5 rounded border border-parrilla-border/60">${item.notes}</div>`;
+          inlineControls = `<div class="text-[10px] text-parrilla-muted mt-1 leading-tight bg-slate-100/80 px-1.5 py-0.5 rounded border border-parrilla-border/60">${escapeHtml(item.notes)}</div>`;
         }
 
         return `
-          <div class="p-2.5 flex items-start justify-between gap-2 hover:bg-parrilla-surface/50 rounded-lg">
-            <div class="flex-1 min-w-0">
-              <div class="font-bold text-xs text-parrilla-ivory leading-snug">${item.name}</div>
-              ${notesDisplay}
-              <div class="flex items-center gap-2 mt-1">
-                <span class="text-[11px] text-parrilla-gold font-bold font-mono">${fmt(item.price)}</span>
-                ${
-                  item.isCustomizable
-                    ? `
-                  <button type="button" class="btn-customize-cart-item text-[10px] font-bold text-orange-700 bg-orange-100 hover:bg-orange-200 border border-orange-200 px-2 py-0.5 rounded-md transition flex items-center gap-1 cursor-pointer" data-uid="${item.uid}">
-                    <span>✏️ Personalizar / Cambiar</span>
-                  </button>
-                `
-                    : ''
-                }
+          <div class="p-2.5 bg-slate-50/70 border border-parrilla-border/80 hover:border-parrilla-gold/60 rounded-xl transition shadow-2xs mb-2">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex-1 min-w-0">
+                <div class="font-bold text-xs text-parrilla-ivory leading-snug">${escapeHtml(item.name)}</div>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-[11px] text-parrilla-gold font-bold font-mono">${fmt(item.price)}</span>
+                  ${
+                    item.isCustomizable
+                      ? `
+                    <button type="button" class="btn-customize-cart-item text-[10px] font-bold text-orange-700 bg-orange-100 hover:bg-orange-200 border border-orange-200 px-1.5 py-0.5 rounded transition flex items-center gap-1 cursor-pointer" data-uid="${item.uid}" title="Abrir modal completo de guarniciones">
+                      <span>✏️ Modal</span>
+                    </button>
+                  `
+                      : ''
+                  }
+                </div>
               </div>
-            </div>
-            
-            <!-- Quantity Controls -->
-            <div class="flex items-center gap-1 bg-parrilla-dark px-1.5 py-1 rounded-lg border border-parrilla-border">
-              <button type="button" class="btn-qty-minus text-parrilla-muted hover:text-red-400 font-bold px-1.5 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}">-</button>
-              <span class="font-bold text-xs text-parrilla-ivory px-1 min-w-[14px] text-center">${item.quantity}</span>
-              <button type="button" class="btn-qty-plus text-parrilla-muted hover:text-parrilla-gold font-bold px-1.5 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}">+</button>
+              
+              <!-- Quantity Controls -->
+              <div class="flex items-center gap-1 bg-white px-1.5 py-1 rounded-lg border border-parrilla-border">
+                <button type="button" class="btn-qty-minus text-parrilla-muted hover:text-red-500 font-bold px-1.5 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}">-</button>
+                <span class="font-bold text-xs text-parrilla-ivory px-1 min-w-[14px] text-center">${item.quantity}</span>
+                <button type="button" class="btn-qty-plus text-parrilla-muted hover:text-parrilla-gold font-bold px-1.5 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}">+</button>
+              </div>
+
+              <div class="font-bold text-xs text-parrilla-ivory text-right w-16 font-mono">
+                ${fmt(itemTotal)}
+              </div>
+
+              <button type="button" class="btn-remove-item text-parrilla-muted hover:text-red-500 p-1 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}" aria-label="Eliminar plato">
+                ✕
+              </button>
             </div>
 
-            <div class="font-bold text-xs text-parrilla-ivory text-right w-16 font-mono">
-              ${fmt(itemTotal)}
-            </div>
-
-            <button type="button" class="btn-remove-item text-parrilla-muted hover:text-red-400 p-1 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}">
-              ✕
-            </button>
+            ${inlineControls}
           </div>
         `;
       }).join('');
@@ -1629,6 +1700,35 @@ const searchableCatalog = publicProducts.map((p) => ({
               packagingQty = countFoodPlates();
             }
             renderCart();
+          }
+        });
+      });
+
+      // Listeners directos de cajitas en la comanda (Sopa, Principio, Acomp., Ensalada, Empaque)
+      document.querySelectorAll('.pos-inline-select').forEach((sel) => {
+        sel.addEventListener('change', (e) => {
+          // @ts-ignore
+          const target = e.currentTarget;
+          const uid = target.getAttribute('data-uid');
+          const field = target.getAttribute('data-field');
+          const item = cart.find((it) => it.uid === uid);
+          if (item && field) {
+            item[field] = target.value;
+            item.notes = buildPlateNotes(item);
+          }
+        });
+      });
+
+      // Observaciones / Notas por plato en tiempo real
+      document.querySelectorAll('.pos-inline-notes').forEach((inp) => {
+        inp.addEventListener('input', (e) => {
+          // @ts-ignore
+          const target = e.currentTarget;
+          const uid = target.getAttribute('data-uid');
+          const item = cart.find((it) => it.uid === uid);
+          if (item) {
+            item.extraNotes = target.value;
+            item.notes = buildPlateNotes(item);
           }
         });
       });
