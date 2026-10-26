@@ -46,10 +46,10 @@ const formatPrice = (val) => {
           <span class="text-xs font-semibold uppercase tracking-wider">Ventas de Hoy</span>
           <i data-lucide="dollar-sign" class="w-5 h-5 text-parrilla-gold"></i>
         </div>
-        <div class="font-display font-black text-3xl text-parrilla-gold">
+        <div id="admin-today-sales" class="font-display font-black text-3xl text-parrilla-gold">
           {formatPrice(metrics.todaySales)}
         </div>
-        <span class="text-[11px] text-parrilla-muted mt-1 block">
+        <span id="admin-sales-breakdown" class="text-[11px] text-parrilla-muted mt-1 block">
           Efectivo: {formatPrice(metrics.cashSales)} | Digital: {formatPrice(metrics.digitalSales)}
         </span>
       </div>
@@ -60,7 +60,7 @@ const formatPrice = (val) => {
           <span class="text-xs font-semibold uppercase tracking-wider">Comandas Totales</span>
           <i data-lucide="shopping-cart" class="w-5 h-5 text-parrilla-accent"></i>
         </div>
-        <div class="font-display font-black text-3xl text-parrilla-ivory">
+        <div id="admin-order-count" class="font-display font-black text-3xl text-parrilla-ivory">
           {metrics.todayOrderCount}
         </div>
         <span class="text-[11px] text-parrilla-muted mt-1 block">Mesas y domicilios atendidos hoy</span>
@@ -72,7 +72,7 @@ const formatPrice = (val) => {
           <span class="text-xs font-semibold uppercase tracking-wider">Clientes Guardados</span>
           <i data-lucide="users" class="w-5 h-5 text-amber-400"></i>
         </div>
-        <div class="font-display font-black text-3xl text-amber-400">
+        <div id="admin-customers-count" class="font-display font-black text-3xl text-amber-400">
           {metrics.totalCustomers}
         </div>
         <span class="text-[11px] text-parrilla-muted mt-1 block">Teléfonos y direcciones para envíos</span>
@@ -99,35 +99,37 @@ const formatPrice = (val) => {
         <div class="flex items-center justify-between mb-4 pb-3 border-b border-parrilla-border">
           <div>
             <h2 class="font-display font-bold text-lg text-parrilla-ivory">Platos Más Vendidos</h2>
-            <p class="text-xs text-parrilla-muted">Ranking histórico de productos con mayor salida.</p>
+            <p class="text-xs text-parrilla-muted">Ranking en tiempo real de productos con mayor salida hoy / turno.</p>
           </div>
           <i data-lucide="flame" class="w-5 h-5 text-parrilla-gold"></i>
         </div>
 
-        {metrics.topDishes.length === 0 ? (
-          <div class="py-10 text-center text-xs text-parrilla-muted italic">
-            Aún no hay comandas registradas. Registra pedidos en el POS para ver las estadísticas.
-          </div>
-        ) : (
-          <div class="space-y-3">
-            {metrics.topDishes.map((dish, idx) => (
-              <div class="flex items-center justify-between p-3 rounded-xl bg-parrilla-dark border border-parrilla-border/60">
-                <div class="flex items-center gap-3">
-                  <span class="w-7 h-7 rounded-lg bg-parrilla-gold/20 text-parrilla-gold flex items-center justify-center font-black text-xs font-display">
-                    #{idx + 1}
-                  </span>
-                  <div>
-                    <span class="font-bold text-sm text-parrilla-ivory block">{dish.product_name}</span>
-                    <span class="text-xs text-parrilla-muted">{dish.sold_count} porciones vendidas</span>
+        <div id="admin-top-dishes-container">
+          {metrics.topDishes.length === 0 ? (
+            <div class="py-10 text-center text-xs text-parrilla-muted italic">
+              Aún no hay comandas registradas en este turno. Cobra pedidos en el POS para ver las estadísticas en vivo.
+            </div>
+          ) : (
+            <div class="space-y-3">
+              {metrics.topDishes.map((dish, idx) => (
+                <div class="flex items-center justify-between p-3 rounded-xl bg-parrilla-dark border border-parrilla-border/60">
+                  <div class="flex items-center gap-3">
+                    <span class="w-7 h-7 rounded-lg bg-parrilla-gold/20 text-parrilla-gold flex items-center justify-center font-black text-xs font-display">
+                      #{idx + 1}
+                    </span>
+                    <div>
+                      <span class="font-bold text-sm text-parrilla-ivory block">{dish.product_name}</span>
+                      <span class="text-xs text-parrilla-muted">{dish.sold_count} porciones vendidas</span>
+                    </div>
+                  </div>
+                  <div class="font-display font-extrabold text-sm text-parrilla-gold">
+                    {formatPrice(dish.total_revenue)}
                   </div>
                 </div>
-                <div class="font-display font-extrabold text-sm text-parrilla-gold">
-                  {formatPrice(dish.total_revenue)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <!-- Editor de Especiales del Día (6 cols) -->
@@ -397,6 +399,162 @@ const formatPrice = (val) => {
         } else {
           alert('Error al actualizar disponibilidad');
         }
+      });
+    });
+
+    // =====================================================================
+    // SINCRONIZACIÓN EN VIVO CON NEON DB & CAJA ACTIVA (/admin)
+    // =====================================================================
+    const fmtCOP = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
+
+    function renderLiveAdminMetrics(stats) {
+      const salesEl = document.getElementById('admin-today-sales');
+      const breakdownEl = document.getElementById('admin-sales-breakdown');
+      const countEl = document.getElementById('admin-order-count');
+      const custEl = document.getElementById('admin-customers-count');
+      const topContainer = document.getElementById('admin-top-dishes-container');
+
+      if (salesEl) salesEl.textContent = fmtCOP(stats.todaySales || 0);
+      if (breakdownEl) {
+        breakdownEl.textContent = `Efectivo: ${fmtCOP(stats.cashSales || 0)} | Digital: ${fmtCOP(stats.digitalSales || 0)}`;
+      }
+      if (countEl) countEl.textContent = String(stats.todayOrderCount || 0);
+      if (custEl && typeof stats.totalCustomers === 'number') {
+        custEl.textContent = String(stats.totalCustomers);
+      }
+
+      if (topContainer) {
+        const list = Array.isArray(stats.topDishes) ? stats.topDishes : [];
+        if (list.length === 0) {
+          topContainer.innerHTML = `
+            <div class="py-10 text-center text-xs text-parrilla-muted italic">
+              Aún no hay comandas pagadas en este turno. Cobra pedidos en el POS para ver las estadísticas reales.
+            </div>
+          `;
+        } else {
+          topContainer.innerHTML = `
+            <div class="space-y-3">
+              ${list.map((dish, idx) => `
+                <div class="flex items-center justify-between p-3 rounded-xl bg-parrilla-dark border border-parrilla-border/60">
+                  <div class="flex items-center gap-3">
+                    <span class="w-7 h-7 rounded-lg bg-parrilla-gold/20 text-parrilla-gold flex items-center justify-center font-black text-xs font-display">
+                      #${idx + 1}
+                    </span>
+                    <div>
+                      <span class="font-bold text-sm text-parrilla-ivory block">${dish.product_name}</span>
+                      <span class="text-xs text-parrilla-muted">${dish.sold_count} porción(es) vendida(s)</span>
+                    </div>
+                  </div>
+                  <div class="font-display font-extrabold text-sm text-parrilla-gold">
+                    ${fmtCOP(dish.total_revenue)}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+      }
+    }
+
+    async function loadLiveAdminMetrics() {
+      try {
+        // 1. Intentar el endpoint consolidado de dashboard (/api/pedidos/stats/dashboard)
+        const dashRes = await fetch('/api/pedidos/stats/dashboard', { cache: 'no-store' });
+        if (dashRes.ok) {
+          const dashData = await dashRes.json();
+          if (dashData && typeof dashData.todaySales === 'number') {
+            renderLiveAdminMetrics(dashData);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      // 2. Fallback directo consultando /api/caja/active y /api/pedidos?estado=PAGADO
+      try {
+        const [cajaRes, pedRes] = await Promise.all([
+          fetch('/api/caja/active', { cache: 'no-store' }),
+          fetch('/api/pedidos?estado=PAGADO&limit=200', { cache: 'no-store' })
+        ]);
+
+        const caja = cajaRes.ok ? await cajaRes.json() : null;
+        const pedidos = pedRes.ok ? await pedRes.json() : [];
+        const listaPedidos = Array.isArray(pedidos) ? pedidos : [];
+
+        // Filtrar pedidos pagados del turno actual o del día de hoy en Colombia
+        const hoyCol = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+        const pedidosTurnoOHoy = listaPedidos.filter(p => {
+          if (caja && caja.status === 'OPEN' && Array.isArray(p.payments)) {
+            if (p.payments.some(pay => pay.cash_closure_id === caja.id)) return true;
+          }
+          if (p.fecha_hora) {
+            const fechaPed = new Date(p.fecha_hora).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+            if (fechaPed === hoyCol) return true;
+          }
+          return false;
+        });
+
+        let cashSales = 0;
+        let digitalSales = 0;
+        if (caja && caja.status === 'OPEN') {
+          cashSales = Number(caja.total_cash_sales || 0);
+          digitalSales = Number(caja.total_nequi_sales || 0) + Number(caja.total_daviplata_sales || 0) + Number(caja.total_card_sales || 0);
+        } else {
+          for (const p of pedidosTurnoOHoy) {
+            for (const pay of (p.payments || [])) {
+              if (pay.method === 'CASH') cashSales += Number(pay.amount || 0);
+              else digitalSales += Number(pay.amount || 0);
+            }
+          }
+        }
+
+        const todaySales = cashSales + digitalSales;
+        const todayOrderCount = (caja && caja.status === 'OPEN' && Array.isArray(caja.payments))
+          ? new Set(caja.payments.map(pay => pay.pedido_id)).size
+          : pedidosTurnoOHoy.length;
+
+        const phoneSet = new Set();
+        for (const p of listaPedidos) {
+          if (p.cliente_telefono && String(p.cliente_telefono).trim()) {
+            phoneSet.add(String(p.cliente_telefono).trim());
+          }
+        }
+
+        const dishMap = new Map();
+        for (const p of pedidosTurnoOHoy) {
+          for (const det of (p.detalles || [])) {
+            // Si el plato fue guardado con nota o nombre real, agrupar por nombre del plato
+            const pName = det.plato?.nombre || det.nombre_plato || 'Plato';
+            const qty = Number(det.cantidad || 1);
+            const rev = Number(det.precio_unitario || det.plato?.precio || 0) * qty;
+            const cur = dishMap.get(pName) || { product_name: pName, sold_count: 0, total_revenue: 0 };
+            cur.sold_count += qty;
+            cur.total_revenue += rev;
+            dishMap.set(pName, cur);
+          }
+        }
+
+        const topDishes = Array.from(dishMap.values())
+          .sort((a, b) => b.sold_count - a.sold_count || b.total_revenue - a.total_revenue)
+          .slice(0, 8);
+
+        renderLiveAdminMetrics({
+          todaySales,
+          cashSales,
+          digitalSales,
+          todayOrderCount,
+          totalCustomers: phoneSet.size,
+          topDishes
+        });
+      } catch (err) {
+        console.error('Error cargando métricas en vivo de /admin:', err);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadLiveAdminMetrics();
+      setInterval(loadLiveAdminMetrics, 15000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') loadLiveAdminMetrics();
       });
     });
   </script>

@@ -30,6 +30,15 @@ def registrar_pedido(
     return nuevo_pedido
 
 
+@router.get("/stats/dashboard", response_model=schemas.DashboardStatsOut)
+def obtener_estadisticas_dashboard(db: Session = Depends(get_db)):
+    """
+    Devuelve las métricas consolidadas en tiempo real para /admin (ventas hoy/turno,
+    efectivo vs digital, comandas pagadas, clientes y ranking de platos más vendidos).
+    """
+    return crud.obtener_estadisticas_dashboard(db)
+
+
 @router.get("/", response_model=List[schemas.PedidoOut])
 def listar_pedidos(
     limit: int = 50,
@@ -71,7 +80,7 @@ def aprobar_pedido_borrador(
 @router.post("/{pedido_id}/pagar", response_model=schemas.PedidoOut)
 def pagar_pedido(
     pedido_id: int,
-    payload: Union[List[schemas.PaymentCreate], schemas.PedidoPayRequest],
+    payload: Union[schemas.PedidoPayRequest, List[schemas.PaymentCreate], schemas.PaymentCreate],
     db: Session = Depends(get_db)
 ):
     """
@@ -79,11 +88,12 @@ def pagar_pedido(
     verifica que exista una caja OPEN en cash_closures, vincula los pagos a dicha caja
     y cambia el estado del pedido a PAGADO.
     """
-    pagos_lista = (
-        payload.payments
-        if isinstance(payload, schemas.PedidoPayRequest)
-        else payload
-    )
+    if isinstance(payload, schemas.PedidoPayRequest):
+        pagos_lista = payload.payments
+    elif isinstance(payload, list):
+        pagos_lista = payload
+    else:
+        pagos_lista = [payload]
     try:
         pedido = crud.pagar_pedido(db, pedido_id, pagos_lista)
         return pedido

@@ -2174,66 +2174,140 @@ const searchableCatalog = publicProducts.map((p) => ({
       btnConfirmPayment.innerHTML = '<span>Procesando pago y comanda...</span>';
 
       try {
-        // 1. Guardar el pedido
-        const orderPayload = {
-          orderData: {
-            orderType: currentOrderType,
-            // @ts-ignore
-            tableNumber: currentOrderType === 'mesa' ? tableInput.value : '',
-            // @ts-ignore
-            customerPhone: currentOrderType === 'domicilio' ? custPhoneInput.value.trim() : '',
-            // @ts-ignore
-            customerName: currentOrderType === 'domicilio' ? custNameInput.value.trim() : (tableInput.value || 'Cliente'),
-            // @ts-ignore
-            deliveryAddress: currentOrderType === 'domicilio' ? custAddressInput.value.trim() : '',
-            // @ts-ignore
-            deliveryNeighborhood: currentOrderType === 'domicilio' ? custNeighborhoodInput.value.trim() : '',
-            subtotal,
-            packagingFee,
-            deliveryFee,
-            total,
-            paymentMethod: cobroPaymentMode === 'single' ? selectedSingleMethod.toLowerCase() : 'mixto',
-            paymentChangeFor: cashGiven,
-            status: 'completado'
-          },
-          items: cart
+        // Mapear tipo de pedido para la base de datos en Neon (FastAPI)
+        const tipoMap = {
+          mesa: 'EN_MESA',
+          domicilio: 'DOMICILIO',
+          para_llevar: 'PARA_LLEVAR'
+        };
+        const tipoBackend = tipoMap[currentOrderType] || 'EN_MESA';
+
+        // @ts-ignore
+        const mesaStr = currentOrderType === 'mesa' ? (tableInput.value || 'Mesa') : '';
+        // @ts-ignore
+        const custPhone = currentOrderType === 'domicilio' ? custPhoneInput.value.trim() : '';
+        // @ts-ignore
+        const custName = currentOrderType === 'domicilio'
+          ? (custNameInput.value.trim() || 'Cliente Domicilio')
+          : (currentOrderType === 'para_llevar' ? 'Para Llevar' : (mesaStr || 'Cliente Mesa'));
+        // @ts-ignore
+        const custAddress = currentOrderType === 'domicilio' ? custAddressInput.value.trim() : '';
+        // @ts-ignore
+        const custNeighborhood = currentOrderType === 'domicilio' ? custNeighborhoodInput.value.trim() : '';
+
+        const notasPartes = [];
+        if (custAddress) notasPartes.push(`Dirección: ${custAddress}`);
+        if (custNeighborhood) notasPartes.push(`Barrio: ${custNeighborhood}`);
+        if (packagingFee > 0 && packagingQty > 0) {
+          notasPartes.push(`Empaques: ${packagingQty}x ${globalPackagingType} (+$${packagingFee})`);
+        }
+        const notasPedido = notasPartes.join(' | ');
+
+        const detallesPayload = cart.map((item) => ({
+          plato_id: (Number.isInteger(Number(item.plato_id || item.id)) && Number(item.plato_id || item.id) > 0)
+            ? Number(item.plato_id || item.id)
+            : 1,
+          nombre_plato: item.name,
+          cantidad: Number(item.quantity || 1),
+          precio_unitario: Number(item.price || 0),
+          notas_item: item.notes || '',
+          notas: item.notes || ''
+        }));
+
+        const pedidoFastapiPayload = {
+          tipo: tipoBackend,
+          mesa: mesaStr || null,
+          cliente_nombre: custName,
+          cliente_telefono: custPhone || null,
+          direccion: custAddress || null,
+          notas: notasPedido || null,
+          subtotal: subtotal + packagingFee,
+          packaging_fee: packagingFee,
+          delivery_fee: deliveryFee,
+          total,
+          detalles: detallesPayload
         };
 
-        const response = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(orderPayload)
-        });
+        // 1. Guardar el pedido real en Neon DB (POST /api/pedidos)
+        const cartSignature = JSON.stringify({ tipoBackend, mesaStr, custPhone, total, detallesPayload });
+        // @ts-ignore
+        let savedOrder = (window.__pendingOrderSig === cartSignature && window.__pendingOrderObj?.id)
+          // @ts-ignore
+          ? window.__pendingOrderObj
+          : null;
 
-        const resData = await response.json();
-        if (!response.ok || !resData.success) {
-          throw new Error(resData.error || 'Error al registrar pedido');
-        }
-
-        const savedOrder = resData.order;
-
-        // 2. Registrar el pago en la caja activa del backend FastAPI (/api/pedidos/{id}/pagar)
-        try {
-          await fetch(`/api/pedidos/${savedOrder.id}/pagar`, {
+        if (!savedOrder) {
+          const pedRes = await fetch('/api/pedidos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ payments: paymentsPayload })
+            body: JSON.stringify(pedidoFastapiPayload)
           });
-        } catch (e) {
-          console.warn('Nota: Pago registrado localmente en comanda.');
+
+          const pedData = await pedRes.json().catch(() => ({}));
+          if (!pedRes.ok || !pedData.id) {
+            const errMsg = pedData.detail || pedData.error || `Error HTTP ${pedRes.status} al guardar el pedido en la base de datos.`;
+            throw new Error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
+          }
+          savedOrder = pedData;
+          // @ts-ignore
+          window.__pendingOrderSig = cartSignature;
+          // @ts-ignore
+          window.__pendingOrderObj = savedOrder;
         }
+
+        // 2. Registrar inmediatamente el pago en la Caja Activa (POST /api/caja/pay/{pedido_id})
+        const payRes = await fetch(`/api/caja/pay/${savedOrder.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payments: paymentsPayload })
+        });
+
+        const payData = await payRes.json().catch(() => ({}));
+        if (!payRes.ok) {
+          const payErrMsg = payData.detail || payData.error || `Error HTTP ${payRes.status} al registrar el pago en Caja.`;
+          throw new Error(typeof payErrMsg === 'string' ? payErrMsg : JSON.stringify(payErrMsg));
+        }
+
+        // Limpiar referencia temporal tras cobro exitoso
+        // @ts-ignore
+        window.__pendingOrderSig = null;
+        // @ts-ignore
+        window.__pendingOrderObj = null;
+
+        // Sincronizar también en almacenamiento local para autocompletado de clientes por teléfono
+        fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderData: {
+              orderType: currentOrderType,
+              tableNumber: mesaStr,
+              customerPhone: custPhone,
+              customerName: custName,
+              deliveryAddress: custAddress,
+              deliveryNeighborhood: custNeighborhood,
+              subtotal,
+              packagingFee,
+              deliveryFee,
+              total,
+              paymentMethod: cobroPaymentMode === 'single' ? selectedSingleMethod.toLowerCase() : 'mixto',
+              paymentChangeFor: cashGiven,
+              status: 'completado'
+            },
+            items: cart
+          })
+        }).catch(() => {});
 
         // 3. Imprimir comanda en SAT Q22
         const ticket = {
-          id: savedOrder.id,
+          id: savedOrder.codigo_pedido || savedOrder.id,
           createdAt: new Date().toISOString(),
           orderType: currentOrderType,
-          // @ts-ignore
-          table: currentOrderType === 'mesa' ? (tableInput.value || 'Mesa') : '',
-          customerName: orderPayload.orderData.customerName,
-          customerPhone: orderPayload.orderData.customerPhone,
-          address: orderPayload.orderData.deliveryAddress,
-          neighborhood: orderPayload.orderData.deliveryNeighborhood,
+          table: mesaStr,
+          customerName: custName,
+          customerPhone: custPhone,
+          address: custAddress,
+          neighborhood: custNeighborhood,
           items: cart.map(({ name, price, quantity, notes, packaging }) => ({
             name,
             price,

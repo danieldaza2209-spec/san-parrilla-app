@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from app.database import get_db
 from app import schemas, crud
@@ -97,3 +97,36 @@ def listar_gastos_caja_activa(db: Session = Depends(get_db)):
     if not activa:
         return []
     return crud.get_cash_expenses(db, activa.id)
+
+
+@router.post("/pay/{pedido_id}", response_model=schemas.PedidoOut)
+def pagar_pedido_en_caja(
+    pedido_id: int,
+    payload: Union[schemas.PedidoPayRequest, List[schemas.PaymentCreate], schemas.PaymentCreate],
+    db: Session = Depends(get_db),
+):
+    """
+    Registra el pago de un pedido directamente en la caja activa (CASH, NEQUI, DAVIPLATA, CARD o mixto),
+    vincula el pedido al cash_closure_id abierto y cambia su estado a PAGADO.
+    """
+    if isinstance(payload, schemas.PedidoPayRequest):
+        pagos_lista = payload.payments
+    elif isinstance(payload, list):
+        pagos_lista = payload
+    else:
+        pagos_lista = [payload]
+
+    try:
+        return crud.pagar_pedido(db, pedido_id, pagos_lista)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/stats", response_model=schemas.DashboardStatsOut)
+def obtener_metricas_dashboard_caja(db: Session = Depends(get_db)):
+    """
+    Devuelve las métricas en tiempo real para el panel de Administración (/admin).
+    """
+    return crud.obtener_estadisticas_dashboard(db)

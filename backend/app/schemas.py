@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Optional
 from datetime import date, datetime
 from app.models import (
@@ -141,12 +141,15 @@ class PedidoPayRequest(BaseModel):
 # --- PEDIDOS & DETALLES ---
 
 class DetallePedidoCreate(BaseModel):
-    plato_id: int
+    plato_id: Optional[int] = 1
+    nombre_plato: Optional[str] = None
+    precio_unitario: Optional[float] = None
     sopa_id: Optional[int] = None
     principio_id: Optional[int] = None
     acompanamiento_id: Optional[int] = None
     cantidad: int = 1
     notas_item: Optional[str] = None
+    notas: Optional[str] = None
 
 class DetallePedidoOut(BaseModel):
     id: int
@@ -168,13 +171,29 @@ class DetallePedidoOut(BaseModel):
 class PedidoCreate(BaseModel):
     cliente_nombre: str = "Cliente"
     cliente_telefono: Optional[str] = None
+    direccion: Optional[str] = None
     mesa: Optional[str] = None
     tipo: TipoPedido = TipoPedido.EN_MESA
+    subtotal: Optional[float] = None
     delivery_fee: float = 0.0
     packaging_fee: float = 0.0
+    total: Optional[float] = None
     es_borrador_web: bool = False
     notas: Optional[str] = None
     detalles: List[DetallePedidoCreate]
+
+    @field_validator("tipo", mode="before")
+    @classmethod
+    def normalize_tipo(cls, v):
+        if isinstance(v, str):
+            val = v.strip().upper()
+            if val in ("MESA", "EN_MESA"):
+                return TipoPedido.EN_MESA
+            if val in ("LLEVAR", "PARA_LLEVAR"):
+                return TipoPedido.PARA_LLEVAR
+            if val == "DOMICILIO":
+                return TipoPedido.DOMICILIO
+        return v
 
 
 class PedidoApprove(BaseModel):
@@ -280,6 +299,24 @@ class MetricasDiaOut(BaseModel):
     principios_metricas: List[MetricaItemStock] = []
     acompanamientos_metricas: List[MetricaItemStock] = []
     plato_mas_vendido: Optional[str] = None
+
+
+class TopPlatoOut(BaseModel):
+    product_name: str
+    sold_count: int
+    total_revenue: float
+
+
+class DashboardStatsOut(BaseModel):
+    todaySales: float = 0.0
+    cashSales: float = 0.0
+    digitalSales: float = 0.0
+    nequiSales: float = 0.0
+    daviplataSales: float = 0.0
+    cardSales: float = 0.0
+    todayOrderCount: int = 0
+    totalCustomers: int = 0
+    topDishes: List[TopPlatoOut] = []
 
 
 # --- USUARIOS & AUTENTICACIÓN ---

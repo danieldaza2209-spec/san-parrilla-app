@@ -599,6 +599,22 @@ export function getDashboardMetrics() {
     } catch (e) {}
   }
 
+  const dishMap = new Map();
+  for (const ord of memOrders) {
+    for (const it of (ord.items || [])) {
+      const name = it.name || it.product_name || 'Plato';
+      const qty = Number(it.quantity || 1);
+      const rev = Number(it.price || 0) * qty;
+      const cur = dishMap.get(name) || { product_name: name, sold_count: 0, total_revenue: 0 };
+      cur.sold_count += qty;
+      cur.total_revenue += rev;
+      dishMap.set(name, cur);
+    }
+  }
+  const computedTopDishes = Array.from(dishMap.values())
+    .sort((a, b) => b.sold_count - a.sold_count || b.total_revenue - a.total_revenue)
+    .slice(0, 6);
+
   return {
     todaySales: memCash.total_cash_sales + memCash.total_nequi_sales + memCash.total_daviplata_sales + memCash.total_card_sales,
     todayOrderCount: memOrders.length,
@@ -606,11 +622,7 @@ export function getDashboardMetrics() {
     digitalSales: memCash.total_nequi_sales + memCash.total_daviplata_sales + memCash.total_card_sales,
     todayViews: memViews,
     totalCustomers: memCustomers.length,
-    topDishes: [
-      { product_name: 'Parrillada', sold_count: 14, total_revenue: 350000 },
-      { product_name: 'Churrasco', sold_count: 11, total_revenue: 275000 },
-      { product_name: 'Picada Berraca', sold_count: 8, total_revenue: 440000 }
-    ],
+    topDishes: computedTopDishes,
     activeCash: memCash
   };
 }

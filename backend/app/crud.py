@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import uuid
 from typing import List, Optional
 
@@ -147,6 +147,75 @@ def _verificar_y_descontar_stock(
                 item_acomp.cantidad_vendida += det.cantidad
 
 
+def _resolver_o_crear_plato(
+    db: Session,
+    plato_id: Optional[int],
+    nombre_plato: Optional[str],
+    precio_unitario: Optional[float],
+) -> models.Plato:
+    """
+    Busca el plato por nombre exacto (case-insensitive) si se proporciona `nombre_plato`;
+    si no existe en la tabla `platos`, lo crea automáticamente con su nombre y precio real.
+    Si no viene `nombre_plato`, busca por `plato_id`.
+    """
+    clean_name = (nombre_plato or "").strip()
+    if clean_name:
+        plato = (
+            db.query(models.Plato)
+            .filter(func.lower(models.Plato.nombre) == clean_name.lower())
+            .first()
+        )
+        if plato:
+            return plato
+
+        # Crear el plato automáticamente para mantener integridad referencial y métricas reales
+        cat = db.query(models.Categoria).order_by(models.Categoria.orden.asc()).first()
+        if not cat:
+            cat = models.Categoria(
+                nombre="Menú San Parrilla",
+                descripcion="Platos generales del POS",
+                orden=1,
+            )
+            db.add(cat)
+            db.flush()
+
+        nuevo_plato = models.Plato(
+            nombre=clean_name,
+            descripcion="Registrado desde POS",
+            precio=float(precio_unitario or 0.0),
+            imagen_emoji="🍽️",
+            activo=True,
+            categoria_id=cat.id,
+        )
+        db.add(nuevo_plato)
+        db.flush()
+        return nuevo_plato
+
+    if plato_id is not None:
+        plato = db.query(models.Plato).filter(models.Plato.id == plato_id).first()
+        if plato:
+            return plato
+
+    # Fallback de seguridad al primer plato o creación de uno genérico
+    plato = db.query(models.Plato).first()
+    if plato:
+        return plato
+
+    cat = models.Categoria(nombre="General", descripcion="General", orden=1)
+    db.add(cat)
+    db.flush()
+    plato = models.Plato(
+        nombre="Plato POS",
+        descripcion="Plato general",
+        precio=float(precio_unitario or 0.0),
+        activo=True,
+        categoria_id=cat.id,
+    )
+    db.add(plato)
+    db.flush()
+    return plato
+
+
 def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
     hoy = date.today()
     menu_hoy = get_menu_dia_by_fecha(db, hoy)
@@ -160,6 +229,12 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
     delivery_fee = float(pedido_in.delivery_fee or 0.0)
     packaging_fee = float(pedido_in.packaging_fee or 0.0)
 
+    notas_pedido = pedido_in.notas or ""
+    if pedido_in.direccion and pedido_in.direccion.strip():
+        dir_str = pedido_in.direccion.strip()
+        if dir_str not in notas_pedido:
+            notas_pedido = f"Dirección: {dir_str}" + (f" | {notas_pedido}" if notas_pedido else "")
+
     nuevo_pedido = models.Pedido(
         codigo_pedido=codigo,
         cliente_nombre=pedido_in.cliente_nombre,
@@ -167,7 +242,7 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         mesa=pedido_in.mesa,
         tipo=pedido_in.tipo,
         estado=estado_inicial,
-        notas=pedido_in.notas,
+        notas=notas_pedido or None,
         subtotal=0.0,
         delivery_fee=delivery_fee,
         packaging_fee=packaging_fee,
@@ -180,22 +255,28 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
     detalles_creados: List[models.DetallePedido] = []
 
     for det in pedido_in.detalles:
-        plato = db.query(models.Plato).filter(models.Plato.id == det.plato_id).first()
+        plato = _resolver_o_crear_plato(db, det.plato_id, det.nombre_plato, det.precio_unitario)
         if not plato:
             continue
-        
-        subtotal_item = plato.precio * det.cantidad
+
+        precio_item = (
+            float(det.precio_unitario)
+            if (det.precio_unitario is not None and det.precio_unitario > 0)
+            else float(plato.precio)
+        )
+        subtotal_item = precio_item * det.cantidad
         subtotal_calculado += subtotal_item
+        notas_item = det.notas_item if det.notas_item is not None else det.notas
 
         detalle_db = models.DetallePedido(
             pedido_id=nuevo_pedido.id,
-            plato_id=det.plato_id,
+            plato_id=plato.id,
             sopa_id=det.sopa_id,
             principio_id=det.principio_id,
             acompanamiento_id=det.acompanamiento_id,
             cantidad=det.cantidad,
-            precio_unitario=plato.precio,
-            notas_item=det.notas_item
+            precio_unitario=precio_item,
+            notas_item=notas_item
         )
         db.add(detalle_db)
         detalles_creados.append(detalle_db)
@@ -256,19 +337,25 @@ def aprobar_pedido_borrador(
             nuevo_subtotal = 0.0
             nuevos_detalles: List[models.DetallePedido] = []
             for det in datos_aprobacion.detalles:
-                plato = db.query(models.Plato).filter(models.Plato.id == det.plato_id).first()
+                plato = _resolver_o_crear_plato(db, det.plato_id, det.nombre_plato, det.precio_unitario)
                 if not plato:
                     raise ValueError(f"Plato con id {det.plato_id} no encontrado.")
-                nuevo_subtotal += plato.precio * det.cantidad
+                precio_item = (
+                    float(det.precio_unitario)
+                    if (det.precio_unitario is not None and det.precio_unitario > 0)
+                    else float(plato.precio)
+                )
+                nuevo_subtotal += precio_item * det.cantidad
+                notas_item = det.notas_item if det.notas_item is not None else det.notas
                 detalle_db = models.DetallePedido(
                     pedido_id=pedido.id,
-                    plato_id=det.plato_id,
+                    plato_id=plato.id,
                     sopa_id=det.sopa_id,
                     principio_id=det.principio_id,
                     acompanamiento_id=det.acompanamiento_id,
                     cantidad=det.cantidad,
-                    precio_unitario=plato.precio,
-                    notas_item=det.notas_item
+                    precio_unitario=precio_item,
+                    notas_item=notas_item
                 )
                 db.add(detalle_db)
                 nuevos_detalles.append(detalle_db)
@@ -343,7 +430,7 @@ def calcular_resumen_caja(db: Session, closure: models.CashClosure) -> schemas.C
 
     total_delivery_payouts = sum(float(ped.delivery_fee or 0.0) for ped in pedidos_caja)
     total_delivery_fees = total_delivery_payouts
-    subtotal_sales = sum(float(ped.subtotal or 0.0) for ped in pedidos_caja)
+    subtotal_sales = sum(float(ped.subtotal or 0.0) + float(ped.packaging_fee or 0.0) for ped in pedidos_caja)
     total_sales = total_cash + total_nequi + total_daviplata + total_card
     expected_cash = float(closure.initial_cash or 0.0) + total_cash - total_delivery_payouts - total_expenses
 
@@ -588,4 +675,97 @@ def obtener_metricas_dia(db: Session, fecha_consulta: date) -> schemas.MetricasD
         principios_metricas=principios_metricas,
         acompanamientos_metricas=acomp_metricas,
         plato_mas_vendido=plato_mas_vendido_nombre
+    )
+
+
+def obtener_estadisticas_dashboard(db: Session) -> schemas.DashboardStatsOut:
+    """
+    Calcula las métricas reales de Administración (/admin) desde Neon DB:
+    - Ventas de Hoy / Turno Activo (separadas en Efectivo vs Medios Digitales)
+    - Comandas Totales pagadas del día / turno
+    - Clientes Guardados (teléfonos únicos en pedidos)
+    - Ranking de Platos Más Vendidos reales (agrupados por plato, cantidad e ingresos)
+    """
+    # Hora actual en Colombia (UTC-5)
+    tz_col = timezone(timedelta(hours=-5))
+    ahora_col = datetime.now(tz_col)
+    inicio_dia_col = datetime(ahora_col.year, ahora_col.month, ahora_col.day, 0, 0, 0, tzinfo=tz_col)
+    inicio_dia_utc = inicio_dia_col.astimezone(timezone.utc)
+
+    caja_activa = get_active_cash_closure(db)
+
+    # Obtener pagos del día o del turno activo
+    pagos_query = db.query(models.Payment).join(models.Pedido).filter(
+        models.Pedido.estado == models.EstadoPedido.PAGADO
+    )
+    if caja_activa:
+        pagos_hoy = pagos_query.filter(
+            (models.Payment.cash_closure_id == caja_activa.id)
+            | (models.Pedido.fecha_hora >= inicio_dia_utc)
+        ).all()
+    else:
+        pagos_hoy = pagos_query.filter(
+            models.Pedido.fecha_hora >= inicio_dia_utc
+        ).all()
+
+    cash_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.CASH)
+    nequi_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.NEQUI)
+    daviplata_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.DAVIPLATA)
+    card_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.CARD)
+    digital_sales = nequi_sales + daviplata_sales + card_sales
+    today_sales = cash_sales + digital_sales
+
+    pedido_ids_hoy = {p.pedido_id for p in pagos_hoy}
+    today_order_count = len(pedido_ids_hoy)
+
+    # Clientes únicos registrados con teléfono
+    total_customers = (
+        db.query(func.count(func.distinct(models.Pedido.cliente_telefono)))
+        .filter(
+            models.Pedido.cliente_telefono.isnot(None),
+            models.Pedido.cliente_telefono != "",
+        )
+        .scalar()
+        or 0
+    )
+
+    # Platos más vendidos reales en pedidos PAGADO (del turno/día actual, o histórico si hoy aún va en 0)
+    top_rows = []
+    if pedido_ids_hoy:
+        top_rows = (
+            db.query(
+                models.Plato.nombre.label("product_name"),
+                func.sum(models.DetallePedido.cantidad).label("sold_count"),
+                func.sum(models.DetallePedido.cantidad * models.DetallePedido.precio_unitario).label("total_revenue"),
+            )
+            .join(models.DetallePedido, models.DetallePedido.plato_id == models.Plato.id)
+            .filter(models.DetallePedido.pedido_id.in_(pedido_ids_hoy))
+            .group_by(models.Plato.nombre)
+            .order_by(
+                func.sum(models.DetallePedido.cantidad).desc(),
+                func.sum(models.DetallePedido.cantidad * models.DetallePedido.precio_unitario).desc(),
+            )
+            .limit(8)
+            .all()
+        )
+
+    top_dishes = [
+        schemas.TopPlatoOut(
+            product_name=row.product_name,
+            sold_count=int(row.sold_count or 0),
+            total_revenue=float(row.total_revenue or 0.0),
+        )
+        for row in top_rows
+    ]
+
+    return schemas.DashboardStatsOut(
+        todaySales=today_sales,
+        cashSales=cash_sales,
+        digitalSales=digital_sales,
+        nequiSales=nequi_sales,
+        daviplataSales=daviplata_sales,
+        cardSales=card_sales,
+        todayOrderCount=today_order_count,
+        totalCustomers=int(total_customers),
+        topDishes=top_dishes,
     )

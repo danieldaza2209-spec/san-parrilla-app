@@ -741,7 +741,7 @@ import StaffLayout from '../layouts/StaffLayout.astro';
     // 1. CARGAR ESTADO DE CAJA (/api/caja/active)
     async function loadActiveCaja() {
       try {
-        const res = await fetch('/api/caja/active');
+        const res = await fetch('/api/caja/active', { cache: 'no-store' });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.detail || errData.error || ('HTTP ' + res.status));
@@ -795,8 +795,10 @@ import StaffLayout from '../layouts/StaffLayout.astro';
       document.getElementById('metric-daviplata').textContent = fmt(caja.total_daviplata_sales);
       document.getElementById('metric-card').textContent = fmt(caja.total_card_sales);
 
-      document.getElementById('metric-total-sales').textContent = fmt(caja.total_sales || (caja.total_cash_sales + digSales));
-      document.getElementById('metric-subtotal-sales').textContent = fmt(caja.subtotal_sales || 0);
+      const totalSalesTurn = caja.total_sales || ((caja.total_cash_sales || 0) + digSales);
+      const netRestaurantSales = Math.max(0, totalSalesTurn - (caja.total_delivery_payouts || 0)) || caja.subtotal_sales || 0;
+      document.getElementById('metric-total-sales').textContent = fmt(totalSalesTurn);
+      document.getElementById('metric-subtotal-sales').textContent = fmt(netRestaurantSales);
       document.getElementById('metric-delivery-payouts').textContent = '-' + fmt(caja.total_delivery_payouts || 0);
       document.getElementById('metric-expenses').textContent = '-' + fmt(caja.total_expenses || 0);
 
@@ -1080,7 +1082,7 @@ import StaffLayout from '../layouts/StaffLayout.astro';
     async function loadHistory() {
       const tbody = document.getElementById('history-table-body');
       try {
-        const res = await fetch('/api/caja/history?limit=15');
+        const res = await fetch('/api/caja/history?limit=15', { cache: 'no-store' });
         if (!res.ok) return;
         const closures = await res.json();
         if (!closures || closures.length === 0) {
@@ -1316,8 +1318,20 @@ import StaffLayout from '../layouts/StaffLayout.astro';
     document.addEventListener('DOMContentLoaded', () => {
       loadActiveCaja();
       loadPendingDrafts();
-      // Auto-refresh drafts badge every 20 seconds
-      setInterval(loadPendingDrafts, 20000);
+      // Auto-refresh caja & drafts every 15 seconds and on tab focus
+      setInterval(() => {
+        loadActiveCaja();
+        loadPendingDrafts();
+      }, 15000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          loadActiveCaja();
+          loadPendingDrafts();
+        }
+      });
+      window.addEventListener('focus', () => {
+        loadActiveCaja();
+      });
     });
   </script>
 </StaffLayout>
