@@ -7,8 +7,8 @@ const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isVercel = Boolean(process.env.VERCEL || process.env.AWS_REGION || process.env.LAMBDA_TASK_ROOT);
 
-// Categorías del Menú
-export const fallbackCategories = [
+// Categorías del Menú Almuerzos
+export const lunchCategories = [
   { id: 'especiales_hoy', name: 'Especiales de Hoy', sort_order: 1 },
   { id: 'fuertes_165', name: 'Platos Fuertes $16.500', sort_order: 2 },
   { id: 'fuertes_175', name: 'Platos Fuertes $17.500', sort_order: 3 },
@@ -17,6 +17,21 @@ export const fallbackCategories = [
   { id: 'bebidas', name: 'Bebidas y Adicionales', sort_order: 6 },
 ];
 
+// Categorías del Menú Comidas Rápidas (Turno Noche)
+export const rapidasCategories = [
+  { id: 'hamburguesas', name: 'Hamburguesas', icon: '🍔', sort_order: 20 },
+  { id: 'perros_calientes', name: 'Perros Calientes', icon: '🌭', sort_order: 21 },
+  { id: 'salchipapas_papas_locas', name: 'Salchipapas y Papas Locas', icon: '🍟', sort_order: 22 },
+  { id: 'patacones', name: 'Patacones', icon: '🫓', sort_order: 23 },
+  { id: 'sandwich', name: 'Sándwich', icon: '🥪', sort_order: 24 },
+  { id: 'picadas_noche', name: 'Picadas Noche', icon: '🥩', sort_order: 25 },
+  { id: 'especiales_noche', name: 'Especiales Noche', icon: '🔥', sort_order: 26 },
+  { id: 'granizados_jugos', name: 'Granizados y Jugos', icon: '🥤', sort_order: 27 },
+  { id: 'bebidas_rapidas', name: 'Bebidas', icon: '🧊', sort_order: 28 },
+];
+
+export const fallbackCategories = [...lunchCategories, ...rapidasCategories];
+
 export const fallbackDailySpecials = {
   sopa: 'Campesina',
   principios: ['Calabacín al huevo', 'Lentejas caseras', 'Frijoles caseros'],
@@ -24,9 +39,9 @@ export const fallbackDailySpecials = {
   updated_at: new Date().toISOString()
 };
 
-export const initialProductList = [
+export const lunchProductList = [
   // Plato de Prueba de Impresión Térmica SAT Q22
-  { id: 'test-print-sat', name: '🔥 Combo Prueba Impresión SAT Q22', price: 1000, category_id: 'fuertes_165', description: 'Plato de prueba rápida para calibrar corte e impresión en impresora térmica SAT Q22 (80mm).', is_active: 1, is_featured: 1, sort_order: -999 },
+  { id: 'test-print-sat', name: '🔥 Combo Prueba Impresión SAT Q22', price: 1000, category_id: 'fuertes_165', description: 'Plato de prueba rápida para calibrar corte e impresión en impresora térmica SAT Q22 (80mm).', is_active: 1, is_featured: 1, sort_order: -999, menu_type: 'almuerzo' },
 
   // $16.500
   { id: 't1-0', name: 'Milanesa de pollo', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 0 },
@@ -118,6 +133,80 @@ export const initialProductList = [
   { id: 'beb-7', name: 'Porción de Patacón con Hogao', price: 6500, category_id: 'bebidas', description: 'Con hogao tradicional de la casa.', is_active: 1, is_featured: 0, sort_order: 6 },
 ];
 
+export const rapidasProductList = [
+  // Hamburguesas
+  { id: 'rap-ham-1', name: 'Hamburguesa Clásica', price: 15500, category_id: 'hamburguesas', menu_type: 'rapidas', is_active: 1, sort_order: 1 },
+  { id: 'rap-ham-2', name: 'Hamburguesa Chicken', price: 18000, category_id: 'hamburguesas', menu_type: 'rapidas', is_active: 1, sort_order: 2 },
+  { id: 'rap-ham-3', name: 'Choriburguer', price: 20000, category_id: 'hamburguesas', menu_type: 'rapidas', is_active: 1, sort_order: 3 },
+  { id: 'rap-ham-4', name: 'Hamburguesa Space', price: 20500, category_id: 'hamburguesas', menu_type: 'rapidas', is_active: 1, sort_order: 4 },
+  { id: 'rap-ham-5', name: 'Hamburguesa Tentación', price: 22500, category_id: 'hamburguesas', menu_type: 'rapidas', is_active: 1, sort_order: 5 },
+  { id: 'rap-ham-6', name: 'Big Burguer', price: 23500, category_id: 'hamburguesas', menu_type: 'rapidas', is_active: 1, sort_order: 6 },
+  { id: 'rap-ham-7', name: 'Hamburguesa Crunch Master', price: 26000, category_id: 'hamburguesas', menu_type: 'rapidas', is_active: 1, sort_order: 7 },
+  { id: 'rap-ham-8', name: 'Hamburguesa Berraca', price: 26000, category_id: 'hamburguesas', menu_type: 'rapidas', is_active: 1, sort_order: 8 },
+
+  // Perros Calientes
+  { id: 'rap-per-1', name: 'Perro Americano', price: 15500, category_id: 'perros_calientes', menu_type: 'rapidas', is_active: 1, sort_order: 9 },
+  { id: 'rap-per-2', name: 'Choriperro', price: 16000, category_id: 'perros_calientes', menu_type: 'rapidas', is_active: 1, sort_order: 10 },
+  { id: 'rap-per-3', name: 'Perro Hawaiano (Carne)', price: 17500, category_id: 'perros_calientes', menu_type: 'rapidas', is_active: 1, sort_order: 11 },
+  { id: 'rap-per-4', name: 'Perro Hawaiano (Pollo)', price: 17500, category_id: 'perros_calientes', menu_type: 'rapidas', is_active: 1, sort_order: 12 },
+  { id: 'rap-per-5', name: 'Perro Loco', price: 18500, category_id: 'perros_calientes', menu_type: 'rapidas', is_active: 1, sort_order: 13 },
+  { id: 'rap-per-6', name: 'Perro Especial', price: 19500, category_id: 'perros_calientes', menu_type: 'rapidas', is_active: 1, sort_order: 14 },
+  { id: 'rap-per-7', name: 'Perro Extra-Largo', price: 30000, category_id: 'perros_calientes', menu_type: 'rapidas', is_active: 1, sort_order: 15 },
+
+  // Salchipapas y Papas Locas
+  { id: 'rap-sal-1', name: 'Salchipapa Clásica', price: 15500, category_id: 'salchipapas_papas_locas', menu_type: 'rapidas', is_active: 1, sort_order: 16 },
+  { id: 'rap-sal-2', name: 'Salchipapa Especial de Carne', price: 22000, category_id: 'salchipapas_papas_locas', menu_type: 'rapidas', is_active: 1, sort_order: 17 },
+  { id: 'rap-sal-3', name: 'Salchipapa Especial de Pollo', price: 22000, category_id: 'salchipapas_papas_locas', menu_type: 'rapidas', is_active: 1, sort_order: 18 },
+  { id: 'rap-pap-1', name: 'Papas Locas Clásicas (Carne)', price: 17000, category_id: 'salchipapas_papas_locas', menu_type: 'rapidas', is_active: 1, sort_order: 19 },
+  { id: 'rap-pap-2', name: 'Papas Locas Clásicas (Pollo)', price: 17000, category_id: 'salchipapas_papas_locas', menu_type: 'rapidas', is_active: 1, sort_order: 20 },
+  { id: 'rap-pap-3', name: 'Papas Locas Mixtas', price: 22000, category_id: 'salchipapas_papas_locas', menu_type: 'rapidas', is_active: 1, sort_order: 21 },
+  { id: 'rap-pap-4', name: 'Papas Locas San Parrilla', price: 24000, category_id: 'salchipapas_papas_locas', menu_type: 'rapidas', is_active: 1, sort_order: 22 },
+
+  // Patacones
+  { id: 'rap-pat-1', name: 'Patacón Clásico (Carne)', price: 15500, category_id: 'patacones', menu_type: 'rapidas', is_active: 1, sort_order: 23 },
+  { id: 'rap-pat-2', name: 'Patacón Clásico (Pollo)', price: 15500, category_id: 'patacones', menu_type: 'rapidas', is_active: 1, sort_order: 24 },
+  { id: 'rap-pat-3', name: 'Patacón Porky', price: 17000, category_id: 'patacones', menu_type: 'rapidas', is_active: 1, sort_order: 25 },
+  { id: 'rap-pat-4', name: 'Patacón Mixto', price: 19500, category_id: 'patacones', menu_type: 'rapidas', is_active: 1, sort_order: 26 },
+  { id: 'rap-pat-5', name: 'Patacón San Parrilla', price: 21000, category_id: 'patacones', menu_type: 'rapidas', is_active: 1, sort_order: 27 },
+
+  // Sándwich
+  { id: 'rap-san-1', name: 'Sándwich Clásico (Carne)', price: 15500, category_id: 'sandwich', menu_type: 'rapidas', is_active: 1, sort_order: 28 },
+  { id: 'rap-san-2', name: 'Sándwich Clásico (Pollo)', price: 15500, category_id: 'sandwich', menu_type: 'rapidas', is_active: 1, sort_order: 29 },
+  { id: 'rap-san-3', name: 'Sándwich Granjero', price: 16500, category_id: 'sandwich', menu_type: 'rapidas', is_active: 1, sort_order: 30 },
+  { id: 'rap-san-4', name: 'Sándwich Porky', price: 19500, category_id: 'sandwich', menu_type: 'rapidas', is_active: 1, sort_order: 31 },
+  { id: 'rap-san-5', name: 'Sándwich San Parrilla', price: 21000, category_id: 'sandwich', menu_type: 'rapidas', is_active: 1, sort_order: 32 },
+
+  // Picadas Noche
+  { id: 'rap-pic-1', name: 'Picada Personal', price: 27500, category_id: 'picadas_noche', menu_type: 'rapidas', is_active: 1, sort_order: 33 },
+  { id: 'rap-pic-2', name: 'Picada Dúo', price: 50000, category_id: 'picadas_noche', menu_type: 'rapidas', is_active: 1, sort_order: 34 },
+  { id: 'rap-pic-3', name: 'Picada Trío', price: 66000, category_id: 'picadas_noche', menu_type: 'rapidas', is_active: 1, sort_order: 35 },
+  { id: 'rap-pic-4', name: 'Picada Berraca Noche', price: 55000, category_id: 'picadas_noche', menu_type: 'rapidas', is_active: 1, sort_order: 36 },
+
+  // Especiales Noche
+  { id: 'rap-esp-1', name: 'Bandeja San Parrilla (Carne a la plancha)', price: 21000, category_id: 'especiales_noche', menu_type: 'rapidas', is_active: 1, sort_order: 37 },
+  { id: 'rap-esp-2', name: 'Bandeja San Parrilla (Pechuga a la plancha)', price: 21000, category_id: 'especiales_noche', menu_type: 'rapidas', is_active: 1, sort_order: 38 },
+  { id: 'rap-esp-3', name: 'Bandeja San Parrilla (Lomo a la plancha)', price: 21000, category_id: 'especiales_noche', menu_type: 'rapidas', is_active: 1, sort_order: 39 },
+  { id: 'rap-esp-4', name: 'Bandeja San Parrilla (Chuleta a la plancha)', price: 21000, category_id: 'especiales_noche', menu_type: 'rapidas', is_active: 1, sort_order: 40 },
+  { id: 'rap-esp-5', name: 'Alitas BBQ (Noche)', price: 22000, category_id: 'especiales_noche', menu_type: 'rapidas', is_active: 1, sort_order: 41 },
+  { id: 'rap-esp-6', name: 'Alitas Apanadas', price: 22000, category_id: 'especiales_noche', menu_type: 'rapidas', is_active: 1, sort_order: 42 },
+  { id: 'rap-esp-7', name: 'Costillitas BBQ', price: 23000, category_id: 'especiales_noche', menu_type: 'rapidas', is_active: 1, sort_order: 43 },
+
+  // Granizados y Jugos
+  { id: 'rap-jug-1', name: 'Jugo / Granizado en Agua', price: 8000, category_id: 'granizados_jugos', menu_type: 'rapidas', is_active: 1, sort_order: 44, has_flavor: 1 },
+  { id: 'rap-jug-2', name: 'Jugo / Granizado en Leche', price: 9500, category_id: 'granizados_jugos', menu_type: 'rapidas', is_active: 1, sort_order: 45, has_flavor: 1 },
+  { id: 'rap-jug-3', name: 'Limonada Cerezada', price: 10000, category_id: 'granizados_jugos', menu_type: 'rapidas', is_active: 1, sort_order: 46 },
+
+  // Bebidas
+  { id: 'rap-beb-1', name: 'Agua', price: 3000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 47 },
+  { id: 'rap-beb-2', name: 'Soda', price: 4000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 48 },
+  { id: 'rap-beb-3', name: 'Gaseosa P400', price: 4000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 49 },
+  { id: 'rap-beb-4', name: 'Gaseosa 1.5L', price: 8000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 50 },
+  { id: 'rap-beb-5', name: 'Gaseosa Mega', price: 13500, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 51 },
+  { id: 'rap-beb-6', name: 'Cerveza', price: 4500, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 52 },
+];
+
+export const initialProductList = [...lunchProductList, ...rapidasProductList];
+
 let db = null;
 
 // Initialize SQLite only in non-serverless local environments
@@ -144,12 +233,9 @@ if (!isVercel) {
         CREATE TABLE IF NOT EXISTS views_counter (date TEXT PRIMARY KEY, views_count INTEGER DEFAULT 0);
       `);
       try {
-        const catCount = db.prepare('SELECT count(*) as count FROM categories').get().count;
-        if (catCount === 0) {
-          const insertCat = db.prepare('INSERT INTO categories (id, name, sort_order) VALUES (?, ?, ?)');
-          for (const c of fallbackCategories) {
-            insertCat.run(c.id, c.name, c.sort_order);
-          }
+        const insertCat = db.prepare('INSERT OR REPLACE INTO categories (id, name, sort_order) VALUES (?, ?, ?)');
+        for (const c of fallbackCategories) {
+          insertCat.run(c.id, c.name, c.sort_order);
         }
         // Sync products catalog with initialProductList
         db.exec('DELETE FROM products');

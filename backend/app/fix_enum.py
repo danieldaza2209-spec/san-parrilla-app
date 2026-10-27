@@ -149,6 +149,12 @@ def fix():
     finally:
         db.close()
 
+    try:
+        from app.seed_rapidas import seed_rapidas
+        seed_rapidas()
+    except Exception as e:
+        print(f"[!] Info (seed_rapidas): {e}")
+
 
 if __name__ == "__main__":
     fix()

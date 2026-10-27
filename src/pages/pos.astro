@@ -11,6 +11,8 @@ import {
   fallbackCategories,
   fallbackDailySpecials,
   initialProductList,
+  rapidasCategories,
+  rapidasProductList,
 } from '../lib/db.js';
 
 const rawCategories = getCategories();
@@ -21,6 +23,21 @@ const products = (rawProducts && rawProducts.length > 0) ? rawProducts : initial
 const publicProducts = getPublicProducts();
 const dailySpecials = getDailySpecials() || fallbackDailySpecials;
 const customizableCategories = new Set(['especiales_hoy', 'fuertes_165', 'fuertes_175', 'especiales_21']);
+
+const rapidasProducts = publicProducts.filter((p) => p.id.startsWith('rap-') || p.menu_type === 'rapidas');
+const lunchProducts = publicProducts.filter((p) => !p.id.startsWith('rap-') && p.menu_type !== 'rapidas');
+
+const rapidasCatCards = [
+  { id: 'hamburguesas', title: 'Hamburguesas', icon: '🍔' },
+  { id: 'perros_calientes', title: 'Perros Calientes', icon: '🌭' },
+  { id: 'salchipapas_papas_locas', title: 'Salchipapas y Papas Locas', icon: '🍟' },
+  { id: 'patacones', title: 'Patacones', icon: '🫓' },
+  { id: 'sandwich', title: 'Sándwich', icon: '🥪' },
+  { id: 'picadas_noche', title: 'Picadas Noche', icon: '🥩' },
+  { id: 'especiales_noche', title: 'Especiales Noche', icon: '🔥' },
+  { id: 'granizados_jugos', title: 'Granizados y Jugos', icon: '🥤' },
+  { id: 'bebidas_rapidas', title: 'Bebidas', icon: '🧊' },
+];
 
 console.log(">>> POS PRODUCTS IN ASTRO BUILD:", publicProducts.length, "Categories:", categories.length);
 const activeCash = getActiveCashRegister();
@@ -36,6 +53,7 @@ const searchableCatalog = publicProducts.map((p) => ({
   name: p.name,
   price: p.price,
   category_id: p.category_id,
+  menu_type: p.menu_type || (p.id.startsWith('rap-') ? 'rapidas' : 'almuerzo'),
   description: p.description || '',
   special_badge: p.special_badge || '',
   customizable: customizableCategories.has(p.category_id),
@@ -77,12 +95,29 @@ const searchableCatalog = publicProducts.map((p) => ({
       
       <!-- LEFT SECTION: BUSCADOR UNIVERSAL POS + CATÁLOGO MENÚ RÁPIDO (7 cols) -->
       <div
-        class="lg:col-span-7 flex flex-col gap-5"
+        class="lg:col-span-7 flex flex-col gap-4"
         id="pos-catalog-root"
         data-catalog={JSON.stringify(searchableCatalog)}
         data-specials={JSON.stringify(dailySpecials)}
       >
-        
+        <!-- SELECTOR PRINCIPAL DE MENÚ: ALMUERZOS VS COMIDAS RÁPIDAS -->
+        <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl border border-parrilla-border shadow-xs">
+          <button
+            type="button"
+            id="tab-menu-almuerzos"
+            class="menu-mode-tab active py-3 px-3 sm:px-4 rounded-xl text-xs sm:text-base font-display font-black flex items-center justify-center gap-1.5 bg-parrilla-gold text-white shadow-sm transition-all cursor-pointer"
+          >
+            <span>☀️ Menú Almuerzos</span>
+          </button>
+          <button
+            type="button"
+            id="tab-menu-rapidas"
+            class="menu-mode-tab py-3 px-3 sm:px-4 rounded-xl text-xs sm:text-base font-display font-black flex items-center justify-center gap-1.5 text-parrilla-ivory hover:text-parrilla-gold transition-all cursor-pointer"
+          >
+            <span>🍔 Comidas Rápidas</span>
+          </button>
+        </div>
+
         <!-- 1. PARTE SUPERIOR: BUSCADOR UNIVERSAL PROTAGONISTA & FILTROS RÁPIDOS -->
         <div class="bg-white rounded-2xl p-4 sm:p-5 border-2 border-parrilla-gold/60 shadow-md space-y-3.5 sticky top-16 z-30">
           <div class="flex items-center justify-between gap-2">
@@ -115,10 +150,10 @@ const searchableCatalog = publicProducts.map((p) => ({
             </div>
           </div>
 
-          <!-- Filtros Rápidos por Familia / Precio -->
-          <div class="flex items-center gap-1.5 overflow-x-auto w-full no-scrollbar pb-0.5">
+          <!-- Filtros Rápidos Almuerzos -->
+          <div id="pos-filters-almuerzo" class="flex items-center gap-1.5 overflow-x-auto w-full no-scrollbar pb-0.5">
             <button type="button" class="pos-cat-btn active px-3.5 py-2 rounded-xl text-xs font-extrabold bg-parrilla-gold text-white shadow-xs transition whitespace-nowrap cursor-pointer" data-filter-query="">
-              ⚡ Menú Rápido Completo
+              ⚡ Todo Almuerzos
             </button>
             <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="pechuga">
               🍗 Pechugas
@@ -135,8 +170,36 @@ const searchableCatalog = publicProducts.map((p) => ({
             <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="picada">
               🔥 Picadas
             </button>
-            <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="bebidas">
+            <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="bebida">
               🥤 Bebidas
+            </button>
+          </div>
+
+          <!-- Filtros Rápidos Comidas Rápidas -->
+          <div id="pos-filters-rapidas" class="hidden flex items-center gap-1.5 overflow-x-auto w-full no-scrollbar pb-0.5">
+            <button type="button" class="pos-cat-btn active px-3.5 py-2 rounded-xl text-xs font-extrabold bg-parrilla-gold text-white shadow-xs transition whitespace-nowrap cursor-pointer" data-filter-query="">
+              ⚡ Todo Rápidas
+            </button>
+            <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="hamburguesa">
+              🍔 Hamburguesas
+            </button>
+            <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="perro">
+              🌭 Perros
+            </button>
+            <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="salchipapa|papas locas">
+              🍟 Salchipapas / Papas Locas
+            </button>
+            <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="patacón|patacon">
+              🫓 Patacones
+            </button>
+            <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="sándwich|sandwich">
+              🥪 Sándwich
+            </button>
+            <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="picada|bandeja san parrilla|alitas|costillitas">
+              🥩 Picadas & Especiales
+            </button>
+            <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="jugo|granizado|limonada|agua|soda|gaseosa|cerveza">
+              🥤 Jugos & Bebidas
             </button>
           </div>
         </div>
@@ -164,13 +227,58 @@ const searchableCatalog = publicProducts.map((p) => ({
           </div>
         </div>
 
-        <!-- 3. CUERPO DEL CATÁLOGO: ESTRUCTURA VISUAL EXACTA DEL MENÚ RÁPIDO (index.astro) -->
+        <!-- 3. CUERPO DEL CATÁLOGO ALMUERZOS: ESTRUCTURA VISUAL EXACTA DEL MENÚ RÁPIDO (index.astro) -->
         <div id="pos-quick-menu-wrapper">
           <QuickOrderView
-            products={publicProducts}
+            products={lunchProducts}
             dailySpecials={dailySpecials}
             customizableCategories={customizableCategories}
           />
+        </div>
+
+        <!-- 4. CUERPO DEL CATÁLOGO COMIDAS RÁPIDAS (TURNO NOCHE) -->
+        <div id="pos-rapidas-menu-wrapper" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 items-start">
+          {rapidasCatCards.map((cat) => {
+            const catItems = rapidasProducts.filter((p) => p.category_id === cat.id);
+            if (catItems.length === 0) return null;
+            return (
+              <div class="rapidas-cat-card bg-white rounded-xl sm:rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-3 sm:p-4 shadow-sm flex flex-col" data-cat={cat.id}>
+                <div class="text-center border-b border-parrilla-border pb-2 mb-2">
+                  <span class="font-display font-black text-sm sm:text-base text-parrilla-gold tracking-tight flex items-center justify-center gap-1.5 uppercase">
+                    <span>{cat.icon}</span>
+                    <span>{cat.title}</span>
+                  </span>
+                </div>
+                <ul class="divide-y divide-gray-100">
+                  {catItems.map((item) => (
+                    <li class="flex items-center justify-between gap-2 py-2">
+                      <span class="text-xs sm:text-sm font-semibold text-parrilla-ivory leading-tight min-w-0 flex-1">
+                        {item.name}
+                      </span>
+                      <div class="flex items-center gap-2 flex-shrink-0">
+                        <span class="font-display font-black text-xs sm:text-sm text-parrilla-gold font-mono">
+                          {formatPrice(item.price)}
+                        </span>
+                        <button
+                          type="button"
+                          data-id={item.id}
+                          data-name={item.name}
+                          data-price={item.price}
+                          data-cat={item.category_id}
+                          data-menu="rapidas"
+                          data-customizable="false"
+                          aria-label={`Agregar ${item.name}`}
+                          class="btn-add-cart w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer font-bold text-sm"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </div>
 
       </div>
@@ -899,6 +1007,7 @@ const searchableCatalog = publicProducts.map((p) => ({
     let cart = [];
     let currentOrderType = 'mesa';
     let currentPaymentMethod = 'efectivo';
+    let activeMenuMode = 'almuerzos'; // 'almuerzos' | 'rapidas'
 
     // Format COP Currency
     const fmt = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
@@ -909,14 +1018,20 @@ const searchableCatalog = publicProducts.map((p) => ({
     const catalogData = JSON.parse(catalogRoot?.dataset.catalog || '[]');
     const dailySpecialsData = JSON.parse(catalogRoot?.dataset.specials || '{"sopa":"Campesina","principios":[],"acompanamientos":[]}');
 
+    // Menu Mode Tabs & Wrappers
+    const tabMenuAlmuerzos = document.getElementById('tab-menu-almuerzos');
+    const tabMenuRapidas = document.getElementById('tab-menu-rapidas');
+    const posFiltersAlmuerzo = document.getElementById('pos-filters-almuerzo');
+    const posFiltersRapidas = document.getElementById('pos-filters-rapidas');
+    const quickMenuWrapper = document.getElementById('pos-quick-menu-wrapper');
+    const rapidasMenuWrapper = document.getElementById('pos-rapidas-menu-wrapper');
+
     const searchInput = document.getElementById('product-search');
     const btnClearSearch = document.getElementById('btn-clear-search');
     const btnBackFullMenu = document.getElementById('btn-back-full-menu');
     const searchResultsPanel = document.getElementById('pos-search-results-panel');
     const searchResultsGrid = document.getElementById('pos-search-results-grid');
     const searchResultsTitle = document.getElementById('search-results-title');
-    const quickMenuWrapper = document.getElementById('pos-quick-menu-wrapper');
-    const catButtons = document.querySelectorAll('.pos-cat-btn');
 
     // Cart Elements
     const cartContainer = document.getElementById('cart-items-container');
@@ -949,6 +1064,9 @@ const searchableCatalog = publicProducts.map((p) => ({
     const payButtons = document.querySelectorAll('.pay-btn');
     const cashChangeBox = document.getElementById('cash-change-box');
 
+    // Flavors for Jugos & Granizados
+    const JUICE_FLAVORS = ['Uva', 'Lulo', 'Fresa', 'Limón', 'Mango', 'Naranja', 'Maracuyá', 'Tamarindo', 'Guanábana', 'Mandarina'];
+
     // Normalize helper for accent-insensitive search
     const normalizeStr = (str) =>
       String(str || '')
@@ -957,6 +1075,91 @@ const searchableCatalog = publicProducts.map((p) => ({
         .replace(/[\u0300-\u036f]/g, '')
         .trim();
 
+    function isJuiceProduct(name, category_id) {
+      const normCat = String(category_id || '').toLowerCase();
+      const normName = normalizeStr(name);
+      if (normCat === 'granizados_jugos') return true;
+      if (normName.includes('jugo') || normName.includes('granizado') || normName.includes('limonada cerezada')) return true;
+      return false;
+    }
+
+    function isDrinkProduct(name, category_id) {
+      const normCat = String(category_id || '').toLowerCase();
+      const normName = normalizeStr(name);
+      if (normCat === 'bebidas' || normCat === 'bebidas_rapidas') return true;
+      if (/gaseosa|agua|soda|cerveza|hit|coca|postobon|speed|red bull|pilsen|aguila|club colombia/i.test(normName)) return true;
+      return false;
+    }
+
+    function isRapidasFoodProduct(item) {
+      const isRap = item.menu_type === 'rapidas' ||
+        String(item.id || '').startsWith('rap-') ||
+        ['hamburguesas', 'perros_calientes', 'salchipapas_papas_locas', 'patacones', 'sandwich', 'picadas_noche', 'especiales_noche'].includes(item.category_id);
+      if (!isRap) return false;
+      return !isJuiceProduct(item.name, item.category_id) && !isDrinkProduct(item.name, item.category_id);
+    }
+
+    // MENU MODE SWITCHER (ALMUERZOS VS COMIDAS RÁPIDAS)
+    function setMenuMode(mode) {
+      activeMenuMode = mode;
+
+      if (mode === 'rapidas') {
+        tabMenuRapidas?.classList.add('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
+        tabMenuRapidas?.classList.remove('text-parrilla-ivory', 'hover:text-parrilla-gold');
+        tabMenuAlmuerzos?.classList.remove('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
+        tabMenuAlmuerzos?.classList.add('text-parrilla-ivory', 'hover:text-parrilla-gold');
+
+        posFiltersAlmuerzo?.classList.add('hidden');
+        posFiltersRapidas?.classList.remove('hidden');
+
+        if (searchInput) {
+          // @ts-ignore
+          searchInput.placeholder = '🔍 Buscar comida rápida... (ej: hamburguesa, perro, salchipapa, jugo)';
+        }
+
+        const rapidasBtns = posFiltersRapidas?.querySelectorAll('.pos-cat-btn') || [];
+        rapidasBtns.forEach((b, idx) => {
+          const isAll = idx === 0;
+          b.classList.toggle('bg-parrilla-gold', isAll);
+          b.classList.toggle('text-white', isAll);
+          b.classList.toggle('shadow-xs', isAll);
+          b.classList.toggle('active', isAll);
+          b.classList.toggle('bg-slate-100', !isAll);
+          b.classList.toggle('text-parrilla-ivory', !isAll);
+        });
+
+      } else {
+        tabMenuAlmuerzos?.classList.add('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
+        tabMenuAlmuerzos?.classList.remove('text-parrilla-ivory', 'hover:text-parrilla-gold');
+        tabMenuRapidas?.classList.remove('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
+        tabMenuRapidas?.classList.add('text-parrilla-ivory', 'hover:text-parrilla-gold');
+
+        posFiltersRapidas?.classList.add('hidden');
+        posFiltersAlmuerzo?.classList.remove('hidden');
+
+        if (searchInput) {
+          // @ts-ignore
+          searchInput.placeholder = '🔍 Buscar plato rápido... (ej: pechuga, bistec, mojarra, 16500)';
+        }
+
+        const almuerzoBtns = posFiltersAlmuerzo?.querySelectorAll('.pos-cat-btn') || [];
+        almuerzoBtns.forEach((b, idx) => {
+          const isAll = idx === 0;
+          b.classList.toggle('bg-parrilla-gold', isAll);
+          b.classList.toggle('text-white', isAll);
+          b.classList.toggle('shadow-xs', isAll);
+          b.classList.toggle('active', isAll);
+          b.classList.toggle('bg-slate-100', !isAll);
+          b.classList.toggle('text-parrilla-ivory', !isAll);
+        });
+      }
+
+      resetUniversalSearch();
+    }
+
+    tabMenuAlmuerzos?.addEventListener('click', () => setMenuMode('almuerzos'));
+    tabMenuRapidas?.addEventListener('click', () => setMenuMode('rapidas'));
+
     // 1. UNIVERSAL SEARCH ENGINE & QUICK FILTERS
     function runUniversalSearch(rawQuery) {
       const q = normalizeStr(rawQuery);
@@ -964,69 +1167,84 @@ const searchableCatalog = publicProducts.map((p) => ({
       if (!q) {
         btnClearSearch?.classList.add('hidden');
         searchResultsPanel?.classList.add('hidden');
-        quickMenuWrapper?.classList.remove('hidden');
+        if (activeMenuMode === 'rapidas') {
+          quickMenuWrapper?.classList.add('hidden');
+          rapidasMenuWrapper?.classList.remove('hidden');
+        } else {
+          quickMenuWrapper?.classList.remove('hidden');
+          rapidasMenuWrapper?.classList.add('hidden');
+        }
         return;
       }
 
       btnClearSearch?.classList.remove('hidden');
       quickMenuWrapper?.classList.add('hidden');
+      rapidasMenuWrapper?.classList.add('hidden');
       searchResultsPanel?.classList.remove('hidden');
 
-      // Match by name, price, category, or family aliases
+      const subQueries = q.split('|').map((s) => normalizeStr(s)).filter(Boolean);
+
+      // Match by name, price, category, or family aliases respecting active menu tab
       const matches = catalogData.filter((item) => {
+        const itemMenu = item.menu_type || (String(item.id).startsWith('rap-') ? 'rapidas' : 'almuerzos');
+        if (activeMenuMode === 'rapidas' && itemMenu !== 'rapidas') return false;
+        if (activeMenuMode === 'almuerzos' && itemMenu === 'rapidas') return false;
+
         const nameNorm = normalizeStr(item.name);
         const descNorm = normalizeStr(item.description);
         const catNorm = normalizeStr(item.category_id);
         const priceStr = String(item.price);
 
-        if (q === 'mojarra') {
-          return (
-            nameNorm.includes('mojarra') ||
-            nameNorm.includes('bagre') ||
-            nameNorm.includes('robalo') ||
-            nameNorm.includes('cazuela') ||
-            nameNorm.includes('marisco') ||
-            nameNorm.includes('camaron')
-          );
-        }
-        if (q === 'cerdo') {
-          return (
-            nameNorm.includes('cerdo') ||
-            nameNorm.includes('chuleta') ||
-            nameNorm.includes('pernil') ||
-            nameNorm.includes('costilla') ||
-            nameNorm.includes('lomo')
-          );
-        }
-        if (q === 'carne') {
-          return (
-            nameNorm.includes('carne') ||
-            nameNorm.includes('bistec') ||
-            nameNorm.includes('churrasco') ||
-            nameNorm.includes('sobrebarriga') ||
-            nameNorm.includes('higado') ||
-            nameNorm.includes('bandeja') ||
-            nameNorm.includes('parrilla') ||
-            nameNorm.includes('llanera')
-          );
-        }
-        if (q === 'bebidas') {
-          return catNorm === 'bebidas';
-        }
-        if (q === 'picada') {
-          return catNorm === 'picadas' || nameNorm.includes('picada');
-        }
+        return subQueries.some((subQ) => {
+          if (subQ === 'mojarra') {
+            return (
+              nameNorm.includes('mojarra') ||
+              nameNorm.includes('bagre') ||
+              nameNorm.includes('robalo') ||
+              nameNorm.includes('cazuela') ||
+              nameNorm.includes('marisco') ||
+              nameNorm.includes('camaron')
+            );
+          }
+          if (subQ === 'cerdo') {
+            return (
+              nameNorm.includes('cerdo') ||
+              nameNorm.includes('chuleta') ||
+              nameNorm.includes('pernil') ||
+              nameNorm.includes('costilla') ||
+              nameNorm.includes('lomo')
+            );
+          }
+          if (subQ === 'carne') {
+            return (
+              nameNorm.includes('carne') ||
+              nameNorm.includes('bistec') ||
+              nameNorm.includes('churrasco') ||
+              nameNorm.includes('sobrebarriga') ||
+              nameNorm.includes('higado') ||
+              nameNorm.includes('bandeja') ||
+              nameNorm.includes('parrilla') ||
+              nameNorm.includes('llanera')
+            );
+          }
+          if (subQ === 'bebidas' || subQ === 'bebida') {
+            return catNorm === 'bebidas' || catNorm === 'bebidas_rapidas';
+          }
+          if (subQ === 'picada') {
+            return catNorm === 'picadas' || catNorm === 'picadas_noche' || nameNorm.includes('picada');
+          }
 
-        return (
-          nameNorm.includes(q) ||
-          priceStr.includes(q) ||
-          descNorm.includes(q) ||
-          catNorm.includes(q)
-        );
+          return (
+            nameNorm.includes(subQ) ||
+            priceStr.includes(subQ) ||
+            descNorm.includes(subQ) ||
+            catNorm.includes(subQ)
+          );
+        });
       });
 
       if (searchResultsTitle) {
-        searchResultsTitle.textContent = `${matches.length} variante${matches.length === 1 ? '' : 's'} para "${rawQuery.trim()}"`;
+        searchResultsTitle.textContent = `${matches.length} producto${matches.length === 1 ? '' : 's'} para "${rawQuery.trim()}"`;
       }
 
       if (!searchResultsGrid) return;
@@ -1034,7 +1252,7 @@ const searchableCatalog = publicProducts.map((p) => ({
       if (matches.length === 0) {
         searchResultsGrid.innerHTML = `
           <div class="col-span-2 py-8 text-center text-parrilla-muted text-sm">
-            No encontramos platos que coincidan con "<strong>${rawQuery}</strong>". Intenta con otra palabra o precio.
+            No encontramos platos que coincidan con "<strong>${escapeHtml(rawQuery)}</strong>" en el menú actual. Intenta con otra palabra o precio.
           </div>
         `;
         return;
@@ -1047,11 +1265,11 @@ const searchableCatalog = publicProducts.map((p) => ({
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="font-display font-bold text-sm text-parrilla-ivory leading-tight">
-                  ${item.name}
+                  ${escapeHtml(item.name)}
                 </span>
                 ${
                   item.special_badge
-                    ? `<span class="bg-parrilla-gold text-white text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded">${item.special_badge}</span>`
+                    ? `<span class="bg-parrilla-gold text-white text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded">${escapeHtml(item.special_badge)}</span>`
                     : ''
                 }
               </div>
@@ -1064,10 +1282,12 @@ const searchableCatalog = publicProducts.map((p) => ({
             <button
               type="button"
               data-id="${item.id}"
-              data-name="${item.name}"
+              data-name="${escapeHtml(item.name)}"
               data-price="${item.price}"
+              data-cat="${item.category_id || ''}"
+              data-menu="${item.menu_type || ''}"
               data-customizable="${String(item.customizable)}"
-              aria-label="Agregar ${item.name}"
+              aria-label="Agregar ${escapeHtml(item.name)}"
               class="btn-add-cart flex-shrink-0 w-9 h-9 rounded-full bg-parrilla-gold hover:bg-parrilla-goldLight text-white flex items-center justify-center shadow-sm transition active:scale-90 cursor-pointer font-black text-base"
             >
               +
@@ -1081,11 +1301,13 @@ const searchableCatalog = publicProducts.map((p) => ({
     searchInput?.addEventListener('input', (e) => {
       // @ts-ignore
       const val = e.target.value;
-      // Reset active pill styling if typing manually
-      catButtons.forEach((b) => {
-        const isAll = b.getAttribute('data-filter-query') === '' && !val.trim();
+      const activeContainer = activeMenuMode === 'rapidas' ? posFiltersRapidas : posFiltersAlmuerzo;
+      activeContainer?.querySelectorAll('.pos-cat-btn').forEach((b, idx) => {
+        const isAll = idx === 0 && !val.trim();
         b.classList.toggle('bg-parrilla-gold', isAll);
         b.classList.toggle('text-white', isAll);
+        b.classList.toggle('shadow-xs', isAll);
+        b.classList.toggle('active', isAll);
         b.classList.toggle('bg-slate-100', !isAll);
         b.classList.toggle('text-parrilla-ivory', !isAll);
       });
@@ -1097,10 +1319,13 @@ const searchableCatalog = publicProducts.map((p) => ({
         // @ts-ignore
         searchInput.value = '';
       }
-      catButtons.forEach((b) => {
-        const isAll = b.getAttribute('data-filter-query') === '';
+      const activeContainer = activeMenuMode === 'rapidas' ? posFiltersRapidas : posFiltersAlmuerzo;
+      activeContainer?.querySelectorAll('.pos-cat-btn').forEach((b, idx) => {
+        const isAll = idx === 0;
         b.classList.toggle('bg-parrilla-gold', isAll);
         b.classList.toggle('text-white', isAll);
+        b.classList.toggle('shadow-xs', isAll);
+        b.classList.toggle('active', isAll);
         b.classList.toggle('bg-slate-100', !isAll);
         b.classList.toggle('text-parrilla-ivory', !isAll);
       });
@@ -1114,9 +1339,10 @@ const searchableCatalog = publicProducts.map((p) => ({
 
     btnBackFullMenu?.addEventListener('click', resetUniversalSearch);
 
-    catButtons.forEach((btn) => {
+    document.querySelectorAll('.pos-cat-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        catButtons.forEach((b) => {
+        const parentContainer = btn.parentElement;
+        parentContainer?.querySelectorAll('.pos-cat-btn').forEach((b) => {
           b.classList.remove('bg-parrilla-gold', 'text-white', 'shadow-xs', 'active');
           b.classList.add('bg-slate-100', 'text-parrilla-ivory');
         });
@@ -1218,9 +1444,13 @@ const searchableCatalog = publicProducts.map((p) => ({
     // Cuenta cuántos platos de comida hay en la comanda (excluye bebidas/líquidos)
     function countFoodPlates() {
       return cart.reduce((acc, it) => {
-        const isDrink = it.category_id === 'bebidas' ||
-          /gaseosa|jugo|agua|cerveza|hit|coca|postobon|speed|red bull|pilsen|aguila|club colombia/i.test(it.name);
-        return isDrink ? acc : acc + it.quantity;
+        if (it.isRapidasFood || it.isCustomizable) {
+          return acc + it.quantity;
+        }
+        if (it.isJuice || it.isDrink || isJuiceProduct(it.name, it.category_id) || isDrinkProduct(it.name, it.category_id)) {
+          return acc;
+        }
+        return acc + it.quantity;
       }, 0);
     }
 
@@ -1245,27 +1475,56 @@ const searchableCatalog = publicProducts.map((p) => ({
 
     // Arma el string de notas y guarniciones de un plato
     function buildPlateNotes(item) {
-      if (!item.isCustomizable) return item.notes || '';
-      const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
-      const parts = [
-        item.soup || soupDefault,
-        `Principio: ${item.principle || (dailySpecialsData.principios?.[0] || 'Sin Principio')}`,
-        `Acomp: ${item.side || (dailySpecialsData.acompanamientos?.[0] || 'Sin Acompañamiento')}`,
-        item.salad || 'Con ensalada'
-      ];
-      if (currentOrderType !== 'mesa') {
-        parts.push(`Empaque: ${item.packaging || globalPackagingType}`);
+      if (item.isCustomizable) {
+        const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
+        const parts = [
+          item.soup || soupDefault,
+          `Principio: ${item.principle || (dailySpecialsData.principios?.[0] || 'Sin Principio')}`,
+          `Acomp: ${item.side || (dailySpecialsData.acompanamientos?.[0] || 'Sin Acompañamiento')}`,
+          item.salad || 'Con ensalada'
+        ];
+        if (currentOrderType !== 'mesa') {
+          parts.push(`Empaque: ${item.packaging || globalPackagingType}`);
+        }
+        if (item.extraNotes && item.extraNotes.trim()) {
+          parts.push(`Nota: ${item.extraNotes.trim()}`);
+        }
+        return parts.join(' | ');
       }
+
+      if (item.isRapidasFood) {
+        const parts = [];
+        if (currentOrderType !== 'mesa') {
+          parts.push(`Empaque: ${item.packaging || globalPackagingType}`);
+        }
+        if (item.extraNotes && item.extraNotes.trim()) {
+          parts.push(`Nota: ${item.extraNotes.trim()}`);
+        }
+        return parts.join(' | ');
+      }
+
+      if (item.isJuice) {
+        const parts = [];
+        if (item.flavor) {
+          parts.push(`Sabor: ${item.flavor}`);
+        }
+        if (item.extraNotes && item.extraNotes.trim()) {
+          parts.push(`Nota: ${item.extraNotes.trim()}`);
+        }
+        return parts.join(' | ');
+      }
+
       if (item.extraNotes && item.extraNotes.trim()) {
-        parts.push(`Nota: ${item.extraNotes.trim()}`);
+        return `Nota: ${item.extraNotes.trim()}`;
       }
-      return parts.join(' | ');
+
+      return item.notes || '';
     }
 
     // Sincroniza las notas de empaque de todos los platos
     function updateAllItemsPackagingNotes() {
       cart.forEach((it) => {
-        if (it.isCustomizable) {
+        if (it.isCustomizable || it.isRapidasFood || it.isJuice) {
           it.notes = buildPlateNotes(it);
         }
       });
@@ -1369,8 +1628,11 @@ const searchableCatalog = publicProducts.map((p) => ({
     });
 
     // 1-CLICK: Agregar plato al carrito sin bloquear con modal
-    function addDishToCartInOneClick({ id, name, price, isCustomizable, category_id }) {
+    function addDishToCartInOneClick({ id, name, price, isCustomizable, category_id, menu_type }) {
       const numPrice = Number(price);
+      const isRapFood = isRapidasFoodProduct({ id, name, category_id, menu_type });
+      const isJuice = isJuiceProduct(name, category_id);
+      const isDrink = isDrinkProduct(name, category_id);
 
       if (isCustomizable) {
         const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
@@ -1386,6 +1648,9 @@ const searchableCatalog = publicProducts.map((p) => ({
           quantity: 1,
           category_id: category_id || 'fuertes_165',
           isCustomizable: true,
+          isRapidasFood: false,
+          isJuice: false,
+          isDrink: false,
           soup: soupOptions[0],
           principle: principleOptions[0] || 'Sin Principio',
           side: sideOptions[0] || 'Sin Acompañamiento',
@@ -1396,8 +1661,50 @@ const searchableCatalog = publicProducts.map((p) => ({
         };
         item.notes = buildPlateNotes(item);
         cart.push(item);
+
+      } else if (isRapFood) {
+        const item = {
+          uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+          id: id || name,
+          name,
+          price: numPrice,
+          quantity: 1,
+          category_id: category_id || 'rapidas',
+          isCustomizable: false,
+          isRapidasFood: true,
+          isJuice: false,
+          isDrink: false,
+          packaging: globalPackagingType,
+          extraNotes: '',
+          notes: ''
+        };
+        item.notes = buildPlateNotes(item);
+        cart.push(item);
+
+      } else if (isJuice) {
+        const isCerezada = normalizeStr(name).includes('cerezada');
+        const defaultFlavor = isCerezada ? 'Cerezada' : 'Lulo';
+        const item = {
+          uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+          id: id || name,
+          name,
+          price: numPrice,
+          quantity: 1,
+          category_id: category_id || 'granizados_jugos',
+          isCustomizable: false,
+          isRapidasFood: false,
+          isJuice: true,
+          isDrink: false,
+          flavor: defaultFlavor,
+          packaging: null,
+          extraNotes: '',
+          notes: ''
+        };
+        item.notes = buildPlateNotes(item);
+        cart.push(item);
+
       } else {
-        const existing = cart.find((it) => it.name === name && !it.isCustomizable);
+        const existing = cart.find((it) => it.name === name && !it.isCustomizable && !it.isRapidasFood && !it.isJuice);
         if (existing) {
           existing.quantity += 1;
         } else {
@@ -1409,6 +1716,11 @@ const searchableCatalog = publicProducts.map((p) => ({
             quantity: 1,
             category_id: category_id || 'bebidas',
             isCustomizable: false,
+            isRapidasFood: false,
+            isJuice: false,
+            isDrink: true,
+            packaging: null,
+            extraNotes: '',
             notes: ''
           });
         }
@@ -1436,8 +1748,9 @@ const searchableCatalog = publicProducts.map((p) => ({
       const isCustomizable = btn.getAttribute('data-customizable') === 'true';
       const id = btn.getAttribute('data-id') || name;
       const category_id = btn.getAttribute('data-cat') || '';
+      const menu_type = btn.getAttribute('data-menu') || '';
 
-      addDishToCartInOneClick({ id, name, price, isCustomizable, category_id });
+      addDishToCartInOneClick({ id, name, price, isCustomizable, category_id, menu_type });
     });
 
     // Controladores de Empaques Globales (Caja / Icopor y Cantidad)
@@ -1464,7 +1777,7 @@ const searchableCatalog = publicProducts.map((p) => ({
       globalPackagingType = 'Caja';
       updateGlobalPackagingUI();
       cart.forEach((it) => {
-        if (it.isCustomizable) it.packaging = 'Caja';
+        if (it.isCustomizable || it.isRapidasFood) it.packaging = 'Caja';
       });
       updateAllItemsPackagingNotes();
       renderCart();
@@ -1474,7 +1787,7 @@ const searchableCatalog = publicProducts.map((p) => ({
       globalPackagingType = 'Icopor';
       updateGlobalPackagingUI();
       cart.forEach((it) => {
-        if (it.isCustomizable) it.packaging = 'Icopor';
+        if (it.isCustomizable || it.isRapidasFood) it.packaging = 'Icopor';
       });
       updateAllItemsPackagingNotes();
       renderCart();
@@ -1590,6 +1903,68 @@ const searchableCatalog = publicProducts.map((p) => ({
               </div>
             </div>
           `;
+        } else if (item.isRapidasFood) {
+          const packagingOptions = ['Icopor', 'Caja'];
+          const optHtml = (arr, sel) =>
+            arr
+              .map((val) => `<option value="${escapeHtml(val)}" ${val === sel ? 'selected' : ''}>${escapeHtml(val)}</option>`)
+              .join('');
+
+          inlineControls = `
+            <div class="mt-2 pt-2 border-t border-dashed border-parrilla-border/70 text-[11px] space-y-1.5">
+              ${
+                currentOrderType !== 'mesa'
+                  ? `
+                <div>
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">📦 Empaque</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-uid="${item.uid}">
+                    ${optHtml(packagingOptions, item.packaging || globalPackagingType)}
+                  </select>
+                </div>`
+                  : ''
+              }
+              <div>
+                <input
+                  type="text"
+                  class="pos-inline-notes w-full py-1 px-2 bg-slate-50 hover:bg-white focus:bg-white rounded-lg border border-parrilla-border text-[11px] font-medium text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition"
+                  data-uid="${item.uid}"
+                  placeholder="Nota: ej: sin cebolla, sin salsas, salsas aparte..."
+                  value="${escapeHtml(item.extraNotes || '')}"
+                />
+              </div>
+            </div>
+          `;
+        } else if (item.isJuice) {
+          const isCerezada = normalizeStr(item.name).includes('cerezada');
+          const optHtml = (arr, sel) =>
+            arr
+              .map((val) => `<option value="${escapeHtml(val)}" ${val === sel ? 'selected' : ''}>${escapeHtml(val)}</option>`)
+              .join('');
+
+          inlineControls = `
+            <div class="mt-2 pt-2 border-t border-dashed border-parrilla-border/70 text-[11px] space-y-1.5">
+              ${
+                !isCerezada
+                  ? `
+                <div>
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🍓 Sabor de Jugo / Granizado</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="flavor" data-uid="${item.uid}">
+                    ${optHtml(JUICE_FLAVORS, item.flavor || 'Lulo')}
+                  </select>
+                </div>`
+                  : ''
+              }
+              <div>
+                <input
+                  type="text"
+                  class="pos-inline-notes w-full py-1 px-2 bg-slate-50 hover:bg-white focus:bg-white rounded-lg border border-parrilla-border text-[11px] font-medium text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition"
+                  data-uid="${item.uid}"
+                  placeholder="Nota: ej: bajo en azúcar, con hielo..."
+                  value="${escapeHtml(item.extraNotes || '')}"
+                />
+              </div>
+            </div>
+          `;
         } else if (item.notes) {
           inlineControls = `<div class="text-[10px] text-parrilla-muted mt-1 leading-tight bg-slate-100/80 px-1.5 py-0.5 rounded border border-parrilla-border/60">${escapeHtml(item.notes)}</div>`;
         }
@@ -1672,8 +2047,8 @@ const searchableCatalog = publicProducts.map((p) => ({
           const item = cart.find((it) => it.uid === uid);
           if (!item) return;
 
-          if (item.isCustomizable) {
-            // Duplica el plato como un nuevo plato independiente para poder personalizarlo
+          if (item.isCustomizable || item.isRapidasFood || item.isJuice) {
+            // Duplica el plato/producto como un nuevo plato independiente para poder personalizarlo
             const cloned = {
               ...item,
               uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
@@ -2591,7 +2966,7 @@ const searchableCatalog = publicProducts.map((p) => ({
         packagingBanner = `
           <div style="border: 2px solid #000; padding: 1.5mm 3mm; margin: 1.5mm 0; text-align: center; background: #fff;">
             <div style="font-size: 13pt; font-weight: 900; letter-spacing: 0.5px;">
-              📦 EMPACAR EN: ${(t.packagingType || 'CAJA').toUpperCase()} (${t.packagingQty || (t.items ? t.items.length : 1)} EMPAQUES)
+              📦 EMPACAR EN: ${(t.packagingType || 'ICOPOR').toUpperCase()} (${t.packagingQty || (t.items ? t.items.length : 1)} EMPAQUES)
             </div>
           </div>
         `;
