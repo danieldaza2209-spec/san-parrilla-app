@@ -123,8 +123,10 @@ import StaffLayout from '../layouts/StaffLayout.astro';
           <div class="bg-white rounded-2xl p-5 border border-parrilla-border shadow-sm">
             <span class="text-[11px] text-parrilla-muted font-bold uppercase tracking-wider block">Transferencias / Tarjetas</span>
             <span id="metric-digital-sales" class="font-display font-black text-2xl text-blue-600 mt-1 block">$0</span>
-            <div class="flex items-center gap-2 mt-2 text-[10px] text-parrilla-muted">
+            <div class="flex flex-wrap items-center gap-1.5 mt-2 text-[10px] text-parrilla-muted">
               <span>N: <strong id="metric-nequi">$0</strong></span>
+              <span>•</span>
+              <span>B: <strong id="metric-bancolombia">$0</strong></span>
               <span>•</span>
               <span>D: <strong id="metric-daviplata">$0</strong></span>
               <span>•</span>
@@ -670,6 +672,10 @@ import StaffLayout from '../layouts/StaffLayout.astro';
         <span id="z-nequi">$0</span>
       </div>
       <div class="total-row">
+        <span>Bancolombia:</span>
+        <span id="z-bancolombia">$0</span>
+      </div>
+      <div class="total-row">
         <span>Daviplata:</span>
         <span id="z-daviplata">$0</span>
       </div>
@@ -789,9 +795,12 @@ import StaffLayout from '../layouts/StaffLayout.astro';
       document.getElementById('metric-opened-at').textContent = 'Apertura: ' + new Date(caja.opened_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
       document.getElementById('metric-cash-sales').textContent = fmt(caja.total_cash_sales);
       
-      const digSales = (caja.total_nequi_sales || 0) + (caja.total_daviplata_sales || 0) + (caja.total_card_sales || 0);
+      const bancolombiaSales = Number(caja.total_bancolombia_sales ?? (caja.payments || []).filter(p => p.method === 'BANCOLOMBIA').reduce((s, p) => s + Number(p.amount || 0), 0));
+      const digSales = (caja.total_nequi_sales || 0) + bancolombiaSales + (caja.total_daviplata_sales || 0) + (caja.total_card_sales || 0);
       document.getElementById('metric-digital-sales').textContent = fmt(digSales);
       document.getElementById('metric-nequi').textContent = fmt(caja.total_nequi_sales);
+      const bancoEl = document.getElementById('metric-bancolombia');
+      if (bancoEl) bancoEl.textContent = fmt(bancolombiaSales);
       document.getElementById('metric-daviplata').textContent = fmt(caja.total_daviplata_sales);
       document.getElementById('metric-card').textContent = fmt(caja.total_card_sales);
 
@@ -1034,7 +1043,10 @@ import StaffLayout from '../layouts/StaffLayout.astro';
         document.getElementById('z-expected').textContent = fmt(activeClosure.expected_cash);
         document.getElementById('z-counted').textContent = fmt(counted_cash);
         document.getElementById('z-diff').textContent = fmt(diff);
+        const zBancolombia = Number(activeClosure.total_bancolombia_sales ?? (activeClosure.payments || []).filter(p => p.method === 'BANCOLOMBIA').reduce((s, p) => s + Number(p.amount || 0), 0));
         document.getElementById('z-nequi').textContent = fmt(activeClosure.total_nequi_sales);
+        const zBancoEl = document.getElementById('z-bancolombia');
+        if (zBancoEl) zBancoEl.textContent = fmt(zBancolombia);
         document.getElementById('z-daviplata').textContent = fmt(activeClosure.total_daviplata_sales);
         document.getElementById('z-cards').textContent = fmt(activeClosure.total_card_sales);
         document.getElementById('z-grand-total').textContent = fmt(activeClosure.total_sales);

@@ -14,10 +14,16 @@ def fix():
         statements = [
             "ALTER TYPE tipoitemstock ADD VALUE IF NOT EXISTS 'SOPA';",
             "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'BORRADOR_WEB';",
+            "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'EN_CAMINO';",
+            "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'ENTREGADO';",
+            "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'BANCOLOMBIA';",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cliente_telefono VARCHAR(20);",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS subtotal DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS delivery_fee DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS packaging_fee DOUBLE PRECISION DEFAULT 0.0;",
+            "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS courier_name VARCHAR(100);",
+            "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_bancolombia_sales DOUBLE PRECISION DEFAULT 0.0;",
+            "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_transfer_sales DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_delivery_payouts DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_expenses DOUBLE PRECISION DEFAULT 0.0;",
             """

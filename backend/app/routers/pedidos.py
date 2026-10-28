@@ -41,20 +41,54 @@ def obtener_estadisticas_dashboard(db: Session = Depends(get_db)):
 
 @router.get("/", response_model=List[schemas.PedidoOut])
 def listar_pedidos(
-    limit: int = 50,
+    limit: int = 200,
     estado: Optional[str] = None,
+    tipo: Optional[str] = None,
+    mesa: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Pedido)
     if estado is not None and estado.strip() != "":
-        clean_estado = estado.strip().upper()
+        parts = [p.strip().upper() for p in estado.split(",") if p.strip()]
+        if len(parts) == 1:
+            try:
+                estado_val = models.EstadoPedido(parts[0])
+            except ValueError:
+                estado_val = parts[0]
+            query = query.filter(models.Pedido.estado == estado_val)
+        elif len(parts) > 1:
+            vals = []
+            for p in parts:
+                try:
+                    vals.append(models.EstadoPedido(p))
+                except ValueError:
+                    vals.append(p)
+            query = query.filter(models.Pedido.estado.in_(vals))
+
+    if tipo is not None and tipo.strip() != "":
+        clean_tipo = tipo.strip().upper()
         try:
-            estado_val = models.EstadoPedido(clean_estado)
+            tipo_val = models.TipoPedido(clean_tipo)
         except ValueError:
-            estado_val = clean_estado
-        query = query.filter(models.Pedido.estado == estado_val)
+            tipo_val = clean_tipo
+        query = query.filter(models.Pedido.tipo == tipo_val)
+
+    if mesa is not None and mesa.strip() != "":
+        query = query.filter(models.Pedido.mesa == mesa.strip())
+
     pedidos = query.order_by(models.Pedido.fecha_hora.desc()).limit(limit).all()
     return pedidos
+
+
+@router.get("/{pedido_id}", response_model=schemas.PedidoOut)
+def obtener_pedido_por_id(
+    pedido_id: int,
+    db: Session = Depends(get_db)
+):
+    pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado.")
+    return pedido
 
 
 @router.post("/{pedido_id}/aprobar", response_model=schemas.PedidoOut)
@@ -103,17 +137,98 @@ def pagar_pedido(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.patch("/{pedido_id}/assign-courier", response_model=schemas.PedidoOut)
+@router.post("/{pedido_id}/assign-courier", response_model=schemas.PedidoOut)
+def asignar_mensajero_pedido(
+    pedido_id: int,
+    payload: schemas.PedidoAssignCourier,
+    db: Session = Depends(get_db),
+):
+    """
+    Permite asignar o cambiar el `courier_name` de un domicilio y opcionalmente
+    actualizar su estado (ej. EN_PREPARACION -> EN_CAMINO / ENTREGADO).
+    """
+    try:
+        return crud.asignar_mensajero_pedido(db, pedido_id, payload)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/{pedido_id}/payment-method", response_model=schemas.PedidoOut)
+@router.post("/{pedido_id}/payment-method", response_model=schemas.PedidoOut)
+def cambiar_metodo_pago_pedido(
+    pedido_id: int,
+    payload: schemas.PedidoUpdatePaymentMethod,
+    db: Session = Depends(get_db),
+):
+    """
+    Permite al administrador cambiar el método de pago de un pedido (ej. CASH -> BANCOLOMBIA / NEQUI / CARD),
+    editar datos del pedido o anularlo (estado=CANCELADO), recalculando de inmediato la sesión de caja activa.
+    """
+    try:
+        return crud.cambiar_metodo_pago_pedido(db, pedido_id, payload)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/{pedido_id}", response_model=schemas.PedidoOut)
+@router.put("/{pedido_id}", response_model=schemas.PedidoOut)
+def actualizar_pedido(
+    pedido_id: int,
+    payload: schemas.PedidoUpdate,
+    db: Session = Depends(get_db),
+):
+    """
+    Permite actualizar un pedido abierto (agregar/modificar platos de una mesa desde POS)
+    o editar los datos de un pedido desde Administración.
+    """
+    try:
+        return crud.actualizar_pedido(db, pedido_id, payload)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.patch("/{pedido_id}/estado", response_model=schemas.PedidoOut)
 def cambiar_estado_pedido(
     pedido_id: int,
-    nuevo_estado: models.EstadoPedido,
+    nuevo_estado: Optional[models.EstadoPedido] = Query(default=None),
+    body_data: Optional[dict] = Body(default=None),
     db: Session = Depends(get_db)
 ):
     pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido no encontrado.")
-    
-    pedido.estado = nuevo_estado
+
+    target_estado = nuevo_estado
+    if target_estado is None and isinstance(body_data, dict):
+        raw_est = body_data.get("nuevo_estado") or body_data.get("estado")
+        if raw_est:
+            target_estado = models.EstadoPedido(str(raw_est).strip().upper())
+
+    if target_estado is None:
+        raise HTTPException(status_code=400, detail="Debe especificar nuevo_estado.")
+
+    pedido.estado = target_estado
+    if target_estado == models.EstadoPedido.CANCELADO:
+        pagos_exist = db.query(models.Payment).filter(models.Payment.pedido_id == pedido.id).all()
+        closure_ids = {p.cash_closure_id for p in pagos_exist if p.cash_closure_id}
+        for p in pagos_exist:
+            db.delete(p)
+        db.flush()
+        activa = crud.get_active_cash_closure(db)
+        if activa:
+            closure_ids.add(activa.id)
+        for cid in closure_ids:
+            c = db.query(models.CashClosure).filter(models.CashClosure.id == cid).first()
+            if c:
+                crud.calcular_resumen_caja(db, c)
+
     db.commit()
     db.refresh(pedido)
     return pedido

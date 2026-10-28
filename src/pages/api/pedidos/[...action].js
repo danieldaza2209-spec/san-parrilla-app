@@ -34,12 +34,14 @@ async function resolvePlatosMap() {
 export async function ALL({ request, params }) {
   const action = (params.action || '').replace(/^\/+|\/+$/g, '');
 
-  // Si es creación de pedido (POST /api/pedidos), normalizar tipo y resolver plato_id real por nombre
-  if (!action && request.method.toUpperCase() === 'POST') {
+  const methodUpper = request.method.toUpperCase();
+
+  // Si es creación o actualización de pedido con detalles, normalizar tipo y resolver plato_id real por nombre
+  if (['POST', 'PUT', 'PATCH'].includes(methodUpper)) {
     try {
       const cloned = request.clone();
       const body = await cloned.json();
-      if (body && typeof body === 'object') {
+      if (body && typeof body === 'object' && (!action || Array.isArray(body.detalles))) {
         if (body.tipo === 'MESA') body.tipo = 'EN_MESA';
         if (Array.isArray(body.detalles)) {
           const platosMap = await resolvePlatosMap();
@@ -58,11 +60,12 @@ export async function ALL({ request, params }) {
           }
         }
         const newReq = new Request(request.url, {
-          method: 'POST',
+          method: methodUpper,
           headers: request.headers,
           body: JSON.stringify(body),
         });
-        return proxyToFastAPI(newReq, '/api/pedidos/');
+        const target = action ? `/api/pedidos/${action}` : '/api/pedidos/';
+        return proxyToFastAPI(newReq, target);
       }
     } catch (e) {}
   }

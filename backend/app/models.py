@@ -15,7 +15,9 @@ class EstadoPedido(str, enum.Enum):
     BORRADOR_WEB = "BORRADOR_WEB"
     PENDIENTE = "PENDIENTE"
     EN_PREPARACION = "EN_PREPARACION"
+    EN_CAMINO = "EN_CAMINO"
     SERVIDO = "SERVIDO"
+    ENTREGADO = "ENTREGADO"
     PAGADO = "PAGADO"
     CANCELADO = "CANCELADO"
 
@@ -28,6 +30,7 @@ class CashClosureStatus(str, enum.Enum):
 class PaymentMethod(str, enum.Enum):
     CASH = "CASH"
     NEQUI = "NEQUI"
+    BANCOLOMBIA = "BANCOLOMBIA"
     DAVIPLATA = "DAVIPLATA"
     CARD = "CARD"
 
@@ -166,10 +169,15 @@ class Pedido(Base):
     delivery_fee = Column(Float, default=0.0)
     packaging_fee = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
+    courier_name = Column(String(100), nullable=True)
     notas = Column(Text, nullable=True)
 
     detalles = relationship("DetallePedido", back_populates="pedido", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="pedido", cascade="all, delete-orphan")
+
+    @property
+    def created_at(self):
+        return self.fecha_hora
 
 
 class DetallePedido(Base):
@@ -202,7 +210,9 @@ class CashClosure(Base):
     initial_cash = Column(Float, default=0.0, nullable=False)
     total_cash_sales = Column(Float, default=0.0)
     total_nequi_sales = Column(Float, default=0.0)
+    total_bancolombia_sales = Column(Float, default=0.0)
     total_daviplata_sales = Column(Float, default=0.0)
+    total_transfer_sales = Column(Float, default=0.0)
     total_card_sales = Column(Float, default=0.0)
     total_delivery_fees = Column(Float, default=0.0)
     total_delivery_payouts = Column(Float, default=0.0)

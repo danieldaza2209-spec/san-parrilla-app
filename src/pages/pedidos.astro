@@ -1,0 +1,1214 @@
+---
+export const prerender = true;
+import StaffLayout from '../layouts/StaffLayout.astro';
+---
+
+<StaffLayout title="Tablero de Pedidos en Vivo | San Parrilla">
+  <div class="max-w-[1600px] mx-auto px-3 sm:px-6 py-5 flex-1 flex flex-col space-y-8 no-print">
+
+    <!-- HEADER & RESUMEN EN VIVO -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-parrilla-border pb-5">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-extrabold text-parrilla-gold uppercase tracking-widest">Centro de Operaciones en Tiempo Real</span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Sincronizado en vivo</span>
+          </span>
+        </div>
+        <h1 class="font-display font-black text-2xl sm:text-3xl text-parrilla-ivory mt-1">
+          📋 Control de 20 Mesas, Para Llevar y Domicilios
+        </h1>
+      </div>
+
+      <!-- KPIs Rápidos y Botones de Acción -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <div class="px-3.5 py-2 rounded-xl bg-white border border-parrilla-border shadow-2xs flex items-center gap-2">
+          <span class="text-xs font-bold text-parrilla-muted">🍽️ Mesas Ocupadas:</span>
+          <span id="stat-occupied-tables" class="font-display font-black text-sm text-orange-600">0 / 20</span>
+        </div>
+
+        <div class="px-3.5 py-2 rounded-xl bg-white border border-parrilla-border shadow-2xs flex items-center gap-2">
+          <span class="text-xs font-bold text-parrilla-muted">📦 Para Llevar:</span>
+          <span id="stat-active-takeout" class="font-display font-black text-sm text-amber-600">0</span>
+        </div>
+
+        <div class="px-3.5 py-2 rounded-xl bg-white border border-parrilla-border shadow-2xs flex items-center gap-2">
+          <span class="text-xs font-bold text-parrilla-muted">🛵 Domicilios Activos:</span>
+          <span id="stat-active-delivery" class="font-display font-black text-sm text-emerald-600">0</span>
+        </div>
+
+        <button
+          type="button"
+          id="btn-refresh-board"
+          class="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-parrilla-ivory border border-parrilla-border text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+          title="Refrescar tablero ahora"
+        >
+          <i data-lucide="refresh-cw" class="w-4 h-4 text-parrilla-gold"></i>
+          <span>Actualizar</span>
+        </button>
+
+        <a
+          href="/pos"
+          class="px-4 py-2.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-xs shadow-md transition flex items-center gap-1.5"
+        >
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>Nuevo Pedido en POS</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         BLOQUE 1 (SUPERIOR): MAPA DE 20 MESAS (Mesa 1 a Mesa 20)
+         ===================================================================== -->
+    <section class="bg-white rounded-2xl border border-parrilla-border p-4 sm:p-6 shadow-sm space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-parrilla-border pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-orange-100 text-parrilla-gold flex items-center justify-center font-bold">
+            <i data-lucide="layout-grid" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="font-display font-black text-lg sm:text-xl text-parrilla-ivory">
+              1. Mapa en Vivo de 20 Mesas (Salón)
+            </h2>
+            <p class="text-xs text-parrilla-muted">
+              Haz clic en una mesa libre para abrir comanda en el POS, o gestiona/cobra las mesas ocupadas.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4 text-xs font-bold">
+          <span class="inline-flex items-center gap-1.5 text-emerald-700">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+            <span>Libre / Disponible</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5 text-orange-700">
+            <span class="w-3 h-3 rounded-full bg-orange-500 animate-pulse inline-block"></span>
+            <span>Ocupada (Consumo Activo)</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Cuadrícula de 20 Mesas -->
+      <div id="tables-grid-container" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+        <!-- Inyectado dinámicamente por JS (Mesa 1 ... Mesa 20) -->
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         BLOQUE 2 (MEDIO): PEDIDOS PARA RECOGER / LLEVAR (PARA_LLEVAR)
+         ===================================================================== -->
+    <section class="bg-white rounded-2xl border border-parrilla-border p-4 sm:p-6 shadow-sm space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-parrilla-border pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            <i data-lucide="package" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="font-display font-black text-lg sm:text-xl text-parrilla-ivory">
+                2. Pedidos Para Recoger / Llevar
+              </h2>
+              <span id="badge-count-takeout" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300">
+                0 activos
+              </span>
+            </div>
+            <p class="text-xs text-parrilla-muted">
+              Pedidos empacados para recoger en mostrador con cronómetro en vivo.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <label class="inline-flex items-center gap-1.5 text-xs font-bold text-parrilla-muted cursor-pointer select-none">
+            <input type="checkbox" id="chk-show-completed-takeout" class="rounded text-parrilla-gold focus:ring-0 cursor-pointer" />
+            <span>Mostrar también entregados/pagados hoy</span>
+          </label>
+          <a
+            href="/pos?tipo=para_llevar"
+            class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition flex items-center gap-1"
+          >
+            <span>+ Nuevo Para Llevar</span>
+          </a>
+        </div>
+      </div>
+
+      <div id="takeout-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <!-- Inyectado dinámicamente por JS -->
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         BLOQUE 3 (INFERIOR): CENTRAL DE DOMICILIOS Y ASIGNACIÓN DE MENSAJEROS
+         ===================================================================== -->
+    <section class="bg-white rounded-2xl border border-parrilla-border p-4 sm:p-6 shadow-sm space-y-4">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-parrilla-border pb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+            <i data-lucide="bike" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="font-display font-black text-lg sm:text-xl text-parrilla-ivory">
+                3. Central de Domicilios y Asignación de Mensajeros
+              </h2>
+              <span id="badge-count-delivery" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                0 en curso
+              </span>
+            </div>
+            <p class="text-xs text-parrilla-muted">
+              Asigna domiciliario a cada pedido, controla el semáforo de tiempo e imprime la guía de entrega.
+            </p>
+          </div>
+        </div>
+
+        <!-- Controles de Mensajeros y Filtros -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Agregar Mensajero Rápido -->
+          <div class="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-parrilla-border">
+            <input
+              type="text"
+              id="new-courier-input"
+              placeholder="Nuevo mensajero (ej. Carlos)"
+              class="px-2.5 py-1.5 bg-white rounded-lg border border-parrilla-border text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none w-44"
+            />
+            <button
+              type="button"
+              id="btn-add-courier"
+              class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer whitespace-nowrap"
+            >
+              + Mensajero
+            </button>
+          </div>
+
+          <label class="inline-flex items-center gap-1.5 text-xs font-bold text-parrilla-muted cursor-pointer select-none px-2">
+            <input type="checkbox" id="chk-show-all-deliveries" checked class="rounded text-emerald-600 focus:ring-0 cursor-pointer" />
+            <span>Ver todos los del día</span>
+          </label>
+
+          <a
+            href="/pos?tipo=domicilio"
+            class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center gap-1 shadow-xs"
+          >
+            <span>🛵 + Nuevo Domicilio</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Resumen de Carreras por Mensajero Hoy -->
+      <div id="couriers-summary-bar" class="flex flex-wrap items-center gap-2 bg-slate-50 p-3 rounded-xl border border-parrilla-border text-xs">
+        <span class="font-extrabold text-parrilla-muted uppercase text-[11px]">🛵 Liquidación Mensajeros Hoy:</span>
+        <div id="couriers-summary-pills" class="flex flex-wrap items-center gap-2">
+          <!-- Inyectado por JS -->
+        </div>
+      </div>
+
+      <!-- Leyenda Semáforo de Tiempos -->
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-parrilla-muted">
+        <div class="flex items-center gap-3 font-bold">
+          <span>Semáforo de Tiempo:</span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">🟢 &lt; 15 min (A tiempo)</span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">🟡 15 - 30 min (Atención)</span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200">🔴 &gt; 30 min (Urgente)</span>
+        </div>
+      </div>
+
+      <!-- Tarjetas de Domicilios -->
+      <div id="deliveries-list-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <!-- Inyectado dinámicamente por JS -->
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ==============================================================
+       MODAL DE COBRO Y LIBERACIÓN DE PEDIDO (MESA / LLEVAR / DOMICILIO)
+       ============================================================== -->
+  <div id="modal-pay-order" class="no-print fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border-2 border-parrilla-gold/60 max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-parrilla-border pb-3">
+        <div>
+          <span id="pay-modal-badge" class="text-[10px] font-extrabold uppercase tracking-widest text-parrilla-gold block">Cobrar y Cerrar Cuenta</span>
+          <h3 id="pay-modal-title" class="font-display font-black text-xl text-parrilla-ivory mt-0.5">Mesa 1 (#SP-000)</h3>
+        </div>
+        <button type="button" id="btn-pay-modal-close" class="text-parrilla-muted hover:text-parrilla-ivory cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Resumen del Pedido -->
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-parrilla-border space-y-1.5 text-xs">
+        <div id="pay-modal-items" class="max-h-32 overflow-y-auto divide-y divide-parrilla-border/40 pb-2 mb-1"></div>
+        <div class="flex justify-between text-parrilla-muted">
+          <span>Subtotal + Empaques:</span>
+          <span id="pay-modal-subtotal" class="font-bold font-mono text-parrilla-ivory">$0</span>
+        </div>
+        <div class="flex justify-between text-parrilla-muted" id="pay-modal-delivery-row">
+          <span>Costo Domicilio:</span>
+          <span id="pay-modal-delivery" class="font-bold font-mono text-parrilla-accent">$0</span>
+        </div>
+        <div class="flex justify-between text-base font-black text-parrilla-gold border-t border-parrilla-border pt-1.5">
+          <span>TOTAL A COBRAR:</span>
+          <span id="pay-modal-total" class="font-display text-2xl font-mono">$0</span>
+        </div>
+      </div>
+
+      <!-- Selección de Medio de Pago (5 opciones explícitas) -->
+      <div class="space-y-2">
+        <span class="block text-[11px] font-extrabold text-parrilla-muted uppercase">Medio de Pago:</span>
+        <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+          <button type="button" class="board-pay-method-btn active py-2.5 px-1 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-[11px] flex flex-col items-center gap-1 shadow-xs cursor-pointer" data-method="CASH">
+            <span>💵</span>
+            <span>Efectivo</span>
+          </button>
+          <button type="button" class="board-pay-method-btn py-2.5 px-1 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-[11px] flex flex-col items-center gap-1 cursor-pointer" data-method="NEQUI">
+            <span>🟣</span>
+            <span>Nequi</span>
+          </button>
+          <button type="button" class="board-pay-method-btn py-2.5 px-1 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-[11px] flex flex-col items-center gap-1 cursor-pointer" data-method="BANCOLOMBIA">
+            <span>🟡</span>
+            <span>Bancolombia</span>
+          </button>
+          <button type="button" class="board-pay-method-btn py-2.5 px-1 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-[11px] flex flex-col items-center gap-1 cursor-pointer" data-method="DAVIPLATA">
+            <span>🔴</span>
+            <span>Daviplata</span>
+          </button>
+          <button type="button" class="board-pay-method-btn py-2.5 px-1 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-[11px] flex flex-col items-center gap-1 cursor-pointer" data-method="CARD">
+            <span>💳</span>
+            <span>Datáfono</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Calculadora de Vueltas (Efectivo) -->
+      <div id="board-cash-calc-box" class="bg-slate-50 p-3 rounded-xl border border-parrilla-border flex items-center justify-between gap-3">
+        <div class="flex-1">
+          <label class="block text-[10px] font-bold text-parrilla-muted uppercase mb-1">Paga con ($):</label>
+          <input
+            type="number"
+            id="board-cash-received"
+            placeholder="Ej. 50000"
+            step="1000"
+            class="w-full px-3 py-1.5 bg-white rounded-lg border border-parrilla-border font-bold text-base font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
+          />
+        </div>
+        <div class="flex-1 text-right">
+          <span class="block text-[10px] font-bold text-parrilla-muted uppercase mb-1">Cambio / Vueltas:</span>
+          <span id="board-cash-change" class="font-display font-black text-xl text-emerald-600 font-mono">$0</span>
+        </div>
+      </div>
+
+      <!-- Checkbox Imprimir Recibo Cliente -->
+      <label class="flex items-center gap-2 text-xs font-bold text-parrilla-ivory cursor-pointer select-none bg-slate-50 p-2.5 rounded-xl border border-parrilla-border">
+        <input type="checkbox" id="chk-board-print-receipt" checked class="w-4 h-4 rounded text-parrilla-gold focus:ring-0 cursor-pointer" />
+        <span>🧾 Imprimir Recibo / Cuenta al Confirmar Cobro</span>
+      </label>
+
+      <div class="flex items-center gap-2 pt-2">
+        <button
+          type="button"
+          id="btn-pay-modal-cancel"
+          class="py-3 px-4 rounded-xl border border-parrilla-border text-parrilla-muted hover:bg-slate-100 font-bold text-xs cursor-pointer"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          id="btn-pay-modal-confirm"
+          class="flex-1 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-display font-black text-xs sm:text-sm shadow-lg flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
+        >
+          <i data-lucide="check-circle" class="w-4 h-4"></i>
+          <span>Confirmar Cobro y Liberar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR IMPRESIÓN TÉRMICA 80MM SAT Q22 -->
+  <div id="printable-ticket" class="receipt-ticket hidden"></div>
+
+  <script is:inline>
+    const fmt = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
+    const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const COURIERS_STORAGE_KEY = 'sp_couriers_list';
+    const DEFAULT_COURIERS = ['Mensajero 1', 'Mensajero 2', 'Mensajero 3'];
+
+    let allOrders = [];
+    let activePayOrder = null;
+    let selectedPayMethod = 'CASH';
+
+    function getSavedCouriers() {
+      try {
+        const raw = localStorage.getItem(COURIERS_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+      return [...DEFAULT_COURIERS];
+    }
+
+    function saveCouriersList(list) {
+      try {
+        localStorage.setItem(COURIERS_STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {}
+    }
+
+    // Agregar nuevo mensajero a la lista
+    document.getElementById('btn-add-courier')?.addEventListener('click', () => {
+      const inp = document.getElementById('new-courier-input');
+      const name = (inp?.value || '').trim();
+      if (!name) return;
+      const list = getSavedCouriers();
+      if (!list.some((c) => c.toLowerCase() === name.toLowerCase())) {
+        list.push(name);
+        saveCouriersList(list);
+      }
+      if (inp) inp.value = '';
+      renderBoard();
+    });
+
+    // Calcula minutos transcurridos desde fecha_hora
+    function getElapsedMinutes(isoDateStr) {
+      if (!isoDateStr) return 0;
+      const created = new Date(isoDateStr).getTime();
+      if (isNaN(created)) return 0;
+      return Math.max(0, Math.floor((Date.now() - created) / 60000));
+    }
+
+    function formatElapsed(isoDateStr) {
+      const mins = getElapsedMinutes(isoDateStr);
+      if (mins < 1) return 'Hace instantes';
+      if (mins < 60) return `${mins} min`;
+      const hrs = Math.floor(mins / 60);
+      const rem = mins % 60;
+      return `${hrs}h ${rem}m`;
+    }
+
+    // Extrae dirección limpia desde notas
+    function extractAddress(order) {
+      if (order.direccion) return order.direccion;
+      const notas = String(order.notas || '');
+      const m = notas.match(/Direcci[oó]n:\s*([^|]+)/i);
+      if (m) return m[1].trim();
+      return notas || 'Dirección no especificada';
+    }
+
+    function isOrderFromToday(order) {
+      if (!order.fecha_hora) return false;
+      const todayCol = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      const orderCol = new Date(order.fecha_hora).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      return todayCol === orderCol;
+    }
+
+    function isOrderOpen(order) {
+      return ['PENDIENTE', 'EN_PREPARACION', 'EN_CAMINO', 'SERVIDO'].includes(order.estado);
+    }
+
+    function getPaymentBadge(order) {
+      if (order.estado === 'PAGADO' || (order.payments && order.payments.length > 0)) {
+        const methods = (order.payments || []).map((p) => {
+          const map = { CASH: '💵 Efectivo', NEQUI: '🟣 Nequi', BANCOLOMBIA: '🟡 Bancolombia', DAVIPLATA: '🔴 Daviplata', CARD: '💳 Datáfono' };
+          return map[p.method] || p.method;
+        });
+        const label = methods.length > 0 ? methods.join(' + ') : 'Pagado';
+        return `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">✅ Pagado (${escapeHtml(label)})</span>`;
+      }
+      return `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">⏳ Pendiente de Cobro</span>`;
+    }
+
+    async function fetchOrders() {
+      try {
+        const res = await fetch('/api/pedidos?limit=200', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        allOrders = Array.isArray(data) ? data : [];
+        // Incluir en la lista de mensajeros cualquier courier_name que ya venga en BD
+        const couriers = getSavedCouriers();
+        let updated = false;
+        for (const o of allOrders) {
+          if (o.courier_name && !couriers.some((c) => c.toLowerCase() === o.courier_name.toLowerCase())) {
+            couriers.push(o.courier_name);
+            updated = true;
+          }
+        }
+        if (updated) saveCouriersList(couriers);
+        renderBoard();
+      } catch (err) {
+        console.error('Error cargando pedidos en vivo:', err);
+      }
+    }
+
+    // =========================================================================
+    // 1. RENDERIZAR BLOQUE SUPERIOR: MAPA DE 20 MESAS
+    // =========================================================================
+    function renderTablesGrid() {
+      const container = document.getElementById('tables-grid-container');
+      if (!container) return;
+
+      // Buscar pedidos abiertos de tipo EN_MESA
+      const openTableOrders = allOrders.filter(
+        (o) => o.tipo === 'EN_MESA' && isOrderOpen(o)
+      );
+
+      let occupiedCount = 0;
+      const cardsHtml = [];
+
+      for (let i = 1; i <= 20; i++) {
+        const tableName = `Mesa ${i}`;
+        // Buscar si hay pedido abierto para esta mesa (ej. "Mesa 1" o "1")
+        const openOrder = openTableOrders.find((o) => {
+          const m = String(o.mesa || '').trim().toLowerCase();
+          return m === tableName.toLowerCase() || m === String(i);
+        });
+
+        if (openOrder) {
+          occupiedCount++;
+          const totalPlates = (openOrder.detalles || []).reduce((acc, d) => acc + Number(d.cantidad || 1), 0);
+          const elapsedStr = formatElapsed(openOrder.fecha_hora);
+          const dishesPreview = (openOrder.detalles || [])
+            .slice(0, 3)
+            .map((d) => `${d.cantidad}x ${d.plato?.nombre || 'Plato'}`)
+            .join(', ');
+
+          cardsHtml.push(`
+            <div class="rounded-2xl border-2 border-orange-500 bg-gradient-to-br from-orange-50 via-amber-50/70 to-red-50 p-3.5 shadow-md flex flex-col justify-between gap-2.5 transition">
+              <div>
+                <div class="flex items-center justify-between gap-1">
+                  <span class="font-display font-black text-base text-orange-950 flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-orange-600 animate-ping"></span>
+                    <span>${tableName}</span>
+                  </span>
+                  <span class="live-timer px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-600 text-white font-mono" data-created="${openOrder.fecha_hora}">
+                    ⏱️ ${elapsedStr}
+                  </span>
+                </div>
+
+                <div class="mt-2 flex items-baseline justify-between">
+                  <span class="font-mono text-[11px] font-bold text-orange-800">${escapeHtml(openOrder.codigo_pedido)}</span>
+                  <span class="font-display font-black text-lg text-red-700 font-mono">${fmt(openOrder.total)}</span>
+                </div>
+
+                <div class="mt-1 text-[11px] font-bold text-orange-900">
+                  🍽️ ${totalPlates} plato(s): <span class="font-normal text-orange-800 line-clamp-2">${escapeHtml(dishesPreview)}</span>
+                </div>
+              </div>
+
+              <div class="pt-2 border-t border-orange-200/80 space-y-1.5">
+                <div class="grid grid-cols-2 gap-1.5">
+                  <a
+                    href="/pos?mesa=${encodeURIComponent(tableName)}&pedido_id=${openOrder.id}"
+                    class="py-1.5 px-2 rounded-lg bg-white hover:bg-orange-100 text-orange-900 border border-orange-300 text-[11px] font-extrabold text-center transition"
+                    title="Ver o agregar más platos a esta mesa en el POS"
+                  >
+                    ➕ Agregar/POS
+                  </a>
+                  <button
+                    type="button"
+                    class="btn-table-print py-1.5 px-2 rounded-lg bg-white hover:bg-slate-100 text-parrilla-ivory border border-orange-300 text-[11px] font-extrabold transition cursor-pointer"
+                    data-id="${openOrder.id}"
+                    title="Imprimir Comanda o Pre-cuenta"
+                  >
+                    🖨️ Comanda/Cta
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  class="btn-open-pay-modal w-full py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-display font-black text-xs shadow-xs transition active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                  data-id="${openOrder.id}"
+                >
+                  <span>💰 Cobrar y Liberar</span>
+                </button>
+              </div>
+            </div>
+          `);
+        } else {
+          cardsHtml.push(`
+            <a
+              href="/pos?mesa=${encodeURIComponent(tableName)}"
+              class="group rounded-2xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-100/70 hover:border-emerald-400 p-3.5 transition flex flex-col justify-between min-h-[138px] shadow-2xs"
+            >
+              <div class="flex items-center justify-between">
+                <span class="font-display font-black text-base text-parrilla-ivory group-hover:text-emerald-900">${tableName}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Disponible
+                </span>
+              </div>
+
+              <div class="my-2 text-center">
+                <span class="text-xs font-bold text-emerald-700 group-hover:scale-105 inline-flex items-center gap-1 transition">
+                  <span>➕ Tomar Pedido</span>
+                </span>
+              </div>
+
+              <div class="text-[10px] text-parrilla-muted text-center border-t border-emerald-200/60 pt-1.5">
+                Clic para abrir en POS
+              </div>
+            </a>
+          `);
+        }
+      }
+
+      container.innerHTML = cardsHtml.join('');
+      const occEl = document.getElementById('stat-occupied-tables');
+      if (occEl) occEl.textContent = `${occupiedCount} / 20`;
+    }
+
+    // =========================================================================
+    // 2. RENDERIZAR BLOQUE MEDIO: PARA LLEVAR (PARA_LLEVAR)
+    // =========================================================================
+    function renderTakeoutSection() {
+      const container = document.getElementById('takeout-list-container');
+      const badge = document.getElementById('badge-count-takeout');
+      const statEl = document.getElementById('stat-active-takeout');
+      const showCompleted = document.getElementById('chk-show-completed-takeout')?.checked ?? false;
+      if (!container) return;
+
+      const takeoutOrders = allOrders.filter((o) => {
+        if (o.tipo !== 'PARA_LLEVAR' || o.estado === 'CANCELADO' || o.estado === 'BORRADOR_WEB') return false;
+        if (isOrderOpen(o)) return true;
+        if (showCompleted && isOrderFromToday(o)) return true;
+        return false;
+      });
+
+      const activeCount = allOrders.filter((o) => o.tipo === 'PARA_LLEVAR' && isOrderOpen(o)).length;
+      if (badge) badge.textContent = `${activeCount} activo(s)`;
+      if (statEl) statEl.textContent = String(activeCount);
+
+      if (takeoutOrders.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-8 text-center text-xs text-parrilla-muted bg-slate-50 rounded-xl border border-dashed border-parrilla-border">
+            No hay pedidos Para Llevar pendientes en este momento.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = takeoutOrders.map((o) => {
+        const isOpen = isOrderOpen(o);
+        const elapsedStr = formatElapsed(o.fecha_hora);
+        const itemsList = (o.detalles || []).map((d) => `
+          <div class="flex justify-between text-xs py-1 border-b border-slate-100">
+            <div>
+              <span class="font-bold text-parrilla-ivory">${d.cantidad}x ${escapeHtml(d.plato?.nombre || 'Plato')}</span>
+              ${d.notas_item ? `<span class="block text-[10px] text-parrilla-muted italic">${escapeHtml(d.notas_item)}</span>` : ''}
+            </div>
+            <span class="font-mono font-bold text-parrilla-ivory">${fmt(d.precio_unitario * d.cantidad)}</span>
+          </div>
+        `).join('');
+
+        return `
+          <div class="rounded-2xl border ${isOpen ? 'border-amber-400 bg-amber-50/30' : 'border-parrilla-border bg-slate-50/60'} p-4 shadow-xs flex flex-col justify-between gap-3">
+            <div>
+              <div class="flex items-center justify-between gap-2 pb-2 border-b border-parrilla-border">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono font-black text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">${escapeHtml(o.codigo_pedido)}</span>
+                  <span class="font-display font-black text-sm text-parrilla-ivory">${escapeHtml(o.cliente_nombre || 'Para Llevar')}</span>
+                </div>
+                <span class="live-timer text-[11px] font-extrabold font-mono px-2 py-0.5 rounded-full bg-amber-600 text-white" data-created="${o.fecha_hora}">
+                  ⏱️ Hace ${elapsedStr}
+                </span>
+              </div>
+
+              <div class="my-2.5 flex items-center justify-between">
+                ${getPaymentBadge(o)}
+                ${o.packaging_fee > 0 ? `<span class="text-[11px] font-bold text-amber-800">📦 Empaques: ${fmt(o.packaging_fee)}</span>` : ''}
+              </div>
+
+              <div class="space-y-0.5 max-h-36 overflow-y-auto pr-1">
+                ${itemsList}
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-parrilla-border flex items-center justify-between gap-2">
+              <div>
+                <span class="text-[10px] font-bold text-parrilla-muted uppercase block">Total Pedido</span>
+                <span class="font-display font-black text-lg text-parrilla-gold font-mono">${fmt(o.total)}</span>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  class="btn-print-kitchen-board p-2 rounded-xl bg-white hover:bg-orange-50 text-orange-700 border border-parrilla-border text-xs font-bold transition cursor-pointer"
+                  data-id="${o.id}"
+                  title="Imprimir Comanda de Cocina"
+                >
+                  🍳
+                </button>
+                <button
+                  type="button"
+                  class="btn-print-customer-board p-2 rounded-xl bg-white hover:bg-slate-100 text-parrilla-ivory border border-parrilla-border text-xs font-bold transition cursor-pointer"
+                  data-id="${o.id}"
+                  title="Imprimir Recibo Cliente"
+                >
+                  🧾
+                </button>
+                ${
+                  isOpen
+                    ? `
+                  <button
+                    type="button"
+                    class="btn-open-pay-modal px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-display font-black text-xs shadow-xs transition cursor-pointer"
+                    data-id="${o.id}"
+                  >
+                    ✅ Entregar / Cobrar
+                  </button>`
+                    : `<span class="text-xs font-bold text-emerald-700 px-2">✓ Entregado</span>`
+                }
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // 3. RENDERIZAR BLOQUE INFERIOR: CENTRAL DE DOMICILIOS Y MENSAJEROS
+    // =========================================================================
+    function renderDeliveriesSection() {
+      const container = document.getElementById('deliveries-list-container');
+      const badge = document.getElementById('badge-count-delivery');
+      const statEl = document.getElementById('stat-active-delivery');
+      const pillsContainer = document.getElementById('couriers-summary-pills');
+      const showAllToday = document.getElementById('chk-show-all-deliveries')?.checked ?? true;
+      if (!container) return;
+
+      const couriersList = getSavedCouriers();
+
+      const deliveryOrders = allOrders.filter((o) => {
+        if (o.tipo !== 'DOMICILIO' || o.estado === 'CANCELADO' || o.estado === 'BORRADOR_WEB') return false;
+        if (isOrderOpen(o)) return true;
+        if (showAllToday && isOrderFromToday(o)) return true;
+        return false;
+      });
+
+      const activeDeliveries = allOrders.filter((o) => o.tipo === 'DOMICILIO' && isOrderOpen(o)).length;
+      if (badge) badge.textContent = `${activeDeliveries} activo(s)`;
+      if (statEl) statEl.textContent = String(activeDeliveries);
+
+      // Calcular liquidación de domicilios del día por mensajero
+      if (pillsContainer) {
+        const todayDeliveries = allOrders.filter((o) => o.tipo === 'DOMICILIO' && o.estado !== 'CANCELADO' && isOrderFromToday(o));
+        const courierStats = {};
+        for (const d of todayDeliveries) {
+          const cName = d.courier_name || 'Sin asignar';
+          if (!courierStats[cName]) courierStats[cName] = { count: 0, fees: 0 };
+          courierStats[cName].count += 1;
+          courierStats[cName].fees += Number(d.delivery_fee || 0);
+        }
+        const entries = Object.entries(courierStats);
+        if (entries.length === 0) {
+          pillsContainer.innerHTML = `<span class="text-parrilla-muted italic">Sin domicilios registrados hoy</span>`;
+        } else {
+          pillsContainer.innerHTML = entries.map(([name, st]) => `
+            <span class="px-2.5 py-1 rounded-lg bg-white border border-parrilla-border font-bold text-xs text-parrilla-ivory shadow-2xs">
+              🛵 ${escapeHtml(name)}: <strong class="text-emerald-700">${st.count} envíos</strong> (${fmt(st.fees)})
+            </span>
+          `).join('');
+        }
+      }
+
+      if (deliveryOrders.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-10 text-center text-xs text-parrilla-muted bg-slate-50 rounded-xl border border-dashed border-parrilla-border">
+            No hay domicilios activos en este momento.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = deliveryOrders.map((o) => {
+        const isOpen = isOrderOpen(o);
+        const mins = getElapsedMinutes(o.fecha_hora);
+        const elapsedStr = formatElapsed(o.fecha_hora);
+        const addressStr = extractAddress(o);
+
+        // Semáforo visual (<15m verde, 15-30m amarillo, >30m rojo)
+        let semaphoreClass = 'bg-emerald-600 text-white';
+        let cardBorderClass = isOpen ? 'border-emerald-400 bg-white' : 'border-parrilla-border bg-slate-50/70';
+        let semaphoreIcon = '🟢';
+        if (mins >= 30 && isOpen) {
+          semaphoreClass = 'bg-red-600 text-white animate-pulse';
+          cardBorderClass = 'border-2 border-red-500 bg-red-50/20';
+          semaphoreIcon = '🔴';
+        } else if (mins >= 15 && isOpen) {
+          semaphoreClass = 'bg-amber-500 text-white';
+          cardBorderClass = 'border-2 border-amber-400 bg-amber-50/20';
+          semaphoreIcon = '🟡';
+        }
+
+        const courierOptionsHtml = [
+          `<option value="">-- Sin Mensajero Asignado --</option>`,
+          ...couriersList.map(
+            (c) => `<option value="${escapeHtml(c)}" ${o.courier_name === c ? 'selected' : ''}>🛵 ${escapeHtml(c)}</option>`
+          )
+        ].join('');
+
+        const itemsList = (o.detalles || []).map((d) => `
+          <div class="flex justify-between text-xs py-1 border-b border-slate-100">
+            <div>
+              <span class="font-bold text-parrilla-ivory">${d.cantidad}x ${escapeHtml(d.plato?.nombre || 'Plato')}</span>
+              ${d.notas_item ? `<span class="block text-[10px] text-parrilla-muted italic">${escapeHtml(d.notas_item)}</span>` : ''}
+            </div>
+            <span class="font-mono font-semibold text-parrilla-ivory">${fmt(d.precio_unitario * d.cantidad)}</span>
+          </div>
+        `).join('');
+
+        return `
+          <div class="rounded-2xl border ${cardBorderClass} p-4 shadow-sm flex flex-col justify-between gap-3 transition">
+            <div class="space-y-2.5">
+              <!-- Cabecera: Código + Semáforo Cronómetro -->
+              <div class="flex items-center justify-between gap-2 pb-2 border-b border-parrilla-border">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono font-black text-xs px-2 py-0.5 rounded bg-slate-100 text-parrilla-ivory border border-parrilla-border">
+                    ${escapeHtml(o.codigo_pedido)}
+                  </span>
+                  ${getPaymentBadge(o)}
+                </div>
+                <span class="live-timer px-2.5 py-0.5 rounded-full text-[11px] font-extrabold font-mono ${semaphoreClass}" data-created="${o.fecha_hora}" data-semaphore="true">
+                  ${semaphoreIcon} ⏱️ ${elapsedStr}
+                </span>
+              </div>
+
+              <!-- Datos del Cliente y Dirección Destacada -->
+              <div class="bg-slate-50 p-3 rounded-xl border border-parrilla-border space-y-1">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-display font-black text-sm text-parrilla-ivory">${escapeHtml(o.cliente_nombre || 'Cliente Domicilio')}</span>
+                  <a href="tel:${escapeHtml(o.cliente_telefono || '')}" class="font-mono font-black text-xs text-emerald-700 hover:underline">
+                    📞 ${escapeHtml(o.cliente_telefono || 'Sin tel')}
+                  </a>
+                </div>
+                <div class="text-xs font-extrabold text-parrilla-gold leading-snug">
+                  📍 ${escapeHtml(addressStr)}
+                </div>
+              </div>
+
+              <!-- Selector de Mensajero en 1 Clic -->
+              <div class="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200">
+                <label class="block text-[10px] font-extrabold uppercase text-emerald-900 mb-1">
+                  🛵 Mensajero Asignado:
+                </label>
+                <select
+                  class="courier-select w-full px-3 py-2 bg-white rounded-lg border border-emerald-300 text-xs font-extrabold text-parrilla-ivory focus:border-emerald-600 outline-none cursor-pointer"
+                  data-id="${o.id}"
+                >
+                  ${courierOptionsHtml}
+                </select>
+              </div>
+
+              <!-- Platos -->
+              <div class="space-y-0.5 max-h-36 overflow-y-auto pr-1">
+                ${itemsList}
+              </div>
+            </div>
+
+            <!-- Totales y Botones Operativos -->
+            <div class="pt-3 border-t border-parrilla-border space-y-2.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-parrilla-muted font-bold">
+                  Envío: <strong class="text-emerald-700 font-mono">${fmt(o.delivery_fee || 0)}</strong>
+                </span>
+                <span class="font-display font-black text-lg text-parrilla-gold font-mono">
+                  Total: ${fmt(o.total)}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  class="btn-print-courier-board py-2 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-extrabold transition cursor-pointer flex items-center justify-center gap-1"
+                  data-id="${o.id}"
+                  title="Imprimir Guía de Mensajero 80mm"
+                >
+                  <span>🛵 Ticket</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-print-kitchen-board py-2 px-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300 text-[11px] font-extrabold transition cursor-pointer flex items-center justify-center gap-1"
+                  data-id="${o.id}"
+                  title="Imprimir Comanda de Cocina 80mm"
+                >
+                  <span>🍳 Cocina</span>
+                </button>
+
+                ${
+                  isOpen
+                    ? `
+                  <button
+                    type="button"
+                    class="btn-open-pay-modal py-2 px-2 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-[11px] shadow-xs transition cursor-pointer flex items-center justify-center gap-1"
+                    data-id="${o.id}"
+                  >
+                    <span>💰 Cobrar</span>
+                  </button>`
+                    : `
+                  <button
+                    type="button"
+                    class="btn-print-customer-board py-2 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-parrilla-ivory border border-parrilla-border text-[11px] font-bold transition cursor-pointer flex items-center justify-center gap-1"
+                    data-id="${o.id}"
+                  >
+                    <span>🧾 Recibo</span>
+                  </button>`
+                }
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderBoard() {
+      renderTablesGrid();
+      renderTakeoutSection();
+      renderDeliveriesSection();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    // Delegación de eventos en el tablero
+    document.addEventListener('change', async (e) => {
+      const sel = e.target.closest('.courier-select');
+      if (sel) {
+        const pedidoId = Number(sel.getAttribute('data-id'));
+        const courierName = sel.value;
+        sel.disabled = true;
+        try {
+          const res = await fetch(`/api/pedidos/${pedidoId}/assign-courier`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              courier_name: courierName || null,
+              estado: courierName ? 'EN_CAMINO' : undefined
+            })
+          });
+          if (res.ok) {
+            const updated = await res.json();
+            const idx = allOrders.findIndex((o) => o.id === pedidoId);
+            if (idx !== -1) allOrders[idx] = updated;
+            renderBoard();
+          } else {
+            alert('No se pudo asignar el mensajero. Intenta de nuevo.');
+          }
+        } catch (err) {
+          alert('Error asignando mensajero: ' + err.message);
+        } finally {
+          sel.disabled = false;
+        }
+      }
+    });
+
+    document.getElementById('chk-show-completed-takeout')?.addEventListener('change', renderTakeoutSection);
+    document.getElementById('chk-show-all-deliveries')?.addEventListener('change', renderDeliveriesSection);
+    document.getElementById('btn-refresh-board')?.addEventListener('click', fetchOrders);
+
+    // =========================================================================
+    // MODAL DE COBRO Y LIBERACIÓN EN /pedidos
+    // =========================================================================
+    const modalPay = document.getElementById('modal-pay-order');
+    const cashReceivedInp = document.getElementById('board-cash-received');
+    const cashChangeEl = document.getElementById('board-cash-change');
+
+    function openPayModal(order) {
+      if (!order) return;
+      activePayOrder = order;
+      selectedPayMethod = 'CASH';
+
+      document.getElementById('pay-modal-title').textContent = `${order.mesa || order.cliente_nombre || 'Pedido'} (${order.codigo_pedido})`;
+      document.getElementById('pay-modal-subtotal').textContent = fmt((order.subtotal || 0) + (order.packaging_fee || 0));
+      document.getElementById('pay-modal-delivery').textContent = fmt(order.delivery_fee || 0);
+      document.getElementById('pay-modal-delivery-row').style.display = order.tipo === 'DOMICILIO' ? 'flex' : 'none';
+      document.getElementById('pay-modal-total').textContent = fmt(order.total);
+
+      const itemsContainer = document.getElementById('pay-modal-items');
+      if (itemsContainer) {
+        itemsContainer.innerHTML = (order.detalles || []).map((d) => `
+          <div class="flex justify-between py-1 text-xs">
+            <span class="font-bold text-parrilla-ivory">${d.cantidad}x ${escapeHtml(d.plato?.nombre || 'Plato')}</span>
+            <span class="font-mono">${fmt(d.precio_unitario * d.cantidad)}</span>
+          </div>
+        `).join('');
+      }
+
+      document.querySelectorAll('.board-pay-method-btn').forEach((b) => {
+        const isCash = b.getAttribute('data-method') === 'CASH';
+        b.className = isCash
+          ? 'board-pay-method-btn active py-2.5 px-1 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-[11px] flex flex-col items-center gap-1 shadow-xs cursor-pointer'
+          : 'board-pay-method-btn py-2.5 px-1 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-[11px] flex flex-col items-center gap-1 cursor-pointer';
+      });
+
+      document.getElementById('board-cash-calc-box').style.display = 'flex';
+      if (cashReceivedInp) cashReceivedInp.value = '';
+      if (cashChangeEl) cashChangeEl.textContent = '$0';
+
+      modalPay.classList.remove('hidden');
+      modalPay.classList.add('flex');
+    }
+
+    function closePayModal() {
+      modalPay.classList.add('hidden');
+      modalPay.classList.remove('flex');
+      activePayOrder = null;
+    }
+
+    document.getElementById('btn-pay-modal-close')?.addEventListener('click', closePayModal);
+    document.getElementById('btn-pay-modal-cancel')?.addEventListener('click', closePayModal);
+
+    document.querySelectorAll('.board-pay-method-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.board-pay-method-btn').forEach((b) => {
+          b.className = 'board-pay-method-btn py-2.5 px-1 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-[11px] flex flex-col items-center gap-1 cursor-pointer';
+        });
+        btn.className = 'board-pay-method-btn active py-2.5 px-1 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-[11px] flex flex-col items-center gap-1 shadow-xs cursor-pointer';
+        selectedPayMethod = btn.getAttribute('data-method') || 'CASH';
+        document.getElementById('board-cash-calc-box').style.display = selectedPayMethod === 'CASH' ? 'flex' : 'none';
+      });
+    });
+
+    cashReceivedInp?.addEventListener('input', () => {
+      if (!activePayOrder) return;
+      const paid = Number(cashReceivedInp.value || 0);
+      const diff = paid - Number(activePayOrder.total || 0);
+      if (paid > 0) {
+        cashChangeEl.textContent = diff >= 0 ? fmt(diff) : 'Faltan ' + fmt(Math.abs(diff));
+      } else {
+        cashChangeEl.textContent = '$0';
+      }
+    });
+
+    document.getElementById('btn-pay-modal-confirm')?.addEventListener('click', async () => {
+      if (!activePayOrder) return;
+      const btn = document.getElementById('btn-pay-modal-confirm');
+      btn.disabled = true;
+      const origHtml = btn.innerHTML;
+      btn.innerHTML = '<span>Procesando cobro...</span>';
+
+      const paidCash = Number(cashReceivedInp?.value || 0);
+      const total = Number(activePayOrder.total || 0);
+      const change = (selectedPayMethod === 'CASH' && paidCash > total) ? (paidCash - total) : 0;
+
+      try {
+        const res = await fetch(`/api/caja/pay/${activePayOrder.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payments: [{
+              method: selectedPayMethod,
+              amount: total,
+              change_given: change
+            }]
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.detail || data.error || `Error HTTP ${res.status} al cobrar el pedido.`);
+        }
+
+        const wantReceipt = document.getElementById('chk-board-print-receipt')?.checked ?? true;
+        const orderToPrint = data.id ? data : activePayOrder;
+        closePayModal();
+        await fetchOrders();
+
+        if (wantReceipt) {
+          printOrderTicket(orderToPrint, 'customer', selectedPayMethod, paidCash);
+        }
+      } catch (err) {
+        alert('No se pudo cobrar: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
+    });
+
+    // =========================================================================
+    // IMPRESIÓN TÉRMICA 80MM DESDE /pedidos (COCINA, MENSAJERO, CLIENTE)
+    // =========================================================================
+    function printOrderTicket(order, type = 'customer', payMethodOverride = null, cashPaid = 0) {
+      const printable = document.getElementById('printable-ticket');
+      if (!printable || !order) return;
+
+      const timeStr = new Date(order.fecha_hora || Date.now()).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+      const dateStr = new Date(order.fecha_hora || Date.now()).toLocaleDateString('es-CO');
+      const codeStr = order.codigo_pedido || ('#' + order.id);
+      const addrStr = extractAddress(order);
+      const payMethod = payMethodOverride || (order.payments && order.payments[0]?.method) || (order.estado === 'PAGADO' ? 'PAGADO' : 'PENDIENTE / EFECTIVO');
+
+      let html = '';
+      if (type === 'kitchen') {
+        const ubicacion = order.tipo === 'EN_MESA'
+          ? (order.mesa || 'MESA')
+          : (order.tipo === 'DOMICILIO' ? `🛵 DOMICILIO - ${order.cliente_nombre}` : `📦 PARA LLEVAR - ${order.cliente_nombre}`);
+
+        const itemsHtml = (order.detalles || []).map((d) => `
+          <div style="border-bottom: 1.5px dashed #000; padding: 2.5mm 0;">
+            <div style="display: flex; align-items: flex-start; gap: 2.5mm;">
+              <span style="font-size: 16pt; font-weight: 900; border: 1.5px solid #000; padding: 1mm 2mm;">${d.cantidad}X</span>
+              <div>
+                <div style="font-size: 13pt; font-weight: 900; text-transform: uppercase;">${escapeHtml(d.plato?.nombre || 'Plato')}</div>
+                ${d.notas_item ? `<div style="font-size: 10pt; font-weight: bold; margin-top: 1mm;">└ ${escapeHtml(d.notas_item)}</div>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('');
+
+        html = `
+          <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 2mm;">
+            <div style="border: 2px solid #000; padding: 1mm 3mm; font-size: 13pt; font-weight: 900; display: inline-block;">🍳 COMANDA DE COCINA</div>
+            <div style="font-size: 13pt; font-weight: 900; margin-top: 1.5mm;">${escapeHtml(ubicacion)}</div>
+            <div style="font-size: 9pt; font-family: monospace;">Orden: <strong>${escapeHtml(codeStr)}</strong> | Hora: <strong>${timeStr}</strong></div>
+          </div>
+          <div style="margin: 2mm 0;">${itemsHtml}</div>
+        `;
+      } else if (type === 'courier') {
+        const isPaid = order.estado === 'PAGADO' && payMethod !== 'CASH';
+        const itemsSummary = (order.detalles || []).map((d) => `
+          <div style="font-size: 10pt; padding: 0.5mm 0;">• <strong>${d.cantidad}x</strong> ${escapeHtml(d.plato?.nombre || 'Plato')}</div>
+        `).join('');
+
+        html = `
+          <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 2mm;">
+            <h1 style="font-size: 15pt; font-weight: 900; margin: 0;">SAN PARRILLA</h1>
+            <div style="border: 2px solid #000; padding: 1mm 3mm; font-size: 11pt; font-weight: 900; margin: 1mm 0; display: inline-block;">
+              🛵 GUÍA DOMICILIO ${order.courier_name ? '• ' + escapeHtml(order.courier_name.toUpperCase()) : ''}
+            </div>
+            <div style="font-size: 9pt; font-family: monospace;">Pedido: <strong>${escapeHtml(codeStr)}</strong> | Hora: <strong>${timeStr}</strong></div>
+          </div>
+          <div style="border: 2px solid #000; padding: 2.5mm; margin: 2mm 0;">
+            <div style="font-size: 9pt; font-weight: bold;">CLIENTE:</div>
+            <div style="font-size: 13pt; font-weight: 900;">${escapeHtml(order.cliente_nombre || 'Cliente')}</div>
+            <div style="font-size: 9pt; font-weight: bold; margin-top: 1.5mm;">TELÉFONO:</div>
+            <div style="font-size: 16pt; font-weight: 900; font-family: monospace;">📞 ${escapeHtml(order.cliente_telefono || 'Sin tel')}</div>
+            <div style="font-size: 9pt; font-weight: bold; margin-top: 1.5mm;">DIRECCIÓN:</div>
+            <div style="font-size: 12pt; font-weight: 900;">📍 ${escapeHtml(addrStr)}</div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11pt; font-weight: 900; border-bottom: 1.5px dashed #000; padding: 1.5mm 0;">
+            <span>FLETE MENSAJERO:</span>
+            <span>${fmt(order.delivery_fee || 0)}</span>
+          </div>
+          <div style="margin: 2mm 0;">${itemsSummary}</div>
+          <div style="border: 3px solid #000; padding: 2.5mm; text-align: center; margin-top: 2mm;">
+            <div style="font-size: 12pt; font-weight: 900;">${isPaid ? '✅ PAGADO POR TRANSFERENCIA (NO COBRAR)' : '⚠️ COBRAR AL CLIENTE'}</div>
+            <div style="font-size: 17pt; font-weight: 900; margin-top: 1mm;">TOTAL: ${fmt(order.total)}</div>
+          </div>
+        `;
+      } else {
+        const rows = (order.detalles || []).map((d) => `
+          <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 1.5mm 0; font-weight: 900;">${d.cantidad}</td>
+            <td style="padding: 1.5mm 1mm; font-weight: bold;">${escapeHtml(d.plato?.nombre || 'Plato')}</td>
+            <td style="padding: 1.5mm 0; text-align: right; font-weight: bold;">${fmt(d.precio_unitario * d.cantidad)}</td>
+          </tr>
+        `).join('');
+
+        html = `
+          <div style="text-align: center; border-bottom: 1.5px dashed #000; padding-bottom: 2mm;">
+            <h1 style="font-size: 16pt; font-weight: 900; margin: 0;">SAN PARRILLA</h1>
+            <p style="margin: 1mm 0; font-size: 9pt;">Fogón, Carbón & Sazón Casero</p>
+            <div style="border: 2px solid #000; padding: 1mm 3mm; font-size: 11pt; font-weight: bold; display: inline-block; margin: 1.5mm 0;">
+              ${escapeHtml(order.mesa || order.tipo)}
+            </div>
+            <div style="font-size: 8.5pt; font-family: monospace;">Pedido: <strong>${escapeHtml(codeStr)}</strong> | ${dateStr} ${timeStr}</div>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; margin: 2mm 0; font-size: 9.5pt;">
+            <thead>
+              <tr style="border-bottom: 1px dashed #000;">
+                <th style="text-align: left;">CANT</th>
+                <th style="text-align: left;">PLATO</th>
+                <th style="text-align: right;">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div style="border-top: 1.5px dashed #000; padding-top: 2mm;">
+            ${order.packaging_fee ? `<div style="display:flex;justify-content:space-between;font-size:10pt;"><span>Empaques:</span><span>${fmt(order.packaging_fee)}</span></div>` : ''}
+            ${order.delivery_fee ? `<div style="display:flex;justify-content:space-between;font-size:10pt;"><span>Domicilio:</span><span>${fmt(order.delivery_fee)}</span></div>` : ''}
+            <div style="display:flex;justify-content:space-between;font-size:14pt;font-weight:900;border-top:1.5px solid #000;border-bottom:2px solid #000;padding:1.5mm 0;margin:1.5mm 0;">
+              <span>TOTAL:</span>
+              <span>${fmt(order.total)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10pt;font-weight:bold;">
+              <span>ESTADO / PAGO:</span>
+              <span>${escapeHtml(payMethod)}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      printable.innerHTML = html;
+      printable.classList.remove('hidden');
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => printable.classList.add('hidden'), 900);
+      }, 80);
+    }
+
+    document.addEventListener('click', (e) => {
+      const payBtn = e.target.closest('.btn-open-pay-modal');
+      if (payBtn) {
+        const id = Number(payBtn.getAttribute('data-id'));
+        const order = allOrders.find((o) => o.id === id);
+        if (order) openPayModal(order);
+        return;
+      }
+
+      const tablePrintBtn = e.target.closest('.btn-table-print');
+      if (tablePrintBtn) {
+        const id = Number(tablePrintBtn.getAttribute('data-id'));
+        const order = allOrders.find((o) => o.id === id);
+        if (order) printOrderTicket(order, 'customer');
+        return;
+      }
+
+      const kitchenBtn = e.target.closest('.btn-print-kitchen-board');
+      if (kitchenBtn) {
+        const id = Number(kitchenBtn.getAttribute('data-id'));
+        const order = allOrders.find((o) => o.id === id);
+        if (order) printOrderTicket(order, 'kitchen');
+        return;
+      }
+
+      const courierBtn = e.target.closest('.btn-print-courier-board');
+      if (courierBtn) {
+        const id = Number(courierBtn.getAttribute('data-id'));
+        const order = allOrders.find((o) => o.id === id);
+        if (order) printOrderTicket(order, 'courier');
+        return;
+      }
+
+      const custBtn = e.target.closest('.btn-print-customer-board');
+      if (custBtn) {
+        const id = Number(custBtn.getAttribute('data-id'));
+        const order = allOrders.find((o) => o.id === id);
+        if (order) printOrderTicket(order, 'customer');
+        return;
+      }
+    });
+
+    // Actualizar cronómetros cada 15 segundos sin recargar toda la página y refrescar BD cada 10s
+    setInterval(() => {
+      document.querySelectorAll('.live-timer').forEach((el) => {
+        const created = el.getAttribute('data-created');
+        if (!created) return;
+        const isSem = el.getAttribute('data-semaphore') === 'true';
+        const mins = getElapsedMinutes(created);
+        const text = formatElapsed(created);
+        if (isSem) {
+          const icon = mins >= 30 ? '🔴' : (mins >= 15 ? '🟡' : '🟢');
+          el.textContent = `${icon} ⏱️ ${text}`;
+        } else {
+          el.textContent = `⏱️ ${text}`;
+        }
+      });
+    }, 10000);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderTablesGrid();
+      fetchOrders();
+      setInterval(fetchOrders, 10000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') fetchOrders();
+      });
+    });
+  </script>
+</StaffLayout>

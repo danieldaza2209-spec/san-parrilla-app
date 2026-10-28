@@ -305,16 +305,46 @@ const searchableCatalog = publicProducts.map((p) => ({
           </div>
         </div>
 
-        <!-- CONDITIONAL FORM: MESA -->
-        <div id="form-mesa" class="flex items-center gap-2">
-          <span class="text-xs text-parrilla-muted font-medium">Mesa:</span>
-          <input 
-            type="text" 
-            id="table-input" 
-            value="Mesa 1" 
-            placeholder="Ej. Mesa 3 o Barra" 
-            class="flex-1 px-3 py-1.5 bg-parrilla-dark rounded-lg border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none"
+        <!-- CONDITIONAL FORM: MESA (Mesa 1 a Mesa 20) -->
+        <div id="form-mesa" class="flex flex-col gap-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs text-parrilla-muted font-bold uppercase">Seleccionar Mesa:</span>
+            <a href="/pedidos" class="text-[11px] font-extrabold text-parrilla-gold hover:underline flex items-center gap-1">
+              <span>📋 Mapa de 20 Mesas en Vivo →</span>
+            </a>
+          </div>
+          <div class="flex items-center gap-2">
+            <select 
+              id="table-input" 
+              class="flex-1 px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm font-extrabold text-parrilla-ivory focus:border-parrilla-gold outline-none cursor-pointer"
+            >
+              {Array.from({ length: 20 }, (_, i) => `Mesa ${i + 1}`).map((m) => (
+                <option value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <!-- CONDITIONAL FORM: PARA LLEVAR -->
+        <div id="form-llevar" class="hidden items-center gap-2 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200">
+          <span class="text-xs text-amber-800 font-bold whitespace-nowrap">📦 Cliente Recoge:</span>
+          <input
+            type="text"
+            id="llevar-cust-name"
+            placeholder="Nombre de quien recoge (Opcional)"
+            class="flex-1 px-3 py-1.5 bg-white rounded-lg border border-amber-300 text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
           />
+        </div>
+
+        <!-- BANNER PEDIDO ABIERTO CARGADO -->
+        <div id="open-order-banner" class="hidden bg-orange-50 border-2 border-orange-400 text-orange-900 rounded-xl p-3 items-center justify-between gap-2 shadow-xs">
+          <div class="text-xs">
+            <span class="font-black block text-orange-700" id="open-order-banner-title">📋 Editando Pedido Abierto #SP-000</span>
+            <span class="text-[11px] text-orange-800">Puedes agregar más platos y Guardar, o Cobrar y Liberar.</span>
+          </div>
+          <button type="button" id="btn-cancel-open-edit" class="px-2.5 py-1 rounded-lg bg-white hover:bg-red-50 text-red-600 border border-orange-300 text-[11px] font-extrabold cursor-pointer">
+            Nueva Comanda
+          </button>
         </div>
 
         <!-- CONDITIONAL FORM: DOMICILIOS & CLIENTES DATABASE -->
@@ -464,18 +494,21 @@ const searchableCatalog = publicProducts.map((p) => ({
           <!-- Payment Method Buttons -->
           <div class="pt-2">
             <span class="block text-[11px] text-parrilla-muted uppercase font-semibold mb-1.5">Método de Pago</span>
-            <div class="grid grid-cols-4 gap-1.5">
-              <button type="button" class="pay-btn active py-2 rounded-lg text-xs font-bold bg-parrilla-gold text-white shadow-sm transition" data-method="efectivo">
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+              <button type="button" class="pay-btn active py-2 px-1 rounded-lg text-[11px] font-bold bg-parrilla-gold text-white shadow-sm transition cursor-pointer" data-method="efectivo">
                 💵 Efectivo
               </button>
-              <button type="button" class="pay-btn py-2 rounded-lg text-xs font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition" data-method="nequi">
+              <button type="button" class="pay-btn py-2 px-1 rounded-lg text-[11px] font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition cursor-pointer" data-method="nequi">
                 🟣 Nequi
               </button>
-              <button type="button" class="pay-btn py-2 rounded-lg text-xs font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition" data-method="daviplata">
+              <button type="button" class="pay-btn py-2 px-1 rounded-lg text-[11px] font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition cursor-pointer" data-method="bancolombia">
+                🟡 Bancolombia
+              </button>
+              <button type="button" class="pay-btn py-2 px-1 rounded-lg text-[11px] font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition cursor-pointer" data-method="daviplata">
                 🔴 Daviplata
               </button>
-              <button type="button" class="pay-btn py-2 rounded-lg text-xs font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition" data-method="tarjeta">
-                💳 Tarjeta
+              <button type="button" class="pay-btn py-2 px-1 rounded-lg text-[11px] font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition cursor-pointer" data-method="tarjeta">
+                💳 Datáfono
               </button>
             </div>
           </div>
@@ -504,17 +537,17 @@ const searchableCatalog = publicProducts.map((p) => ({
             <button 
               type="button" 
               id="btn-print-kitchen-cart" 
-              class="py-2.5 px-3 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+              class="py-2.5 px-3 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
               title="Imprime la comanda de cocina directamente con los platos en el carrito"
             >
               <i data-lucide="utensils" class="w-4 h-4 text-orange-600"></i>
-              <span>🍳 Comanda Cocina</span>
+              <span>🍳 Solo Comanda Cocina</span>
             </button>
 
             <button 
               type="button" 
               id="btn-quick-expense-pos" 
-              class="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+              class="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
               title="Registrar salida de efectivo menor desde la caja"
             >
               <i data-lucide="wallet" class="w-4 h-4 text-amber-600"></i>
@@ -522,11 +555,22 @@ const searchableCatalog = publicProducts.map((p) => ({
             </button>
           </div>
 
+          <!-- BOTÓN GUARDAR / ENVIAR A COCINA (DEJAR ABIERTO EN /pedidos) -->
+          <button
+            type="button"
+            id="btn-save-open-order"
+            class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-display font-black text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
+            title="Guarda el pedido como Abierto / En Preparación en /pedidos e imprime comanda de cocina"
+          >
+            <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+            <span id="btn-save-open-order-label">Guardar / Enviar a Cocina (Dejar Abierto)</span>
+          </button>
+
           <div class="flex items-center gap-2">
             <button 
               type="button" 
               id="btn-clear-cart" 
-              class="px-3.5 py-3.5 rounded-xl bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border text-xs font-bold transition"
+              class="px-3.5 py-3.5 rounded-xl bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border text-xs font-bold transition cursor-pointer"
               title="Vaciar comanda"
             >
               Limpiar
@@ -535,7 +579,7 @@ const searchableCatalog = publicProducts.map((p) => ({
             <button 
               type="button" 
               id="btn-quick-test-print" 
-              class="px-3 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-parrilla-muted border border-parrilla-border text-xs font-bold transition flex items-center gap-1"
+              class="px-3 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-parrilla-muted border border-parrilla-border text-xs font-bold transition flex items-center gap-1 cursor-pointer"
               title="Test de impresión térmica"
             >
               <i data-lucide="zap" class="w-4 h-4 text-parrilla-gold"></i>
@@ -545,7 +589,7 @@ const searchableCatalog = publicProducts.map((p) => ({
             <button 
               type="button" 
               id="btn-checkout-print" 
-              class="flex-1 py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-sm shadow-lg shadow-orange-700/20 flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="flex-1 py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-sm shadow-lg shadow-orange-700/20 flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <i data-lucide="printer" class="w-4 h-4"></i>
               <span>Cobrar e Imprimir</span>
@@ -846,22 +890,26 @@ const searchableCatalog = publicProducts.map((p) => ({
         <!-- MODO 1: PAGO ÚNICO -->
         <div id="cobro-view-single" class="space-y-3">
           <span class="block text-[11px] font-bold text-parrilla-muted uppercase">Selecciona Método:</span>
-          <div class="grid grid-cols-4 gap-2">
-            <button type="button" class="single-pay-btn active py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-xs flex flex-col items-center gap-1 shadow-sm" data-method="CASH">
+          <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <button type="button" class="single-pay-btn active py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-xs flex flex-col items-center gap-1 shadow-sm cursor-pointer" data-method="CASH">
               <span>💵</span>
               <span>Efectivo</span>
             </button>
-            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1" data-method="NEQUI">
+            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer" data-method="NEQUI">
               <span>🟣</span>
               <span>Nequi</span>
             </button>
-            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1" data-method="DAVIPLATA">
+            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer" data-method="BANCOLOMBIA">
+              <span>🟡</span>
+              <span>Bancolombia</span>
+            </button>
+            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer" data-method="DAVIPLATA">
               <span>🔴</span>
               <span>Daviplata</span>
             </button>
-            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1" data-method="CARD">
+            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer" data-method="CARD">
               <span>💳</span>
-              <span>Tarjeta</span>
+              <span>Datáfono</span>
             </button>
           </div>
 
@@ -898,9 +946,10 @@ const searchableCatalog = publicProducts.map((p) => ({
             <div class="grid grid-cols-2 gap-2">
               <select id="split-method-1" class="px-3 py-2 bg-white rounded-lg border border-parrilla-border text-xs font-bold text-parrilla-ivory outline-none">
                 <option value="NEQUI">🟣 Nequi</option>
+                <option value="BANCOLOMBIA">🟡 Bancolombia</option>
                 <option value="CASH">💵 Efectivo</option>
                 <option value="DAVIPLATA">🔴 Daviplata</option>
-                <option value="CARD">💳 Tarjeta</option>
+                <option value="CARD">💳 Datáfono / Tarjeta</option>
               </select>
               <input 
                 type="number" 
@@ -919,8 +968,9 @@ const searchableCatalog = publicProducts.map((p) => ({
               <select id="split-method-2" class="px-3 py-2 bg-white rounded-lg border border-parrilla-border text-xs font-bold text-parrilla-ivory outline-none">
                 <option value="CASH">💵 Efectivo</option>
                 <option value="NEQUI">🟣 Nequi</option>
+                <option value="BANCOLOMBIA">🟡 Bancolombia</option>
                 <option value="DAVIPLATA">🔴 Daviplata</option>
-                <option value="CARD">💳 Tarjeta</option>
+                <option value="CARD">💳 Datáfono / Tarjeta</option>
               </select>
               <input 
                 type="number" 
@@ -2176,6 +2226,47 @@ const searchableCatalog = publicProducts.map((p) => ({
     }
 
     // 4. ORDER TYPE SWITCHER
+    const formLlevar = document.getElementById('form-llevar');
+    const llevarCustNameInput = document.getElementById('llevar-cust-name');
+    const openOrderBanner = document.getElementById('open-order-banner');
+    const openOrderBannerTitle = document.getElementById('open-order-banner-title');
+    const btnCancelOpenEdit = document.getElementById('btn-cancel-open-edit');
+    const btnSaveOpenOrder = document.getElementById('btn-save-open-order');
+    const btnSaveOpenOrderLabel = document.getElementById('btn-save-open-order-label');
+
+    let editingOpenOrder = null; // Stores loaded open Pedido object if editing an active table/order
+
+    function setEditingOpenOrder(orderObj) {
+      editingOpenOrder = orderObj || null;
+      if (editingOpenOrder && editingOpenOrder.id) {
+        if (openOrderBanner) {
+          openOrderBanner.classList.remove('hidden');
+          openOrderBanner.classList.add('flex');
+        }
+        if (openOrderBannerTitle) {
+          const loc = editingOpenOrder.mesa || editingOpenOrder.cliente_nombre || '';
+          openOrderBannerTitle.textContent = `📋 Editando Pedido Abierto ${editingOpenOrder.codigo_pedido || ('#' + editingOpenOrder.id)} ${loc ? '(' + loc + ')' : ''}`;
+        }
+        if (btnSaveOpenOrderLabel) {
+          btnSaveOpenOrderLabel.textContent = `Actualizar Comanda Abierta (${editingOpenOrder.codigo_pedido || ('#' + editingOpenOrder.id)})`;
+        }
+      } else {
+        if (openOrderBanner) {
+          openOrderBanner.classList.add('hidden');
+          openOrderBanner.classList.remove('flex');
+        }
+        if (btnSaveOpenOrderLabel) {
+          btnSaveOpenOrderLabel.textContent = 'Guardar / Enviar a Cocina (Dejar Abierto)';
+        }
+      }
+    }
+
+    btnCancelOpenEdit?.addEventListener('click', () => {
+      setEditingOpenOrder(null);
+      cart = [];
+      renderCart();
+    });
+
     function setOrderType(type) {
       currentOrderType = type;
       [typeMesaBtn, typeDomicilioBtn, typeLlevarBtn].forEach((b) => {
@@ -2186,12 +2277,20 @@ const searchableCatalog = publicProducts.map((p) => ({
         typeMesaBtn.className = 'order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-extrabold text-xs shadow-sm transition';
         formMesa.style.display = 'flex';
         formDomicilio.style.display = 'none';
+        if (formLlevar) {
+          formLlevar.classList.add('hidden');
+          formLlevar.classList.remove('flex');
+        }
         packagingQty = 0;
         manualPackagingOverride = false;
       } else if (type === 'domicilio') {
         typeDomicilioBtn.className = 'order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-parrilla-accent bg-parrilla-accent text-white font-extrabold text-xs shadow-sm transition';
         formMesa.style.display = 'none';
         formDomicilio.style.display = 'flex';
+        if (formLlevar) {
+          formLlevar.classList.add('hidden');
+          formLlevar.classList.remove('flex');
+        }
         if (!manualPackagingOverride) {
           packagingQty = countFoodPlates();
         }
@@ -2199,6 +2298,10 @@ const searchableCatalog = publicProducts.map((p) => ({
         typeLlevarBtn.className = 'order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-amber-600 bg-amber-600 text-white font-extrabold text-xs shadow-sm transition';
         formMesa.style.display = 'none';
         formDomicilio.style.display = 'none';
+        if (formLlevar) {
+          formLlevar.classList.remove('hidden');
+          formLlevar.classList.add('flex');
+        }
         if (!manualPackagingOverride) {
           packagingQty = countFoodPlates();
         }
@@ -2265,13 +2368,34 @@ const searchableCatalog = publicProducts.map((p) => ({
     }
 
     // 6. PAYMENT METHOD SWITCHER
+    const methodFrontToBackMap = {
+      efectivo: 'CASH',
+      nequi: 'NEQUI',
+      bancolombia: 'BANCOLOMBIA',
+      daviplata: 'DAVIPLATA',
+      tarjeta: 'CARD'
+    };
+
     payButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         payButtons.forEach(b => {
-          b.className = 'pay-btn py-2 rounded-lg text-xs font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition';
+          b.className = 'pay-btn py-2 px-1 rounded-lg text-[11px] font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition cursor-pointer';
         });
-        btn.className = 'pay-btn active py-2 rounded-lg text-xs font-bold bg-parrilla-gold text-white shadow-sm transition';
+        btn.className = 'pay-btn active py-2 px-1 rounded-lg text-[11px] font-bold bg-parrilla-gold text-white shadow-sm transition cursor-pointer';
         currentPaymentMethod = btn.getAttribute('data-method') || 'efectivo';
+        selectedSingleMethod = methodFrontToBackMap[currentPaymentMethod] || 'CASH';
+
+        // Sincronizar también el botón activo en el modal de cobro
+        document.querySelectorAll('.single-pay-btn').forEach(b => {
+          const isMatch = b.getAttribute('data-method') === selectedSingleMethod;
+          b.className = isMatch
+            ? 'single-pay-btn active py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-xs flex flex-col items-center gap-1 shadow-sm cursor-pointer'
+            : 'single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer';
+        });
+        if (singleCashCalc) {
+          if (selectedSingleMethod === 'CASH') singleCashCalc.classList.remove('hidden');
+          else singleCashCalc.classList.add('hidden');
+        }
 
         if (currentPaymentMethod === 'efectivo') {
           cashChangeBox.style.display = 'flex';
@@ -2505,6 +2629,170 @@ const searchableCatalog = publicProducts.map((p) => ({
       modalCobro.classList.add('flex');
     });
 
+    // Helper: construir payload de pedido para FastAPI
+    function buildFastapiPedidoPayload(estadoOverride = null) {
+      const { subtotal, packagingFee, deliveryFee, total } = calculateTotals();
+      const tipoMap = {
+        mesa: 'EN_MESA',
+        domicilio: 'DOMICILIO',
+        para_llevar: 'PARA_LLEVAR'
+      };
+      const tipoBackend = tipoMap[currentOrderType] || 'EN_MESA';
+
+      // @ts-ignore
+      const mesaStr = currentOrderType === 'mesa' ? (tableInput?.value || 'Mesa 1') : '';
+      // @ts-ignore
+      const custPhone = currentOrderType === 'domicilio' ? (custPhoneInput?.value || '').trim() : '';
+      // @ts-ignore
+      const llevarName = currentOrderType === 'para_llevar' ? (llevarCustNameInput?.value || '').trim() : '';
+      // @ts-ignore
+      const custName = currentOrderType === 'domicilio'
+        ? ((custNameInput?.value || '').trim() || 'Cliente Domicilio')
+        : (currentOrderType === 'para_llevar' ? (llevarName || 'Para Llevar') : (mesaStr || 'Cliente Mesa'));
+      // @ts-ignore
+      const custAddress = currentOrderType === 'domicilio' ? (custAddressInput?.value || '').trim() : '';
+      // @ts-ignore
+      const custNeighborhood = currentOrderType === 'domicilio' ? (custNeighborhoodInput?.value || '').trim() : '';
+
+      const notasPartes = [];
+      if (custAddress) notasPartes.push(`Dirección: ${custAddress}`);
+      if (custNeighborhood) notasPartes.push(`Barrio: ${custNeighborhood}`);
+      if (packagingFee > 0 && packagingQty > 0) {
+        notasPartes.push(`Empaques: ${packagingQty}x ${globalPackagingType} (+$${packagingFee})`);
+      }
+      const notasPedido = notasPartes.join(' | ');
+
+      const detallesPayload = cart.map((item) => ({
+        plato_id: (Number.isInteger(Number(item.plato_id || item.id)) && Number(item.plato_id || item.id) > 0)
+          ? Number(item.plato_id || item.id)
+          : 1,
+        nombre_plato: item.name,
+        cantidad: Number(item.quantity || 1),
+        precio_unitario: Number(item.price || 0),
+        notas_item: item.notes || '',
+        notas: item.notes || ''
+      }));
+
+      const payload = {
+        tipo: tipoBackend,
+        mesa: mesaStr || null,
+        cliente_nombre: custName,
+        cliente_telefono: custPhone || null,
+        direccion: custAddress || null,
+        notas: notasPedido || null,
+        subtotal: subtotal,
+        packaging_fee: packagingFee,
+        delivery_fee: deliveryFee,
+        total,
+        detalles: detallesPayload
+      };
+      if (estadoOverride) {
+        payload.estado = estadoOverride;
+      }
+      return {
+        payload,
+        meta: { tipoBackend, mesaStr, custPhone, custName, custAddress, custNeighborhood, subtotal, packagingFee, deliveryFee, total, detallesPayload }
+      };
+    }
+
+    // 8.0 GUARDAR / ENVIAR A COCINA (DEJAR ABIERTO EN /pedidos)
+    btnSaveOpenOrder?.addEventListener('click', async () => {
+      if (cart.length === 0) {
+        alert('Por favor agrega al menos un plato a la comanda.');
+        return;
+      }
+
+      if (currentOrderType === 'domicilio') {
+        // @ts-ignore
+        if (!custPhoneInput.value.trim() || !custNameInput.value.trim() || !custAddressInput.value.trim()) {
+          alert('Para domicilios es obligatorio indicar Teléfono, Nombre y Dirección.');
+          return;
+        }
+      }
+
+      btnSaveOpenOrder.disabled = true;
+      const origHtml = btnSaveOpenOrder.innerHTML;
+      btnSaveOpenOrder.innerHTML = '<span>Enviando a cocina y guardando...</span>';
+
+      try {
+        const { payload, meta } = buildFastapiPedidoPayload('EN_PREPARACION');
+        let savedOrder = null;
+
+        if (editingOpenOrder && editingOpenOrder.id) {
+          // Intentar actualizar el pedido abierto existente (PUT /api/pedidos/{id})
+          const putRes = await fetch(`/api/pedidos/${editingOpenOrder.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (putRes.ok) {
+            savedOrder = await putRes.json();
+          }
+        }
+
+        if (!savedOrder) {
+          const pedRes = await fetch('/api/pedidos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const pedData = await pedRes.json().catch(() => ({}));
+          if (!pedRes.ok || !pedData.id) {
+            const errMsg = pedData.detail || pedData.error || `Error HTTP ${pedRes.status} al guardar el pedido abierto.`;
+            throw new Error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
+          }
+          savedOrder = pedData;
+        }
+
+        const ticket = {
+          id: savedOrder.codigo_pedido || savedOrder.id,
+          createdAt: savedOrder.fecha_hora || new Date().toISOString(),
+          orderType: currentOrderType,
+          table: meta.mesaStr,
+          customerName: meta.custName,
+          customerPhone: meta.custPhone,
+          address: meta.custAddress,
+          neighborhood: meta.custNeighborhood,
+          items: cart.map(({ name, price, quantity, notes, packaging }) => ({
+            name,
+            price,
+            quantity,
+            notes: notes || '',
+            packaging: packaging || globalPackagingType
+          })),
+          subtotal: meta.subtotal,
+          packagingFee: meta.packagingFee,
+          packagingType: globalPackagingType,
+          packagingQty,
+          deliveryFee: meta.deliveryFee,
+          total: meta.total,
+          paymentMethod: 'PENDIENTE POR COBRAR',
+          cashPaid: 0
+        };
+
+        saveLastTicket(ticket);
+        setEditingOpenOrder(null);
+        cart = [];
+        manualPackagingOverride = false;
+        packagingQty = 0;
+        // @ts-ignore
+        if (cashReceivedInput) cashReceivedInput.value = '';
+        // @ts-ignore
+        if (llevarCustNameInput) llevarCustNameInput.value = '';
+        renderCart();
+
+        // Imprimir Comanda de Cocina automáticamente
+        printTicketType(ticket, 'kitchen');
+      } catch (err) {
+        alert('Error al guardar pedido abierto: ' + err.message);
+      } finally {
+        btnSaveOpenOrder.disabled = false;
+        btnSaveOpenOrder.innerHTML = origHtml;
+        // @ts-ignore
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+
     // CONFIRMAR PAGO (POST /api/pedidos/{id}/pagar) E IMPRIMIR SAT Q22
     btnConfirmPayment?.addEventListener('click', async () => {
       const { subtotal, packagingFee, deliveryFee, total } = calculateTotals();
@@ -2549,67 +2837,29 @@ const searchableCatalog = publicProducts.map((p) => ({
       btnConfirmPayment.innerHTML = '<span>Procesando pago y comanda...</span>';
 
       try {
-        // Mapear tipo de pedido para la base de datos en Neon (FastAPI)
-        const tipoMap = {
-          mesa: 'EN_MESA',
-          domicilio: 'DOMICILIO',
-          para_llevar: 'PARA_LLEVAR'
-        };
-        const tipoBackend = tipoMap[currentOrderType] || 'EN_MESA';
+        const { payload: pedidoFastapiPayload, meta } = buildFastapiPedidoPayload();
+        const { tipoBackend, mesaStr, custPhone, custName, custAddress, custNeighborhood, detallesPayload } = meta;
 
-        // @ts-ignore
-        const mesaStr = currentOrderType === 'mesa' ? (tableInput.value || 'Mesa') : '';
-        // @ts-ignore
-        const custPhone = currentOrderType === 'domicilio' ? custPhoneInput.value.trim() : '';
-        // @ts-ignore
-        const custName = currentOrderType === 'domicilio'
-          ? (custNameInput.value.trim() || 'Cliente Domicilio')
-          : (currentOrderType === 'para_llevar' ? 'Para Llevar' : (mesaStr || 'Cliente Mesa'));
-        // @ts-ignore
-        const custAddress = currentOrderType === 'domicilio' ? custAddressInput.value.trim() : '';
-        // @ts-ignore
-        const custNeighborhood = currentOrderType === 'domicilio' ? custNeighborhoodInput.value.trim() : '';
-
-        const notasPartes = [];
-        if (custAddress) notasPartes.push(`Dirección: ${custAddress}`);
-        if (custNeighborhood) notasPartes.push(`Barrio: ${custNeighborhood}`);
-        if (packagingFee > 0 && packagingQty > 0) {
-          notasPartes.push(`Empaques: ${packagingQty}x ${globalPackagingType} (+$${packagingFee})`);
-        }
-        const notasPedido = notasPartes.join(' | ');
-
-        const detallesPayload = cart.map((item) => ({
-          plato_id: (Number.isInteger(Number(item.plato_id || item.id)) && Number(item.plato_id || item.id) > 0)
-            ? Number(item.plato_id || item.id)
-            : 1,
-          nombre_plato: item.name,
-          cantidad: Number(item.quantity || 1),
-          precio_unitario: Number(item.price || 0),
-          notas_item: item.notes || '',
-          notas: item.notes || ''
-        }));
-
-        const pedidoFastapiPayload = {
-          tipo: tipoBackend,
-          mesa: mesaStr || null,
-          cliente_nombre: custName,
-          cliente_telefono: custPhone || null,
-          direccion: custAddress || null,
-          notas: notasPedido || null,
-          subtotal: subtotal + packagingFee,
-          packaging_fee: packagingFee,
-          delivery_fee: deliveryFee,
-          total,
-          detalles: detallesPayload
-        };
-
-        // 1. Guardar el pedido real en Neon DB (POST /api/pedidos)
+        // 1. Guardar o actualizar el pedido real en Neon DB
         const cartSignature = JSON.stringify({ tipoBackend, mesaStr, custPhone, total, detallesPayload });
         // @ts-ignore
         let savedOrder = (window.__pendingOrderSig === cartSignature && window.__pendingOrderObj?.id)
           // @ts-ignore
           ? window.__pendingOrderObj
           : null;
+
+        if (!savedOrder && editingOpenOrder && editingOpenOrder.id) {
+          const putRes = await fetch(`/api/pedidos/${editingOpenOrder.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pedidoFastapiPayload)
+          });
+          if (putRes.ok) {
+            savedOrder = await putRes.json();
+          } else {
+            savedOrder = editingOpenOrder;
+          }
+        }
 
         if (!savedOrder) {
           const pedRes = await fetch('/api/pedidos', {
@@ -2648,6 +2898,7 @@ const searchableCatalog = publicProducts.map((p) => ({
         window.__pendingOrderSig = null;
         // @ts-ignore
         window.__pendingOrderObj = null;
+        setEditingOpenOrder(null);
 
         // Sincronizar también en almacenamiento local para autocompletado de clientes por teléfono
         fetch('/api/orders', {
@@ -3258,6 +3509,114 @@ const searchableCatalog = publicProducts.map((p) => ({
       if (last) printTicketType(last, 'courier', true);
     });
 
+    // CARGAR PEDIDO ABIERTO EN EL CARRITO DESDE /pedidos (?mesa=X o ?pedido_id=Y)
+    function loadOrderObjectIntoCart(order) {
+      if (!order || !order.id) return;
+      setEditingOpenOrder(order);
+
+      if (order.tipo === 'DOMICILIO') {
+        setOrderType('domicilio');
+        // @ts-ignore
+        if (custNameInput) custNameInput.value = order.cliente_nombre || '';
+        // @ts-ignore
+        if (custPhoneInput) custPhoneInput.value = order.cliente_telefono || '';
+        // @ts-ignore
+        if (deliveryFeeInput) deliveryFeeInput.value = String(order.delivery_fee || 3000);
+        if (order.notas) {
+          const dirMatch = order.notas.match(/Direcci[oó]n:\s*([^|]+)/i);
+          // @ts-ignore
+          if (dirMatch && custAddressInput) custAddressInput.value = dirMatch[1].trim();
+        }
+      } else if (order.tipo === 'PARA_LLEVAR') {
+        setOrderType('para_llevar');
+        // @ts-ignore
+        if (llevarCustNameInput) llevarCustNameInput.value = order.cliente_nombre || '';
+      } else {
+        setOrderType('mesa');
+        if (order.mesa && tableInput) {
+          // @ts-ignore
+          tableInput.value = order.mesa;
+        }
+      }
+
+      cart = (order.detalles || []).map((det, i) => {
+        const name = det.plato?.nombre || det.nombre_plato || 'Plato';
+        const price = Number(det.precio_unitario || det.plato?.precio || 0);
+        const notes = det.notas_item || '';
+        return {
+          uid: 'open_' + order.id + '_' + i + '_' + Date.now(),
+          id: det.plato_id || name,
+          plato_id: det.plato_id,
+          name,
+          price,
+          quantity: Number(det.cantidad || 1),
+          category_id: 'fuertes_165',
+          isCustomizable: false,
+          isRapidasFood: false,
+          isJuice: false,
+          isDrink: false,
+          extraNotes: notes,
+          notes
+        };
+      });
+
+      if (order.packaging_fee && order.packaging_fee > 0) {
+        manualPackagingOverride = true;
+        packagingQty = Math.round(Number(order.packaging_fee) / packagingFeePerUnit);
+      }
+      renderCart();
+    }
+
+    async function initPosFromUrlParams() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const mesaParam = params.get('mesa');
+        const pedidoIdParam = params.get('pedido_id');
+        const tipoParam = params.get('tipo');
+
+        if (tipoParam === 'domicilio') setOrderType('domicilio');
+        else if (tipoParam === 'para_llevar') setOrderType('para_llevar');
+
+        if (mesaParam) {
+          const cleanMesa = /^\d+$/.test(mesaParam.trim()) ? `Mesa ${mesaParam.trim()}` : mesaParam.trim();
+          setOrderType('mesa');
+          if (tableInput) {
+            // @ts-ignore
+            tableInput.value = cleanMesa;
+          }
+        }
+
+        if (pedidoIdParam) {
+          const res = await fetch(`/api/pedidos/${encodeURIComponent(pedidoIdParam)}`, { cache: 'no-store' });
+          if (res.ok) {
+            const order = await res.json();
+            if (order && order.id && !['PAGADO', 'CANCELADO'].includes(order.estado)) {
+              loadOrderObjectIntoCart(order);
+              return;
+            }
+          }
+        }
+
+        if (mesaParam) {
+          const cleanMesa = /^\d+$/.test(mesaParam.trim()) ? `Mesa ${mesaParam.trim()}` : mesaParam.trim();
+          const res = await fetch('/api/pedidos?limit=150', { cache: 'no-store' });
+          if (res.ok) {
+            const list = await res.json();
+            const openForMesa = (Array.isArray(list) ? list : []).find(
+              (p) =>
+                p.tipo === 'EN_MESA' &&
+                String(p.mesa || '').toLowerCase() === cleanMesa.toLowerCase() &&
+                ['PENDIENTE', 'EN_PREPARACION', 'SERVIDO', 'EN_CAMINO'].includes(p.estado)
+            );
+            if (openForMesa) {
+              loadOrderObjectIntoCart(openForMesa);
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
     refreshReprintButton();
+    initPosFromUrlParams();
   </script>
 </StaffLayout>

@@ -117,6 +117,7 @@ const ADMIN_ONLY = [ROLE_ADMIN];
  */
 const ACCESS_RULES = [
   { prefix: '/pos', roles: STAFF, kind: 'page' },
+  { prefix: '/pedidos', roles: STAFF, kind: 'page' },
   { prefix: '/caja', roles: STAFF, kind: 'page' },
   { prefix: '/admin', roles: ADMIN_ONLY, kind: 'page' },
 

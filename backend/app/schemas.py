@@ -118,10 +118,31 @@ class MenuDiaOut(BaseModel):
 
 # --- PAGOS (PAYMENTS) ---
 
+def _normalize_payment_method(v):
+    if isinstance(v, str):
+        val = v.strip().upper()
+        if val in ("EFECTIVO", "CASH"):
+            return PaymentMethod.CASH
+        if val == "NEQUI":
+            return PaymentMethod.NEQUI
+        if val in ("BANCOLOMBIA", "QR", "AHORRO A LA MANO", "TRANSFERENCIA"):
+            return PaymentMethod.BANCOLOMBIA
+        if val == "DAVIPLATA":
+            return PaymentMethod.DAVIPLATA
+        if val in ("TARJETA", "DATAFONO", "DATÁFONO", "CARD"):
+            return PaymentMethod.CARD
+    return v
+
+
 class PaymentCreate(BaseModel):
     method: PaymentMethod
     amount: float = Field(gt=0, description="Monto recibido en este método de pago")
     change_given: float = Field(default=0.0, ge=0, description="Vueltos entregados al cliente")
+
+    @field_validator("method", mode="before")
+    @classmethod
+    def normalize_method(cls, v):
+        return _normalize_payment_method(v)
 
 class PaymentOut(BaseModel):
     id: int
@@ -174,6 +195,8 @@ class PedidoCreate(BaseModel):
     direccion: Optional[str] = None
     mesa: Optional[str] = None
     tipo: TipoPedido = TipoPedido.EN_MESA
+    estado: Optional[EstadoPedido] = None
+    courier_name: Optional[str] = None
     subtotal: Optional[float] = None
     delivery_fee: float = 0.0
     packaging_fee: float = 0.0
@@ -201,8 +224,51 @@ class PedidoApprove(BaseModel):
     cliente_telefono: Optional[str] = None
     mesa: Optional[str] = None
     tipo: Optional[TipoPedido] = None
+    courier_name: Optional[str] = None
     delivery_fee: Optional[float] = None
     packaging_fee: Optional[float] = None
+    notas: Optional[str] = None
+    detalles: Optional[List[DetallePedidoCreate]] = None
+
+
+class PedidoAssignCourier(BaseModel):
+    courier_name: Optional[str] = None
+    estado: Optional[EstadoPedido] = None
+
+
+class PedidoUpdatePaymentMethod(BaseModel):
+    method: Optional[PaymentMethod] = None
+    payment_method: Optional[PaymentMethod] = None
+    payments: Optional[List[PaymentCreate]] = None
+    cliente_nombre: Optional[str] = None
+    cliente_telefono: Optional[str] = None
+    mesa: Optional[str] = None
+    courier_name: Optional[str] = None
+    delivery_fee: Optional[float] = None
+    packaging_fee: Optional[float] = None
+    notas: Optional[str] = None
+    estado: Optional[EstadoPedido] = None
+
+    @field_validator("method", "payment_method", mode="before")
+    @classmethod
+    def normalize_method(cls, v):
+        if v is None or v == "":
+            return None
+        return _normalize_payment_method(v)
+
+
+class PedidoUpdate(BaseModel):
+    cliente_nombre: Optional[str] = None
+    cliente_telefono: Optional[str] = None
+    direccion: Optional[str] = None
+    mesa: Optional[str] = None
+    tipo: Optional[TipoPedido] = None
+    estado: Optional[EstadoPedido] = None
+    courier_name: Optional[str] = None
+    subtotal: Optional[float] = None
+    delivery_fee: Optional[float] = None
+    packaging_fee: Optional[float] = None
+    total: Optional[float] = None
     notas: Optional[str] = None
     detalles: Optional[List[DetallePedidoCreate]] = None
 
@@ -211,11 +277,13 @@ class PedidoOut(BaseModel):
     id: int
     codigo_pedido: str
     fecha_hora: datetime
+    created_at: Optional[datetime] = None
     cliente_nombre: str
     cliente_telefono: Optional[str] = None
     mesa: Optional[str] = None
     tipo: TipoPedido
     estado: EstadoPedido
+    courier_name: Optional[str] = None
     subtotal: float = 0.0
     delivery_fee: float = 0.0
     packaging_fee: float = 0.0
@@ -262,7 +330,9 @@ class CashClosureOut(BaseModel):
     initial_cash: float
     total_cash_sales: float = 0.0
     total_nequi_sales: float = 0.0
+    total_bancolombia_sales: float = 0.0
     total_daviplata_sales: float = 0.0
+    total_transfer_sales: float = 0.0
     total_card_sales: float = 0.0
     total_delivery_fees: float = 0.0
     total_delivery_payouts: float = 0.0
@@ -311,7 +381,9 @@ class DashboardStatsOut(BaseModel):
     todaySales: float = 0.0
     cashSales: float = 0.0
     digitalSales: float = 0.0
+    transferSales: float = 0.0
     nequiSales: float = 0.0
+    bancolombiaSales: float = 0.0
     daviplataSales: float = 0.0
     cardSales: float = 0.0
     todayOrderCount: int = 0

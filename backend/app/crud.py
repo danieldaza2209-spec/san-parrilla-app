@@ -221,13 +221,15 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
     menu_hoy = get_menu_dia_by_fecha(db, hoy)
     
     codigo = f"SP-{uuid.uuid4().hex[:6].upper()}"
-    estado_inicial = (
-        models.EstadoPedido.BORRADOR_WEB
-        if pedido_in.es_borrador_web
-        else models.EstadoPedido.PENDIENTE
-    )
+    if pedido_in.es_borrador_web:
+        estado_inicial = models.EstadoPedido.BORRADOR_WEB
+    elif pedido_in.estado is not None:
+        estado_inicial = pedido_in.estado
+    else:
+        estado_inicial = models.EstadoPedido.PENDIENTE
     delivery_fee = float(pedido_in.delivery_fee or 0.0)
     packaging_fee = float(pedido_in.packaging_fee or 0.0)
+    courier_name = (pedido_in.courier_name or "").strip() or None
 
     notas_pedido = pedido_in.notas or ""
     if pedido_in.direccion and pedido_in.direccion.strip():
@@ -242,6 +244,7 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         mesa=pedido_in.mesa,
         tipo=pedido_in.tipo,
         estado=estado_inicial,
+        courier_name=courier_name,
         notas=notas_pedido or None,
         subtotal=0.0,
         delivery_fee=delivery_fee,
@@ -317,6 +320,8 @@ def aprobar_pedido_borrador(
             pedido.mesa = datos_aprobacion.mesa
         if datos_aprobacion.tipo is not None:
             pedido.tipo = datos_aprobacion.tipo
+        if datos_aprobacion.courier_name is not None:
+            pedido.courier_name = datos_aprobacion.courier_name.strip() or None
         if datos_aprobacion.delivery_fee is not None:
             pedido.delivery_fee = float(datos_aprobacion.delivery_fee)
         if datos_aprobacion.packaging_fee is not None:
@@ -382,6 +387,250 @@ def aprobar_pedido_borrador(
     return pedido
 
 
+def asignar_mensajero_pedido(
+    db: Session,
+    pedido_id: int,
+    data: schemas.PedidoAssignCourier,
+) -> models.Pedido:
+    pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
+    if not pedido:
+        raise LookupError("Pedido no encontrado.")
+
+    if data.courier_name is not None:
+        pedido.courier_name = data.courier_name.strip() or None
+    if data.estado is not None:
+        pedido.estado = data.estado
+
+    db.commit()
+    db.refresh(pedido)
+    return pedido
+
+
+def actualizar_pedido(
+    db: Session,
+    pedido_id: int,
+    data: schemas.PedidoUpdate,
+) -> models.Pedido:
+    pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
+    if not pedido:
+        raise LookupError("Pedido no encontrado.")
+
+    if data.cliente_nombre is not None:
+        pedido.cliente_nombre = data.cliente_nombre
+    if data.cliente_telefono is not None:
+        pedido.cliente_telefono = data.cliente_telefono
+    if data.mesa is not None:
+        pedido.mesa = data.mesa
+    if data.tipo is not None:
+        pedido.tipo = data.tipo
+    if data.courier_name is not None:
+        pedido.courier_name = data.courier_name.strip() or None
+    if data.delivery_fee is not None:
+        pedido.delivery_fee = float(data.delivery_fee)
+    if data.packaging_fee is not None:
+        pedido.packaging_fee = float(data.packaging_fee)
+    if data.notas is not None:
+        notas_str = data.notas
+        if data.direccion and data.direccion.strip() and data.direccion.strip() not in notas_str:
+            notas_str = f"Dirección: {data.direccion.strip()}" + (f" | {notas_str}" if notas_str else "")
+        pedido.notas = notas_str or None
+    elif data.direccion and data.direccion.strip():
+        cur_notas = pedido.notas or ""
+        if data.direccion.strip() not in cur_notas:
+            pedido.notas = f"Dirección: {data.direccion.strip()}" + (f" | {cur_notas}" if cur_notas else "")
+
+    if data.detalles is not None and len(data.detalles) > 0:
+        db.query(models.DetallePedido).filter(
+            models.DetallePedido.pedido_id == pedido.id
+        ).delete()
+        db.flush()
+
+        nuevo_subtotal = 0.0
+        for det in data.detalles:
+            plato = _resolver_o_crear_plato(db, det.plato_id, det.nombre_plato, det.precio_unitario)
+            if not plato:
+                continue
+            precio_item = (
+                float(det.precio_unitario)
+                if (det.precio_unitario is not None and det.precio_unitario > 0)
+                else float(plato.precio)
+            )
+            nuevo_subtotal += precio_item * det.cantidad
+            notas_item = det.notas_item if det.notas_item is not None else det.notas
+            detalle_db = models.DetallePedido(
+                pedido_id=pedido.id,
+                plato_id=plato.id,
+                sopa_id=det.sopa_id,
+                principio_id=det.principio_id,
+                acompanamiento_id=det.acompanamiento_id,
+                cantidad=det.cantidad,
+                precio_unitario=precio_item,
+                notas_item=notas_item,
+            )
+            db.add(detalle_db)
+        db.flush()
+        pedido.subtotal = nuevo_subtotal
+
+    pedido.delivery_fee = float(pedido.delivery_fee or 0.0)
+    pedido.packaging_fee = float(pedido.packaging_fee or 0.0)
+    if not pedido.subtotal and pedido.detalles:
+        pedido.subtotal = sum(d.precio_unitario * d.cantidad for d in pedido.detalles)
+    pedido.total = float(pedido.subtotal or 0.0) + pedido.delivery_fee + pedido.packaging_fee
+
+    affected_closure_ids = {p.cash_closure_id for p in (pedido.payments or []) if p.cash_closure_id}
+    if data.estado is not None:
+        pedido.estado = data.estado
+        if data.estado == models.EstadoPedido.CANCELADO:
+            db.query(models.Payment).filter(models.Payment.pedido_id == pedido.id).delete()
+            db.flush()
+    elif pedido.payments and len(pedido.payments) == 1:
+        pedido.payments[0].amount = float(pedido.total)
+        db.flush()
+
+    activa = get_active_cash_closure(db)
+    if activa:
+        affected_closure_ids.add(activa.id)
+
+    for cid in affected_closure_ids:
+        closure = db.query(models.CashClosure).filter(models.CashClosure.id == cid).first()
+        if closure:
+            calcular_resumen_caja(db, closure)
+
+    db.commit()
+    db.refresh(pedido)
+    return pedido
+
+
+def cambiar_metodo_pago_pedido(
+    db: Session,
+    pedido_id: int,
+    data: schemas.PedidoUpdatePaymentMethod,
+) -> models.Pedido:
+    pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
+    if not pedido:
+        raise LookupError("Pedido no encontrado.")
+
+    if data.cliente_nombre is not None:
+        pedido.cliente_nombre = data.cliente_nombre
+    if data.cliente_telefono is not None:
+        pedido.cliente_telefono = data.cliente_telefono
+    if data.mesa is not None:
+        pedido.mesa = data.mesa
+    if data.courier_name is not None:
+        pedido.courier_name = data.courier_name.strip() or None
+    if data.delivery_fee is not None:
+        pedido.delivery_fee = float(data.delivery_fee)
+    if data.packaging_fee is not None:
+        pedido.packaging_fee = float(data.packaging_fee)
+    if data.notas is not None:
+        pedido.notas = data.notas
+
+    pedido.delivery_fee = float(pedido.delivery_fee or 0.0)
+    pedido.packaging_fee = float(pedido.packaging_fee or 0.0)
+    if not pedido.subtotal and pedido.detalles:
+        pedido.subtotal = sum(d.precio_unitario * d.cantidad for d in pedido.detalles)
+    pedido.total = float(pedido.subtotal or 0.0) + pedido.delivery_fee + pedido.packaging_fee
+
+    pagos_existentes = (
+        db.query(models.Payment)
+        .filter(models.Payment.pedido_id == pedido.id)
+        .order_by(models.Payment.id.asc())
+        .all()
+    )
+    affected_closure_ids = {p.cash_closure_id for p in pagos_existentes if p.cash_closure_id}
+    caja_activa = get_active_cash_closure(db)
+    if caja_activa:
+        affected_closure_ids.add(caja_activa.id)
+
+    # Si el administrador decide ANULAR / CANCELAR el pedido
+    if data.estado == models.EstadoPedido.CANCELADO:
+        for p in pagos_existentes:
+            db.delete(p)
+        pedido.estado = models.EstadoPedido.CANCELADO
+        db.flush()
+        for cid in affected_closure_ids:
+            closure = db.query(models.CashClosure).filter(models.CashClosure.id == cid).first()
+            if closure:
+                calcular_resumen_caja(db, closure)
+        db.commit()
+        db.refresh(pedido)
+        return pedido
+
+    target_method = data.method or data.payment_method
+    target_closure_id = (
+        pagos_existentes[0].cash_closure_id
+        if pagos_existentes
+        else (caja_activa.id if caja_activa else None)
+    )
+    if not target_closure_id:
+        last_closure = (
+            db.query(models.CashClosure)
+            .order_by(models.CashClosure.opened_at.desc(), models.CashClosure.id.desc())
+            .first()
+        )
+        if last_closure:
+            target_closure_id = last_closure.id
+            affected_closure_ids.add(last_closure.id)
+
+    if data.payments and len(data.payments) > 0:
+        if not target_closure_id:
+            raise ValueError("No hay una sesión de caja disponible para vincular el pago.")
+        for p in pagos_existentes:
+            db.delete(p)
+        db.flush()
+        for p_in in data.payments:
+            db.add(
+                models.Payment(
+                    pedido_id=pedido.id,
+                    cash_closure_id=target_closure_id,
+                    method=p_in.method,
+                    amount=float(p_in.amount),
+                    change_given=float(p_in.change_given or 0.0),
+                )
+            )
+        pedido.estado = data.estado or models.EstadoPedido.PAGADO
+    elif target_method is not None:
+        if pagos_existentes:
+            primary_payment = pagos_existentes[0]
+            primary_payment.method = target_method
+            primary_payment.amount = float(pedido.total or 0.0)
+            if target_method != models.PaymentMethod.CASH:
+                primary_payment.change_given = 0.0
+            for extra_p in pagos_existentes[1:]:
+                db.delete(extra_p)
+        else:
+            if not target_closure_id:
+                raise ValueError("No hay una sesión de caja abierta para registrar este pago.")
+            db.add(
+                models.Payment(
+                    pedido_id=pedido.id,
+                    cash_closure_id=target_closure_id,
+                    method=target_method,
+                    amount=float(pedido.total or 0.0),
+                    change_given=0.0,
+                )
+            )
+        pedido.estado = data.estado or models.EstadoPedido.PAGADO
+    else:
+        # Si solo se actualizaron datos del pedido (ej. delivery_fee) y tiene 1 pago, ajustar su monto
+        if len(pagos_existentes) == 1:
+            pagos_existentes[0].amount = float(pedido.total or 0.0)
+        if data.estado is not None:
+            pedido.estado = data.estado
+
+    db.flush()
+
+    # CRÍTICO CONTABLE: Recalcular inmediatamente todas las cajas afectadas
+    for cid in affected_closure_ids:
+        closure = db.query(models.CashClosure).filter(models.CashClosure.id == cid).first()
+        if closure:
+            calcular_resumen_caja(db, closure)
+
+    db.commit()
+    db.refresh(pedido)
+    return pedido
+
+
 # --- CIERRES DE CAJA (CASH CLOSURES) Y PAGOS (PAYMENTS) ---
 
 def get_active_cash_closure(db: Session) -> Optional[models.CashClosure]:
@@ -400,20 +649,29 @@ def calcular_resumen_caja(db: Session, closure: models.CashClosure) -> schemas.C
     """
     pagos = (
         db.query(models.Payment)
-        .filter(models.Payment.cash_closure_id == closure.id)
+        .join(models.Pedido, models.Payment.pedido_id == models.Pedido.id)
+        .filter(
+            models.Payment.cash_closure_id == closure.id,
+            models.Pedido.estado != models.EstadoPedido.CANCELADO,
+        )
         .all()
     )
 
     total_cash = sum(p.amount for p in pagos if p.method == models.PaymentMethod.CASH)
     total_nequi = sum(p.amount for p in pagos if p.method == models.PaymentMethod.NEQUI)
+    total_bancolombia = sum(p.amount for p in pagos if p.method == models.PaymentMethod.BANCOLOMBIA)
     total_daviplata = sum(p.amount for p in pagos if p.method == models.PaymentMethod.DAVIPLATA)
+    total_transfer = total_nequi + total_bancolombia + total_daviplata
     total_card = sum(p.amount for p in pagos if p.method == models.PaymentMethod.CARD)
 
     pedido_ids = {p.pedido_id for p in pagos}
     if pedido_ids:
         pedidos_caja = (
             db.query(models.Pedido)
-            .filter(models.Pedido.id.in_(pedido_ids))
+            .filter(
+                models.Pedido.id.in_(pedido_ids),
+                models.Pedido.estado != models.EstadoPedido.CANCELADO,
+            )
             .all()
         )
     else:
@@ -431,18 +689,22 @@ def calcular_resumen_caja(db: Session, closure: models.CashClosure) -> schemas.C
     total_delivery_payouts = sum(float(ped.delivery_fee or 0.0) for ped in pedidos_caja)
     total_delivery_fees = total_delivery_payouts
     subtotal_sales = sum(float(ped.subtotal or 0.0) + float(ped.packaging_fee or 0.0) for ped in pedidos_caja)
-    total_sales = total_cash + total_nequi + total_daviplata + total_card
+    total_sales = total_cash + total_transfer + total_card
     expected_cash = float(closure.initial_cash or 0.0) + total_cash - total_delivery_payouts - total_expenses
 
     # Sincronizar campos acumulados en el modelo
     closure.total_cash_sales = total_cash
     closure.total_nequi_sales = total_nequi
+    closure.total_bancolombia_sales = total_bancolombia
     closure.total_daviplata_sales = total_daviplata
+    closure.total_transfer_sales = total_transfer
     closure.total_card_sales = total_card
     closure.total_delivery_fees = total_delivery_fees
     closure.total_delivery_payouts = total_delivery_payouts
     closure.total_expenses = total_expenses
     closure.expected_cash = expected_cash
+    if closure.counted_cash is not None:
+        closure.discrepancy = float(closure.counted_cash) - expected_cash
 
     return schemas.CashClosureOut(
         id=closure.id,
@@ -452,7 +714,9 @@ def calcular_resumen_caja(db: Session, closure: models.CashClosure) -> schemas.C
         initial_cash=closure.initial_cash,
         total_cash_sales=total_cash,
         total_nequi_sales=total_nequi,
+        total_bancolombia_sales=total_bancolombia,
         total_daviplata_sales=total_daviplata,
+        total_transfer_sales=total_transfer,
         total_card_sales=total_card,
         total_delivery_fees=total_delivery_fees,
         total_delivery_payouts=total_delivery_payouts,
@@ -479,7 +743,9 @@ def open_cash_closure(db: Session, open_in: schemas.CashClosureOpen) -> models.C
         initial_cash=initial_cash,
         total_cash_sales=0.0,
         total_nequi_sales=0.0,
+        total_bancolombia_sales=0.0,
         total_daviplata_sales=0.0,
+        total_transfer_sales=0.0,
         total_card_sales=0.0,
         total_delivery_fees=0.0,
         total_delivery_payouts=0.0,
@@ -710,9 +976,11 @@ def obtener_estadisticas_dashboard(db: Session) -> schemas.DashboardStatsOut:
 
     cash_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.CASH)
     nequi_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.NEQUI)
+    bancolombia_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.BANCOLOMBIA)
     daviplata_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.DAVIPLATA)
     card_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.CARD)
-    digital_sales = nequi_sales + daviplata_sales + card_sales
+    transfer_sales = nequi_sales + bancolombia_sales + daviplata_sales
+    digital_sales = transfer_sales + card_sales
     today_sales = cash_sales + digital_sales
 
     pedido_ids_hoy = {p.pedido_id for p in pagos_hoy}
@@ -762,7 +1030,9 @@ def obtener_estadisticas_dashboard(db: Session) -> schemas.DashboardStatsOut:
         todaySales=today_sales,
         cashSales=cash_sales,
         digitalSales=digital_sales,
+        transferSales=transfer_sales,
         nequiSales=nequi_sales,
+        bancolombiaSales=bancolombia_sales,
         daviplataSales=daviplata_sales,
         cardSales=card_sales,
         todayOrderCount=today_order_count,

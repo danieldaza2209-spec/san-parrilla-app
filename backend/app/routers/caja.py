@@ -124,6 +124,24 @@ def pagar_pedido_en_caja(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.patch("/payment-method/{pedido_id}", response_model=schemas.PedidoOut)
+@router.post("/payment-method/{pedido_id}", response_model=schemas.PedidoOut)
+def cambiar_metodo_pago_en_caja(
+    pedido_id: int,
+    payload: schemas.PedidoUpdatePaymentMethod,
+    db: Session = Depends(get_db),
+):
+    """
+    Actualiza el medio de pago de un pedido ya cobrado y recalcula inmediatamente la sesión de caja activa.
+    """
+    try:
+        return crud.cambiar_metodo_pago_pedido(db, pedido_id, payload)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/stats", response_model=schemas.DashboardStatsOut)
 def obtener_metricas_dashboard_caja(db: Session = Depends(get_db)):
     """

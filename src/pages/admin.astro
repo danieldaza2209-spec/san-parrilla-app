@@ -91,6 +91,257 @@ const formatPrice = (val) => {
       </div>
     </div>
 
+    <!-- 1.5 AUDITORÍA DE PEDIDOS DEL DÍA & MEDIOS DE PAGO -->
+    <div class="bg-parrilla-surface rounded-2xl border border-parrilla-border p-6 shadow-xl mb-10">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 mb-5 border-b border-parrilla-border">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xl">📋</span>
+            <h2 class="font-display font-black text-xl sm:text-2xl text-parrilla-ivory">Auditoría de Pedidos del Día & Medios de Pago</h2>
+          </div>
+          <p class="text-xs text-parrilla-muted mt-1">
+            Filtra ventas por medio de pago y corrige en 1 clic cualquier pedido mal cerrado (recalcula automáticamente el arqueo de Caja).
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div class="relative w-full sm:w-64">
+            <i data-lucide="search" class="w-4 h-4 text-parrilla-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input
+              type="text"
+              id="audit-search-input"
+              placeholder="Buscar #SP, cliente, mesa, mensajero..."
+              class="w-full pl-9 pr-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+          </div>
+          <button
+            type="button"
+            id="btn-refresh-audit"
+            class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-parrilla-ivory font-bold text-xs px-3.5 py-2 rounded-xl border border-parrilla-border shadow-sm transition"
+          >
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-parrilla-gold"></i>
+            <span>Sincronizar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Pestañas / Filtros por Medio de Pago con suma total al lado -->
+      <div class="flex flex-wrap items-center gap-2 mb-5" id="audit-payment-tabs">
+        <button
+          type="button"
+          data-filter="ALL"
+          class="audit-tab-btn active px-3.5 py-2 rounded-xl font-bold text-xs border transition flex items-center gap-2 bg-parrilla-gold text-white border-parrilla-gold shadow-sm"
+        >
+          <span>Todos</span>
+          <span id="tab-sum-ALL" class="px-2 py-0.5 rounded-lg bg-black/20 text-white font-mono text-[11px]">$0</span>
+        </button>
+
+        <button
+          type="button"
+          data-filter="CASH"
+          class="audit-tab-btn px-3.5 py-2 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-emerald-500 transition flex items-center gap-2"
+        >
+          <span>💵 Efectivo</span>
+          <span id="tab-sum-CASH" class="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 font-mono text-[11px]">$0</span>
+        </button>
+
+        <button
+          type="button"
+          data-filter="NEQUI"
+          class="audit-tab-btn px-3.5 py-2 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-purple-500 transition flex items-center gap-2"
+        >
+          <span>🟣 Nequi</span>
+          <span id="tab-sum-NEQUI" class="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-900 font-mono text-[11px]">$0</span>
+        </button>
+
+        <button
+          type="button"
+          data-filter="BANCOLOMBIA"
+          class="audit-tab-btn px-3.5 py-2 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-amber-500 transition flex items-center gap-2"
+        >
+          <span>🟡 Bancolombia</span>
+          <span id="tab-sum-BANCOLOMBIA" class="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 font-mono text-[11px]">$0</span>
+        </button>
+
+        <button
+          type="button"
+          data-filter="DAVIPLATA"
+          class="audit-tab-btn px-3.5 py-2 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-rose-500 transition flex items-center gap-2"
+        >
+          <span>🔴 Daviplata</span>
+          <span id="tab-sum-DAVIPLATA" class="px-2 py-0.5 rounded-lg bg-rose-100 text-rose-900 font-mono text-[11px]">$0</span>
+        </button>
+
+        <button
+          type="button"
+          data-filter="CARD"
+          class="audit-tab-btn px-3.5 py-2 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-blue-500 transition flex items-center gap-2"
+        >
+          <span>💳 Datáfono / Tarjeta</span>
+          <span id="tab-sum-CARD" class="px-2 py-0.5 rounded-lg bg-blue-100 text-blue-900 font-mono text-[11px]">$0</span>
+        </button>
+      </div>
+
+      <!-- Banner de confirmación de cambio contable -->
+      <div id="audit-toast" class="hidden mb-4 px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center justify-between">
+        <span id="audit-toast-text">✓ Medio de pago actualizado y arqueo de caja recalculado al instante.</span>
+        <a href="/caja" class="underline font-black hover:text-emerald-700">Ver en Caja →</a>
+      </div>
+
+      <!-- Tabla Interactiva de Pedidos del Día / Turno -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-parrilla-border text-parrilla-muted uppercase font-bold text-[11px]">
+              <th class="py-3 px-2.5">Hora</th>
+              <th class="py-3 px-2.5">Código</th>
+              <th class="py-3 px-2.5">Tipo</th>
+              <th class="py-3 px-2.5">Cliente / Mensajero</th>
+              <th class="py-3 px-2.5">Platos</th>
+              <th class="py-3 px-2.5 text-right">Total</th>
+              <th class="py-3 px-2.5">Medio de Pago (1 Clic)</th>
+              <th class="py-3 px-2.5 text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="audit-orders-tbody" class="divide-y divide-parrilla-border/50">
+            <tr>
+              <td colspan="8" class="py-8 text-center text-parrilla-muted italic">
+                Cargando pedidos del turno y día actual...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal de Edición / Detalle de Pedido en Admin -->
+    <div id="modal-admin-edit-order" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+      <div class="bg-parrilla-surface border border-parrilla-border rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-parrilla-border">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-parrilla-gold">Auditoría Contable & Operativa</span>
+            <h3 id="modal-edit-title" class="font-display font-black text-xl text-parrilla-ivory">Editar Pedido #SP-0</h3>
+          </div>
+          <button type="button" id="btn-close-edit-modal" class="text-parrilla-muted hover:text-parrilla-ivory p-1">✕</button>
+        </div>
+
+        <form id="form-admin-edit-order" class="space-y-4">
+          <input type="hidden" id="edit-order-id" />
+
+          <div>
+            <label class="block text-xs font-bold uppercase text-parrilla-gold mb-1.5">Medio de Pago Contabilizado *</label>
+            <select
+              id="edit-order-method"
+              class="w-full px-3.5 py-2.5 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            >
+              <option value="CASH">💵 Efectivo (Suma a Efectivo en Caja)</option>
+              <option value="NEQUI">🟣 Nequi (Transferencia Digital)</option>
+              <option value="BANCOLOMBIA">🟡 Bancolombia / QR / Ahorro a la Mano</option>
+              <option value="DAVIPLATA">🔴 Daviplata (Transferencia Digital)</option>
+              <option value="CARD">💳 Datáfono / Tarjeta</option>
+            </select>
+            <span class="text-[11px] text-parrilla-muted mt-1 block">
+              Al cambiar el medio de pago, la sesión activa de Caja recalcula efectivo esperado y transferencias de inmediato.
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold uppercase text-parrilla-muted mb-1">Cliente</label>
+              <input
+                type="text"
+                id="edit-order-cliente"
+                class="w-full px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase text-parrilla-muted mb-1">Teléfono</label>
+              <input
+                type="text"
+                id="edit-order-telefono"
+                class="w-full px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold uppercase text-parrilla-muted mb-1">Mesa / Dirección</label>
+              <input
+                type="text"
+                id="edit-order-mesa"
+                class="w-full px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase text-parrilla-muted mb-1">🛵 Mensajero (Domicilio)</label>
+              <input
+                type="text"
+                id="edit-order-courier"
+                placeholder="Sin asignar"
+                class="w-full px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold uppercase text-parrilla-muted mb-1">Costo Domicilio ($)</label>
+              <input
+                type="number"
+                id="edit-order-delivery-fee"
+                min="0"
+                step="500"
+                class="w-full px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase text-parrilla-muted mb-1">Estado del Pedido</label>
+              <select
+                id="edit-order-estado"
+                class="w-full px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              >
+                <option value="PAGADO">✅ PAGADO (Cobrado)</option>
+                <option value="ENTREGADO">🛵 ENTREGADO (Cobrado)</option>
+                <option value="EN_PREPARACION">🍳 EN PREPARACIÓN (Abierto)</option>
+                <option value="EN_CAMINO">🛵 EN CAMINO (Abierto)</option>
+                <option value="PENDIENTE">⏳ PENDIENTE (Abierto)</option>
+                <option value="CANCELADO">🚫 ANULADO / CANCELADO</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase text-parrilla-muted mb-1">Notas / Observaciones</label>
+            <input
+              type="text"
+              id="edit-order-notas"
+              class="w-full px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+          </div>
+
+          <div id="edit-order-dishes-summary" class="p-3 rounded-xl bg-parrilla-dark border border-parrilla-border text-xs text-parrilla-ivory space-y-1"></div>
+
+          <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-parrilla-border">
+            <button
+              type="button"
+              id="btn-cancel-edit-modal"
+              class="px-4 py-2.5 rounded-xl border border-parrilla-border text-xs font-bold text-parrilla-muted hover:text-parrilla-ivory"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              id="btn-submit-edit-modal"
+              class="px-5 py-2.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white text-xs font-black shadow-md transition"
+            >
+              💾 Guardar Cambios y Recalcular Caja
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- 2. RANKING PLATOS TOP & EDITOR DE ESPECIALES -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">
       
@@ -403,9 +654,385 @@ const formatPrice = (val) => {
     });
 
     // =====================================================================
-    // SINCRONIZACIÓN EN VIVO CON NEON DB & CAJA ACTIVA (/admin)
+    // SINCRONIZACIÓN EN VIVO CON NEON DB, AUDITORÍA DE PEDIDOS & CAJA (/admin)
     // =====================================================================
     const fmtCOP = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
+
+    let allAuditOrders = [];
+    let currentPaymentFilter = 'ALL';
+    let currentSearchQuery = '';
+
+    const METHOD_LABELS = {
+      CASH: '💵 Efectivo',
+      NEQUI: '🟣 Nequi',
+      BANCOLOMBIA: '🟡 Bancolombia',
+      DAVIPLATA: '🔴 Daviplata',
+      CARD: '💳 Datáfono / Tarjeta'
+    };
+
+    function getOrderPrimaryMethod(p) {
+      if (Array.isArray(p.payments) && p.payments.length > 0) {
+        return String(p.payments[p.payments.length - 1].method || 'CASH').toUpperCase();
+      }
+      return 'PENDIENTE';
+    }
+
+    function formatHoraBogota(isoStr) {
+      if (!isoStr) return '--:--';
+      const raw = (typeof isoStr === 'string' && !isoStr.endsWith('Z') && !isoStr.includes('+') && !isoStr.includes('-', 10))
+        ? isoStr + 'Z'
+        : isoStr;
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return '--:--';
+      return d.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function showAuditToast(msg) {
+      const toast = document.getElementById('audit-toast');
+      const text = document.getElementById('audit-toast-text');
+      if (text && msg) text.textContent = msg;
+      if (toast) {
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), 6000);
+      }
+    }
+
+    function updateAuditTabsAndRender() {
+      const sums = {
+        ALL: 0,
+        CASH: 0,
+        NEQUI: 0,
+        BANCOLOMBIA: 0,
+        DAVIPLATA: 0,
+        CARD: 0
+      };
+
+      for (const p of allAuditOrders) {
+        if (p.estado === 'CANCELADO') continue;
+        if (Array.isArray(p.payments) && p.payments.length > 0) {
+          for (const pay of p.payments) {
+            const m = String(pay.method || 'CASH').toUpperCase();
+            const amt = Number(pay.amount || p.total || 0);
+            sums.ALL += amt;
+            if (sums[m] !== undefined) sums[m] += amt;
+          }
+        }
+      }
+
+      Object.keys(sums).forEach(k => {
+        const el = document.getElementById(`tab-sum-${k}`);
+        if (el) el.textContent = fmtCOP(sums[k]);
+      });
+
+      const tbody = document.getElementById('audit-orders-tbody');
+      if (!tbody) return;
+
+      const filtered = allAuditOrders.filter(p => {
+        const method = getOrderPrimaryMethod(p);
+        if (currentPaymentFilter !== 'ALL') {
+          const hasMethod = (Array.isArray(p.payments) && p.payments.some(pay => String(pay.method).toUpperCase() === currentPaymentFilter))
+            || method === currentPaymentFilter;
+          if (!hasMethod) return false;
+        }
+        if (currentSearchQuery) {
+          const hay = [
+            `#sp-${p.id}`,
+            String(p.id),
+            p.cliente_nombre || '',
+            p.cliente_telefono || '',
+            p.mesa || '',
+            p.courier_name || '',
+            p.tipo || '',
+            method
+          ].join(' ').toLowerCase();
+          if (!hay.includes(currentSearchQuery)) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="py-8 text-center text-parrilla-muted italic">
+              No hay pedidos registrados para este filtro en el turno/día actual.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(p => {
+        const hora = formatHoraBogota(p.fecha_hora || p.created_at);
+        const method = getOrderPrimaryMethod(p);
+        const isCancelled = p.estado === 'CANCELADO';
+        const isPaid = p.estado === 'PAGADO' || p.estado === 'ENTREGADO' || (Array.isArray(p.payments) && p.payments.length > 0);
+
+        let tipoBadge = '';
+        if (p.tipo === 'MESA') {
+          tipoBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 font-bold text-[11px]">🍽️ ${p.mesa || 'Mesa'}</span>`;
+        } else if (p.tipo === 'DOMICILIO') {
+          tipoBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-100 text-blue-900 font-bold text-[11px]">🛵 Domicilio</span>`;
+        } else {
+          tipoBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-100 text-purple-900 font-bold text-[11px]">🛍️ Para Llevar</span>`;
+        }
+
+        const estadoChip = isCancelled
+          ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 text-[10px] font-bold">ANULADO</span>`
+          : isPaid
+            ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">PAGADO</span>`
+            : `<span class="ml-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">${p.estado}</span>`;
+
+        const platosStr = (p.detalles || []).map(d => {
+          const n = d.plato?.nombre || d.nombre_plato || `Plato #${d.plato_id}`;
+          return `${d.cantidad}x ${n}`;
+        }).join(', ') || 'Sin detalles';
+
+        const courierHtml = (p.tipo === 'DOMICILIO' && p.courier_name)
+          ? `<span class="block text-[11px] font-bold text-blue-700 mt-0.5">🛵 Mensajero: ${p.courier_name}</span>`
+          : (p.tipo === 'DOMICILIO' ? `<span class="block text-[10px] text-parrilla-muted mt-0.5">🛵 Sin mensajero asignado</span>` : '');
+
+        const dirHtml = (p.tipo === 'DOMICILIO' && p.mesa)
+          ? `<span class="block text-[10px] text-parrilla-muted truncate max-w-[200px]" title="${p.mesa}">📍 ${p.mesa}</span>`
+          : '';
+
+        return `
+          <tr class="hover:bg-parrilla-dark/50 transition ${isCancelled ? 'opacity-50 line-through' : ''}">
+            <td class="py-3 px-2.5 font-mono text-parrilla-muted whitespace-nowrap">${hora}</td>
+            <td class="py-3 px-2.5 whitespace-nowrap">
+              <span class="font-mono font-black text-parrilla-ivory">#SP-${p.id}</span>
+              ${estadoChip}
+            </td>
+            <td class="py-3 px-2.5 whitespace-nowrap">${tipoBadge}</td>
+            <td class="py-3 px-2.5">
+              <div class="font-bold text-parrilla-ivory">${p.cliente_nombre || 'Cliente General'}</div>
+              ${p.cliente_telefono ? `<span class="text-[11px] text-parrilla-muted font-mono">📞 ${p.cliente_telefono}</span>` : ''}
+              ${dirHtml}
+              ${courierHtml}
+            </td>
+            <td class="py-3 px-2.5 max-w-xs">
+              <div class="text-xs text-parrilla-ivory line-clamp-2" title="${platosStr}">${platosStr}</div>
+            </td>
+            <td class="py-3 px-2.5 text-right font-display font-black text-sm text-parrilla-gold whitespace-nowrap">
+              ${fmtCOP(p.total || 0)}
+            </td>
+            <td class="py-3 px-2.5 whitespace-nowrap">
+              <select
+                class="audit-inline-method-select px-2.5 py-1.5 rounded-xl border border-parrilla-border bg-white text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none shadow-sm cursor-pointer"
+                data-order-id="${p.id}"
+                ${isCancelled ? 'disabled' : ''}
+              >
+                ${!isPaid ? `<option value="PENDIENTE" selected>⏳ Pendiente de Cobro</option>` : ''}
+                <option value="CASH" ${method === 'CASH' ? 'selected' : ''}>💵 Efectivo</option>
+                <option value="NEQUI" ${method === 'NEQUI' ? 'selected' : ''}>🟣 Nequi</option>
+                <option value="BANCOLOMBIA" ${method === 'BANCOLOMBIA' ? 'selected' : ''}>🟡 Bancolombia</option>
+                <option value="DAVIPLATA" ${method === 'DAVIPLATA' ? 'selected' : ''}>🔴 Daviplata</option>
+                <option value="CARD" ${method === 'CARD' ? 'selected' : ''}>💳 Datáfono / Tarjeta</option>
+              </select>
+            </td>
+            <td class="py-3 px-2.5 text-right whitespace-nowrap">
+              <button
+                type="button"
+                class="btn-open-edit-order inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-parrilla-gold text-parrilla-ivory hover:text-white border border-parrilla-border font-bold text-xs shadow-sm transition"
+                data-order-id="${p.id}"
+              >
+                ✏️ Editar
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Bind 1-click inline payment method selector
+      tbody.querySelectorAll('.audit-inline-method-select').forEach(sel => {
+        sel.addEventListener('change', async (e) => {
+          // @ts-ignore
+          const selectEl = e.target;
+          const orderId = Number(selectEl.getAttribute('data-order-id'));
+          const newMethod = selectEl.value;
+          if (!orderId || newMethod === 'PENDIENTE') return;
+          selectEl.disabled = true;
+          try {
+            await changeOrderPaymentMethodAndDetails(orderId, { payment_method: newMethod });
+            showAuditToast(`✓ Pedido #SP-${orderId} actualizado a ${METHOD_LABELS[newMethod] || newMethod}. Arqueo de Caja recalculado.`);
+          } catch (err) {
+            alert('Error al cambiar medio de pago: ' + (err.message || err));
+          } finally {
+            selectEl.disabled = false;
+            await loadLiveAdminMetrics();
+          }
+        });
+      });
+
+      // Bind Edit Modal buttons
+      tbody.querySelectorAll('.btn-open-edit-order').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const orderId = Number(btn.getAttribute('data-order-id'));
+          openEditOrderModal(orderId);
+        });
+      });
+    }
+
+    async function changeOrderPaymentMethodAndDetails(orderId, payload) {
+      // 1. Intentar PATCH /api/pedidos/{id}/payment-method
+      const res = await fetch(`/api/pedidos/${orderId}/payment-method`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+      // 2. Fallback a POST /api/pedidos/{id}/approve si el backend aún está redesplegando
+      const fallbackRes = await fetch(`/api/pedidos/${orderId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_method: payload.payment_method })
+      });
+      if (fallbackRes.ok) {
+        return await fallbackRes.json();
+      }
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || 'No se pudo actualizar el pedido');
+    }
+
+    function openEditOrderModal(orderId) {
+      const order = allAuditOrders.find(o => Number(o.id) === Number(orderId));
+      if (!order) return;
+
+      const modal = document.getElementById('modal-admin-edit-order');
+      const title = document.getElementById('modal-edit-title');
+      // @ts-ignore
+      const idInput = document.getElementById('edit-order-id');
+      // @ts-ignore
+      const methodSelect = document.getElementById('edit-order-method');
+      // @ts-ignore
+      const clienteInput = document.getElementById('edit-order-cliente');
+      // @ts-ignore
+      const telInput = document.getElementById('edit-order-telefono');
+      // @ts-ignore
+      const mesaInput = document.getElementById('edit-order-mesa');
+      // @ts-ignore
+      const courierInput = document.getElementById('edit-order-courier');
+      // @ts-ignore
+      const feeInput = document.getElementById('edit-order-delivery-fee');
+      // @ts-ignore
+      const estadoSelect = document.getElementById('edit-order-estado');
+      // @ts-ignore
+      const notasInput = document.getElementById('edit-order-notas');
+      const dishesSummary = document.getElementById('edit-order-dishes-summary');
+
+      if (title) title.textContent = `Editar Pedido #SP-${order.id} (${fmtCOP(order.total || 0)})`;
+      if (idInput) idInput.value = String(order.id);
+      const curMethod = getOrderPrimaryMethod(order);
+      if (methodSelect) methodSelect.value = curMethod === 'PENDIENTE' ? 'CASH' : curMethod;
+      if (clienteInput) clienteInput.value = order.cliente_nombre || '';
+      if (telInput) telInput.value = order.cliente_telefono || '';
+      if (mesaInput) mesaInput.value = order.mesa || '';
+      if (courierInput) courierInput.value = order.courier_name || '';
+      if (feeInput) feeInput.value = String(order.delivery_fee || 0);
+      if (estadoSelect) estadoSelect.value = order.estado || 'PAGADO';
+      if (notasInput) notasInput.value = order.notas || '';
+
+      if (dishesSummary) {
+        const itemsHtml = (order.detalles || []).map(d => {
+          const n = d.plato?.nombre || d.nombre_plato || `Plato #${d.plato_id}`;
+          return `<div class="flex justify-between"><span>${d.cantidad}x ${n}</span><span class="font-mono font-bold">${fmtCOP((d.precio_unitario || 0) * (d.cantidad || 1))}</span></div>`;
+        }).join('');
+        dishesSummary.innerHTML = `
+          <div class="text-[10px] font-bold uppercase text-parrilla-gold mb-1">Detalle de Platos</div>
+          ${itemsHtml || '<div class="text-parrilla-muted italic">Sin platos</div>'}
+          <div class="flex justify-between pt-1.5 mt-1.5 border-t border-parrilla-border font-bold">
+            <span>Total Pedido:</span>
+            <span class="text-parrilla-gold font-mono">${fmtCOP(order.total || 0)}</span>
+          </div>
+        `;
+      }
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeEditOrderModal() {
+      const modal = document.getElementById('modal-admin-edit-order');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    document.getElementById('btn-close-edit-modal')?.addEventListener('click', closeEditOrderModal);
+    document.getElementById('btn-cancel-edit-modal')?.addEventListener('click', closeEditOrderModal);
+
+    document.getElementById('form-admin-edit-order')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      // @ts-ignore
+      const orderId = Number(document.getElementById('edit-order-id')?.value);
+      // @ts-ignore
+      const payment_method = document.getElementById('edit-order-method')?.value || 'CASH';
+      // @ts-ignore
+      const cliente_nombre = document.getElementById('edit-order-cliente')?.value?.trim() || '';
+      // @ts-ignore
+      const cliente_telefono = document.getElementById('edit-order-telefono')?.value?.trim() || '';
+      // @ts-ignore
+      const mesa = document.getElementById('edit-order-mesa')?.value?.trim() || '';
+      // @ts-ignore
+      const courier_name = document.getElementById('edit-order-courier')?.value?.trim() || '';
+      // @ts-ignore
+      const delivery_fee = Number(document.getElementById('edit-order-delivery-fee')?.value || 0);
+      // @ts-ignore
+      const estado = document.getElementById('edit-order-estado')?.value || 'PAGADO';
+      // @ts-ignore
+      const notas = document.getElementById('edit-order-notas')?.value?.trim() || '';
+
+      const submitBtn = document.getElementById('btn-submit-edit-modal');
+      if (submitBtn) submitBtn.textContent = 'Guardando...';
+
+      try {
+        await changeOrderPaymentMethodAndDetails(orderId, {
+          payment_method,
+          cliente_nombre,
+          cliente_telefono,
+          mesa,
+          courier_name,
+          delivery_fee,
+          estado,
+          notas
+        });
+        closeEditOrderModal();
+        showAuditToast(`✓ Pedido #SP-${orderId} actualizado (${METHOD_LABELS[payment_method] || payment_method}) y Caja recalculada.`);
+        await loadLiveAdminMetrics();
+      } catch (err) {
+        alert('Error al guardar cambios del pedido: ' + (err.message || err));
+      } finally {
+        if (submitBtn) submitBtn.textContent = '💾 Guardar Cambios y Recalcular Caja';
+      }
+    });
+
+    // Filtros por pestaña de medio de pago
+    document.querySelectorAll('.audit-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentPaymentFilter = btn.getAttribute('data-filter') || 'ALL';
+        document.querySelectorAll('.audit-tab-btn').forEach(b => {
+          b.classList.remove('bg-parrilla-gold', 'text-white', 'border-parrilla-gold', 'shadow-sm');
+          b.classList.add('bg-parrilla-dark', 'text-parrilla-ivory', 'border-parrilla-border');
+        });
+        btn.classList.remove('bg-parrilla-dark', 'text-parrilla-ivory', 'border-parrilla-border');
+        btn.classList.add('bg-parrilla-gold', 'text-white', 'border-parrilla-gold', 'shadow-sm');
+        updateAuditTabsAndRender();
+      });
+    });
+
+    document.getElementById('audit-search-input')?.addEventListener('input', (e) => {
+      // @ts-ignore
+      currentSearchQuery = (e.target.value || '').toLowerCase().trim();
+      updateAuditTabsAndRender();
+    });
+
+    document.getElementById('btn-refresh-audit')?.addEventListener('click', () => {
+      loadLiveAdminMetrics();
+    });
 
     function renderLiveAdminMetrics(stats) {
       const salesEl = document.getElementById('admin-today-sales');
@@ -416,7 +1043,7 @@ const formatPrice = (val) => {
 
       if (salesEl) salesEl.textContent = fmtCOP(stats.todaySales || 0);
       if (breakdownEl) {
-        breakdownEl.textContent = `Efectivo: ${fmtCOP(stats.cashSales || 0)} | Digital: ${fmtCOP(stats.digitalSales || 0)}`;
+        breakdownEl.textContent = `Efectivo: ${fmtCOP(stats.cashSales || 0)} | Digital/Tarjetas: ${fmtCOP(stats.digitalSales || 0)}`;
       }
       if (countEl) countEl.textContent = String(stats.todayOrderCount || 0);
       if (custEl && typeof stats.totalCustomers === 'number') {
@@ -458,59 +1085,66 @@ const formatPrice = (val) => {
 
     async function loadLiveAdminMetrics() {
       try {
-        // 1. Intentar el endpoint consolidado de dashboard (/api/pedidos/stats/dashboard)
-        const dashRes = await fetch('/api/pedidos/stats/dashboard', { cache: 'no-store' });
-        if (dashRes.ok) {
+        const [cajaRes, pedRes, dashRes] = await Promise.all([
+          fetch('/api/caja/active', { cache: 'no-store' }),
+          fetch('/api/pedidos?limit=250', { cache: 'no-store' }),
+          fetch('/api/pedidos/stats/dashboard', { cache: 'no-store' }).catch(() => null)
+        ]);
+
+        const caja = (cajaRes && cajaRes.ok) ? await cajaRes.json() : null;
+        const pedidos = (pedRes && pedRes.ok) ? await pedRes.json() : [];
+        const listaPedidos = Array.isArray(pedidos) ? pedidos : [];
+
+        // Filtrar pedidos del turno activo de caja o del día de hoy en Colombia
+        const hoyCol = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+        const pedidosTurnoOHoy = listaPedidos.filter(p => {
+          if (caja && caja.status === 'OPEN' && Array.isArray(p.payments)) {
+            if (p.payments.some(pay => pay.cash_closure_id === caja.id)) return true;
+          }
+          const ts = p.fecha_hora || p.created_at;
+          if (ts) {
+            const raw = (typeof ts === 'string' && !ts.endsWith('Z') && !ts.includes('+') && !ts.includes('-', 10)) ? ts + 'Z' : ts;
+            const d = new Date(raw);
+            if (!isNaN(d.getTime())) {
+              const fechaPed = d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+              if (fechaPed === hoyCol) return true;
+            }
+          }
+          return false;
+        });
+
+        allAuditOrders = pedidosTurnoOHoy;
+        updateAuditTabsAndRender();
+
+        if (dashRes && dashRes.ok) {
           const dashData = await dashRes.json();
           if (dashData && typeof dashData.todaySales === 'number') {
             renderLiveAdminMetrics(dashData);
             return;
           }
         }
-      } catch (e) {}
-
-      // 2. Fallback directo consultando /api/caja/active y /api/pedidos?estado=PAGADO
-      try {
-        const [cajaRes, pedRes] = await Promise.all([
-          fetch('/api/caja/active', { cache: 'no-store' }),
-          fetch('/api/pedidos?estado=PAGADO&limit=200', { cache: 'no-store' })
-        ]);
-
-        const caja = cajaRes.ok ? await cajaRes.json() : null;
-        const pedidos = pedRes.ok ? await pedRes.json() : [];
-        const listaPedidos = Array.isArray(pedidos) ? pedidos : [];
-
-        // Filtrar pedidos pagados del turno actual o del día de hoy en Colombia
-        const hoyCol = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-        const pedidosTurnoOHoy = listaPedidos.filter(p => {
-          if (caja && caja.status === 'OPEN' && Array.isArray(p.payments)) {
-            if (p.payments.some(pay => pay.cash_closure_id === caja.id)) return true;
-          }
-          if (p.fecha_hora) {
-            const fechaPed = new Date(p.fecha_hora).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-            if (fechaPed === hoyCol) return true;
-          }
-          return false;
-        });
 
         let cashSales = 0;
         let digitalSales = 0;
+        const pedidosPagados = pedidosTurnoOHoy.filter(p => p.estado !== 'CANCELADO' && Array.isArray(p.payments) && p.payments.length > 0);
+
         if (caja && caja.status === 'OPEN') {
           cashSales = Number(caja.total_cash_sales || 0);
-          digitalSales = Number(caja.total_nequi_sales || 0) + Number(caja.total_daviplata_sales || 0) + Number(caja.total_card_sales || 0);
+          digitalSales = Number(caja.total_nequi_sales || 0)
+            + Number(caja.total_bancolombia_sales || 0)
+            + Number(caja.total_daviplata_sales || 0)
+            + Number(caja.total_card_sales || 0);
         } else {
-          for (const p of pedidosTurnoOHoy) {
+          for (const p of pedidosPagados) {
             for (const pay of (p.payments || [])) {
-              if (pay.method === 'CASH') cashSales += Number(pay.amount || 0);
+              if (String(pay.method).toUpperCase() === 'CASH') cashSales += Number(pay.amount || 0);
               else digitalSales += Number(pay.amount || 0);
             }
           }
         }
 
         const todaySales = cashSales + digitalSales;
-        const todayOrderCount = (caja && caja.status === 'OPEN' && Array.isArray(caja.payments))
-          ? new Set(caja.payments.map(pay => pay.pedido_id)).size
-          : pedidosTurnoOHoy.length;
+        const todayOrderCount = pedidosPagados.length;
 
         const phoneSet = new Set();
         for (const p of listaPedidos) {
@@ -520,9 +1154,8 @@ const formatPrice = (val) => {
         }
 
         const dishMap = new Map();
-        for (const p of pedidosTurnoOHoy) {
+        for (const p of pedidosPagados) {
           for (const det of (p.detalles || [])) {
-            // Si el plato fue guardado con nota o nombre real, agrupar por nombre del plato
             const pName = det.plato?.nombre || det.nombre_plato || 'Plato';
             const qty = Number(det.cantidad || 1);
             const rev = Number(det.precio_unitario || det.plato?.precio || 0) * qty;
@@ -546,7 +1179,7 @@ const formatPrice = (val) => {
           topDishes
         });
       } catch (err) {
-        console.error('Error cargando métricas en vivo de /admin:', err);
+        console.error('Error cargando métricas y auditoría en vivo de /admin:', err);
       }
     }
 
