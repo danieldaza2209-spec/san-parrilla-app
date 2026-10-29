@@ -17,6 +17,7 @@ def fix():
             "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'EN_CAMINO';",
             "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'ENTREGADO';",
             "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'BANCOLOMBIA';",
+            "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'FIADO';",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cliente_telefono VARCHAR(20);",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS subtotal DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS delivery_fee DOUBLE PRECISION DEFAULT 0.0;",
@@ -24,8 +25,23 @@ def fix():
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS courier_name VARCHAR(100);",
             "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_bancolombia_sales DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_transfer_sales DOUBLE PRECISION DEFAULT 0.0;",
+            "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_credit_sales DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_delivery_payouts DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_expenses DOUBLE PRECISION DEFAULT 0.0;",
+            """
+            CREATE TABLE IF NOT EXISTS daily_specials_config (
+                id SERIAL PRIMARY KEY,
+                sopa_dia VARCHAR(150) NOT NULL DEFAULT 'Campesina',
+                principios TEXT NOT NULL DEFAULT 'Calabacín al huevo, Lentejas caseras, Frijoles caseros',
+                acompanamientos TEXT NOT NULL DEFAULT 'Puré de ahuyama, Deditos, Tajadas maduras',
+                especiales_16500 TEXT NOT NULL DEFAULT 'Hígado al ajillo, Desgranado de carne',
+                especiales_16500_etiqueta VARCHAR(100) NOT NULL DEFAULT '⭐ SOLO POR HOY',
+                especial_arroz_nombre VARCHAR(150) NOT NULL DEFAULT 'Arroz ranchero',
+                especial_arroz_etiqueta VARCHAR(100) NOT NULL DEFAULT '⭐ SOLO LOS LUNES',
+                especial_arroz_precio DOUBLE PRECISION NOT NULL DEFAULT 18000.0,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+            """,
             """
             CREATE TABLE IF NOT EXISTS cash_expenses (
                 id SERIAL PRIMARY KEY,
@@ -71,6 +87,10 @@ def fix():
             ("Chuleta de cerdo", 16500.0),
             ("Hígado al ajillo", 16500.0),
             ("Desgranado de carne", 16500.0),
+            ("Albóndigas napolitanas", 16500.0),
+            ("Llanerita (lomo de cerdo y sobrebarriga)", 16500.0),
+            ("Lomo de cerdo apanado", 16500.0),
+            ("Lomo en salsa a la mostaza", 16500.0),
             ("Carne a la plancha", 17500.0),
             ("Carne en bistec", 17500.0),
             ("Carne bbq", 17500.0),
@@ -92,6 +112,10 @@ def fix():
             ("Pechuga en salsa bechamel", 18000.0),
             ("Combo Personal", 18000.0),
             ("Arroz ranchero", 18000.0),
+            ("Arroz mixto", 18000.0),
+            ("Espagueti con pollo", 18000.0),
+            ("Arroz con pollo", 18000.0),
+            ("Arroz paisa", 18000.0),
             ("Sobrebarriga dorada", 21000.0),
             ("Bagre frito", 21000.0),
             ("Bagre al ajillo", 21000.0),
@@ -152,6 +176,23 @@ def fix():
                 existente.precio = precio
         db.commit()
         print(f"[+] Catálogo POS sincronizado en Neon DB ({creados} platos nuevos agregados).")
+
+        cfg = db.query(app.models.DailySpecialsConfig).order_by(app.models.DailySpecialsConfig.id.asc()).first()
+        if not cfg:
+            cfg = app.models.DailySpecialsConfig(
+                id=1,
+                sopa_dia="Campesina",
+                principios="Calabacín al huevo, Lentejas caseras, Frijoles caseros",
+                acompanamientos="Puré de ahuyama, Deditos, Tajadas maduras",
+                especiales_16500="Hígado al ajillo, Desgranado de carne",
+                especiales_16500_etiqueta="⭐ SOLO POR HOY",
+                especial_arroz_nombre="Arroz ranchero",
+                especial_arroz_etiqueta="⭐ SOLO LOS LUNES",
+                especial_arroz_precio=18000.0,
+            )
+            db.add(cfg)
+            db.commit()
+            print("[+] Configuración inicial de Especiales del Día creada en Neon DB.")
     finally:
         db.close()
 

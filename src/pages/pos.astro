@@ -494,7 +494,7 @@ const searchableCatalog = publicProducts.map((p) => ({
           <!-- Payment Method Buttons -->
           <div class="pt-2">
             <span class="block text-[11px] text-parrilla-muted uppercase font-semibold mb-1.5">Método de Pago</span>
-            <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+            <div class="grid grid-cols-3 gap-1.5">
               <button type="button" class="pay-btn active py-2 px-1 rounded-lg text-[11px] font-bold bg-parrilla-gold text-white shadow-sm transition cursor-pointer" data-method="efectivo">
                 💵 Efectivo
               </button>
@@ -509,6 +509,9 @@ const searchableCatalog = publicProducts.map((p) => ({
               </button>
               <button type="button" class="pay-btn py-2 px-1 rounded-lg text-[11px] font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition cursor-pointer" data-method="tarjeta">
                 💳 Datáfono
+              </button>
+              <button type="button" class="pay-btn py-2 px-1 rounded-lg text-[11px] font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition cursor-pointer" data-method="fiado">
+                📝 Fiado
               </button>
             </div>
           </div>
@@ -890,7 +893,7 @@ const searchableCatalog = publicProducts.map((p) => ({
         <!-- MODO 1: PAGO ÚNICO -->
         <div id="cobro-view-single" class="space-y-3">
           <span class="block text-[11px] font-bold text-parrilla-muted uppercase">Selecciona Método:</span>
-          <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <div class="grid grid-cols-3 gap-2">
             <button type="button" class="single-pay-btn active py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-xs flex flex-col items-center gap-1 shadow-sm cursor-pointer" data-method="CASH">
               <span>💵</span>
               <span>Efectivo</span>
@@ -910,6 +913,10 @@ const searchableCatalog = publicProducts.map((p) => ({
             <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer" data-method="CARD">
               <span>💳</span>
               <span>Datáfono</span>
+            </button>
+            <button type="button" class="single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer" data-method="FIADO">
+              <span>📝</span>
+              <span>Fiado</span>
             </button>
           </div>
 
@@ -950,6 +957,7 @@ const searchableCatalog = publicProducts.map((p) => ({
                 <option value="CASH">💵 Efectivo</option>
                 <option value="DAVIPLATA">🔴 Daviplata</option>
                 <option value="CARD">💳 Datáfono / Tarjeta</option>
+                <option value="FIADO">📝 Fiado</option>
               </select>
               <input 
                 type="number" 
@@ -971,6 +979,7 @@ const searchableCatalog = publicProducts.map((p) => ({
                 <option value="BANCOLOMBIA">🟡 Bancolombia</option>
                 <option value="DAVIPLATA">🔴 Daviplata</option>
                 <option value="CARD">💳 Datáfono / Tarjeta</option>
+                <option value="FIADO">📝 Fiado</option>
               </select>
               <input 
                 type="number" 
@@ -2373,8 +2382,101 @@ const searchableCatalog = publicProducts.map((p) => ({
       nequi: 'NEQUI',
       bancolombia: 'BANCOLOMBIA',
       daviplata: 'DAVIPLATA',
-      tarjeta: 'CARD'
+      tarjeta: 'CARD',
+      fiado: 'FIADO'
     };
+
+    // 6.1 SINCRONIZACIÓN EN VIVO DE ESPECIALES DEL DÍA Y PLATOS ROTATIVOS EN POS
+    function syncPosLiveSpecials(data) {
+      if (!data || typeof data !== 'object') return;
+      const newSopa = String(data.sopa_dia || data.sopa || '').trim();
+      const newPrincipios = Array.isArray(data.principios)
+        ? data.principios
+        : (typeof data.principios === 'string' ? data.principios.split(',').map((s) => s.trim()).filter(Boolean) : []);
+      const newAcomp = Array.isArray(data.acompanamientos)
+        ? data.acompanamientos
+        : (typeof data.acompanamientos === 'string' ? data.acompanamientos.split(',').map((s) => s.trim()).filter(Boolean) : []);
+      const newEsp165 = Array.isArray(data.especiales_16500)
+        ? data.especiales_16500
+        : (typeof data.especiales_16500 === 'string' ? data.especiales_16500.split(',').map((s) => s.trim()).filter(Boolean) : []);
+      const esp165Badge = String(data.especiales_16500_etiqueta || '⭐ SOLO POR HOY').trim();
+      const arrozNombre = String(data.especial_arroz_nombre || '').trim();
+      const arrozBadge = String(data.especial_arroz_etiqueta || '⭐ ESPECIAL DE HOY').trim();
+      const arrozPrecio = Number(data.especial_arroz_precio || 18000);
+
+      if (newSopa) dailySpecialsData.sopa = newSopa;
+      if (newPrincipios.length > 0) dailySpecialsData.principios = newPrincipios;
+      if (newAcomp.length > 0) dailySpecialsData.acompanamientos = newAcomp;
+
+      // Actualizar buscador universal (catalogData) con los platos rotativos activos de hoy
+      for (let i = catalogData.length - 1; i >= 0; i--) {
+        const cid = String(catalogData[i].id || '');
+        if (cid === 't1-7' || cid === 't1-8' || cid === 't3-6' || cid.startsWith('rot-esp-')) {
+          catalogData.splice(i, 1);
+        }
+      }
+
+      newEsp165.forEach((dishName, idx) => {
+        catalogData.push({
+          id: `rot-esp-165-${idx}`,
+          name: dishName,
+          price: 16500,
+          category_id: 'fuertes_165',
+          menu_type: 'almuerzo',
+          description: 'Especial del día ($16.500). Incluye sopa, principio y acompañamiento.',
+          special_badge: esp165Badge,
+          customizable: true,
+        });
+      });
+
+      if (arrozNombre) {
+        catalogData.push({
+          id: 'rot-esp-arroz',
+          name: arrozNombre,
+          price: arrozPrecio,
+          category_id: 'fuertes_175',
+          menu_type: 'almuerzo',
+          description: `Especial rotativo del día (${fmt(arrozPrecio)}). Incluye sopa, principio y acompañamiento.`,
+          special_badge: arrozBadge,
+          customizable: true,
+        });
+      }
+
+      // Actualizar opciones de ítems actuales en el carrito si están usando valores por defecto
+      if (cart.length > 0) {
+        const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
+        const pOpts = [...(dailySpecialsData.principios || []), 'Sin Principio'];
+        const sOpts = [...(dailySpecialsData.acompanamientos || []), 'Sin Acompañamiento'];
+        cart.forEach((it) => {
+          if (it.isCustomizable) {
+            if (it.soup !== 'Sin Sopa') it.soup = soupDefault;
+            if (!pOpts.includes(it.principle)) it.principle = pOpts[0] || 'Sin Principio';
+            if (!sOpts.includes(it.side)) it.side = sOpts[0] || 'Sin Acompañamiento';
+            it.notes = buildPlateNotes(it);
+          }
+        });
+        renderCart();
+      }
+
+      // @ts-ignore
+      if (searchInput && searchInput.value && searchInput.value.trim()) {
+        // @ts-ignore
+        runUniversalSearch(searchInput.value);
+      }
+    }
+
+    window.addEventListener('sp:specials-updated', (ev) => {
+      // @ts-ignore
+      if (ev && ev.detail) {
+        // @ts-ignore
+        syncPosLiveSpecials(ev.detail);
+      }
+    });
+
+    try {
+      const cachedSpec = JSON.parse(localStorage.getItem('sp_daily_specials_v1') || 'null');
+      if (cachedSpec) syncPosLiveSpecials(cachedSpec);
+    } catch (e) {}
 
     payButtons.forEach(btn => {
       btn.addEventListener('click', () => {

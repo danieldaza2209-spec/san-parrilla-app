@@ -39,6 +39,20 @@ def obtener_estadisticas_dashboard(db: Session = Depends(get_db)):
     return crud.obtener_estadisticas_dashboard(db)
 
 
+@router.get("/especiales-dia", response_model=schemas.DailySpecialsConfigOut)
+def obtener_especiales_dia_en_pedidos(db: Session = Depends(get_db)):
+    return crud.get_daily_specials_config(db)
+
+
+@router.put("/especiales-dia", response_model=schemas.DailySpecialsConfigOut)
+@router.post("/especiales-dia", response_model=schemas.DailySpecialsConfigOut)
+def actualizar_especiales_dia_en_pedidos(
+    payload: schemas.DailySpecialsConfigUpdate,
+    db: Session = Depends(get_db),
+):
+    return crud.update_daily_specials_config(db, payload)
+
+
 @router.get("/", response_model=List[schemas.PedidoOut])
 def listar_pedidos(
     limit: int = 200,

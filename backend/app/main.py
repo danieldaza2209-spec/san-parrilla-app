@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 from app.config import settings
-from app.database import engine, Base
+from app.database import engine, Base, get_db
+from app import schemas, crud
 import app.models  # Import standard models so Base.metadata knows about all tables
 
 from app.routers import platos, menu, pedidos, metricas, auth, caja
@@ -47,6 +49,20 @@ app.include_router(menu.router)
 app.include_router(pedidos.router)
 app.include_router(caja.router)
 app.include_router(metricas.router)
+
+
+@app.get("/api/especiales-dia", response_model=schemas.DailySpecialsConfigOut, tags=["Especiales del Día"])
+def obtener_especiales_dia(db: Session = Depends(get_db)):
+    return crud.get_daily_specials_config(db)
+
+
+@app.put("/api/especiales-dia", response_model=schemas.DailySpecialsConfigOut, tags=["Especiales del Día"])
+@app.post("/api/especiales-dia", response_model=schemas.DailySpecialsConfigOut, tags=["Especiales del Día"])
+def guardar_especiales_dia(
+    payload: schemas.DailySpecialsConfigUpdate,
+    db: Session = Depends(get_db),
+):
+    return crud.update_daily_specials_config(db, payload)
 
 
 @app.get("/", tags=["Estado"])

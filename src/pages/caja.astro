@@ -138,7 +138,12 @@ import StaffLayout from '../layouts/StaffLayout.astro';
           <div class="bg-white rounded-2xl p-5 border border-parrilla-gold/40 bg-gradient-to-br from-amber-50/40 to-white shadow-sm">
             <span class="text-[11px] text-parrilla-gold font-bold uppercase tracking-wider block">Total Ventas Turno</span>
             <span id="metric-total-sales" class="font-display font-black text-2xl text-parrilla-gold mt-1 block">$0</span>
-            <span class="text-[11px] text-parrilla-muted mt-2 block">Efectivo + Medios Digitales</span>
+            <div class="flex flex-wrap items-center justify-between gap-1 mt-2 text-[10px] text-parrilla-muted">
+              <span>Efectivo + Digitales</span>
+              <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold border border-amber-300">
+                📝 Fiado: <strong id="metric-credit-sales">$0</strong>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -683,6 +688,10 @@ import StaffLayout from '../layouts/StaffLayout.astro';
         <span>Datáfono / Tarjetas:</span>
         <span id="z-cards">$0</span>
       </div>
+      <div class="total-row">
+        <span>Fiado / Por Cobrar (No suma a caja):</span>
+        <span id="z-credit-sales">$0</span>
+      </div>
       <div class="total-row grand-total">
         <span>GRAN TOTAL VENDIDO:</span>
         <span id="z-grand-total">$0</span>
@@ -796,6 +805,7 @@ import StaffLayout from '../layouts/StaffLayout.astro';
       document.getElementById('metric-cash-sales').textContent = fmt(caja.total_cash_sales);
       
       const bancolombiaSales = Number(caja.total_bancolombia_sales ?? (caja.payments || []).filter(p => p.method === 'BANCOLOMBIA').reduce((s, p) => s + Number(p.amount || 0), 0));
+      const creditSales = Number(caja.total_credit_sales ?? (caja.payments || []).filter(p => p.method === 'FIADO').reduce((s, p) => s + Number(p.amount || 0), 0));
       const digSales = (caja.total_nequi_sales || 0) + bancolombiaSales + (caja.total_daviplata_sales || 0) + (caja.total_card_sales || 0);
       document.getElementById('metric-digital-sales').textContent = fmt(digSales);
       document.getElementById('metric-nequi').textContent = fmt(caja.total_nequi_sales);
@@ -803,8 +813,10 @@ import StaffLayout from '../layouts/StaffLayout.astro';
       if (bancoEl) bancoEl.textContent = fmt(bancolombiaSales);
       document.getElementById('metric-daviplata').textContent = fmt(caja.total_daviplata_sales);
       document.getElementById('metric-card').textContent = fmt(caja.total_card_sales);
+      const creditEl = document.getElementById('metric-credit-sales');
+      if (creditEl) creditEl.textContent = fmt(creditSales);
 
-      const totalSalesTurn = caja.total_sales || ((caja.total_cash_sales || 0) + digSales);
+      const totalSalesTurn = caja.total_sales || ((caja.total_cash_sales || 0) + digSales + creditSales);
       const netRestaurantSales = Math.max(0, totalSalesTurn - (caja.total_delivery_payouts || 0)) || caja.subtotal_sales || 0;
       document.getElementById('metric-total-sales').textContent = fmt(totalSalesTurn);
       document.getElementById('metric-subtotal-sales').textContent = fmt(netRestaurantSales);
@@ -1044,11 +1056,14 @@ import StaffLayout from '../layouts/StaffLayout.astro';
         document.getElementById('z-counted').textContent = fmt(counted_cash);
         document.getElementById('z-diff').textContent = fmt(diff);
         const zBancolombia = Number(activeClosure.total_bancolombia_sales ?? (activeClosure.payments || []).filter(p => p.method === 'BANCOLOMBIA').reduce((s, p) => s + Number(p.amount || 0), 0));
+        const zCredit = Number(activeClosure.total_credit_sales ?? (activeClosure.payments || []).filter(p => p.method === 'FIADO').reduce((s, p) => s + Number(p.amount || 0), 0));
         document.getElementById('z-nequi').textContent = fmt(activeClosure.total_nequi_sales);
         const zBancoEl = document.getElementById('z-bancolombia');
         if (zBancoEl) zBancoEl.textContent = fmt(zBancolombia);
         document.getElementById('z-daviplata').textContent = fmt(activeClosure.total_daviplata_sales);
         document.getElementById('z-cards').textContent = fmt(activeClosure.total_card_sales);
+        const zCreditEl = document.getElementById('z-credit-sales');
+        if (zCreditEl) zCreditEl.textContent = fmt(zCredit);
         document.getElementById('z-grand-total').textContent = fmt(activeClosure.total_sales);
         document.getElementById('z-notes').textContent = notes || 'Sin observaciones';
 

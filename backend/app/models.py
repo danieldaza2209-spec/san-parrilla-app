@@ -33,6 +33,7 @@ class PaymentMethod(str, enum.Enum):
     BANCOLOMBIA = "BANCOLOMBIA"
     DAVIPLATA = "DAVIPLATA"
     CARD = "CARD"
+    FIADO = "FIADO"
 
 
 class TipoItemStock(str, enum.Enum):
@@ -214,6 +215,7 @@ class CashClosure(Base):
     total_daviplata_sales = Column(Float, default=0.0)
     total_transfer_sales = Column(Float, default=0.0)
     total_card_sales = Column(Float, default=0.0)
+    total_credit_sales = Column(Float, default=0.0)
     total_delivery_fees = Column(Float, default=0.0)
     total_delivery_payouts = Column(Float, default=0.0)
     total_expenses = Column(Float, default=0.0)
@@ -252,3 +254,19 @@ class Payment(Base):
 
     pedido = relationship("Pedido", back_populates="payments")
     cash_closure = relationship("CashClosure", back_populates="payments")
+
+
+class DailySpecialsConfig(Base):
+    __tablename__ = "daily_specials_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sopa_dia = Column(String(150), nullable=False, default="Campesina")
+    principios = Column(Text, nullable=False, default="Calabacín al huevo, Lentejas caseras, Frijoles caseros")
+    acompanamientos = Column(Text, nullable=False, default="Puré de ahuyama, Deditos, Tajadas maduras")
+    especiales_16500 = Column(Text, nullable=False, default="Hígado al ajillo, Desgranado de carne")
+    especiales_16500_etiqueta = Column(String(100), nullable=False, default="⭐ SOLO POR HOY")
+    especial_arroz_nombre = Column(String(150), nullable=False, default="Arroz ranchero")
+    especial_arroz_etiqueta = Column(String(100), nullable=False, default="⭐ SOLO LOS LUNES")
+    especial_arroz_precio = Column(Float, nullable=False, default=18000.0)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+

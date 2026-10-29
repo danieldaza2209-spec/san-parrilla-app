@@ -253,10 +253,10 @@ import StaffLayout from '../layouts/StaffLayout.astro';
         </div>
       </div>
 
-      <!-- Selección de Medio de Pago (5 opciones explícitas) -->
+      <!-- Selección de Medio de Pago (6 opciones explícitas incluyendo Fiado) -->
       <div class="space-y-2">
         <span class="block text-[11px] font-extrabold text-parrilla-muted uppercase">Medio de Pago:</span>
-        <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+        <div class="grid grid-cols-3 gap-1.5">
           <button type="button" class="board-pay-method-btn active py-2.5 px-1 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-[11px] flex flex-col items-center gap-1 shadow-xs cursor-pointer" data-method="CASH">
             <span>💵</span>
             <span>Efectivo</span>
@@ -276,6 +276,10 @@ import StaffLayout from '../layouts/StaffLayout.astro';
           <button type="button" class="board-pay-method-btn py-2.5 px-1 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-[11px] flex flex-col items-center gap-1 cursor-pointer" data-method="CARD">
             <span>💳</span>
             <span>Datáfono</span>
+          </button>
+          <button type="button" class="board-pay-method-btn py-2.5 px-1 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-[11px] flex flex-col items-center gap-1 cursor-pointer" data-method="FIADO">
+            <span>📝</span>
+            <span>Fiado</span>
           </button>
         </div>
       </div>
@@ -332,7 +336,7 @@ import StaffLayout from '../layouts/StaffLayout.astro';
     const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     const COURIERS_STORAGE_KEY = 'sp_couriers_list';
-    const DEFAULT_COURIERS = ['Mensajero 1', 'Mensajero 2', 'Mensajero 3'];
+    const DEFAULT_COURIERS = ['Lucely', 'Mensajero 1', 'Mensajero 2'];
 
     let allOrders = [];
     let activePayOrder = null;
@@ -343,7 +347,12 @@ import StaffLayout from '../layouts/StaffLayout.astro';
         const raw = localStorage.getItem(COURIERS_STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (!parsed.some((c) => String(c).toLowerCase() === 'lucely')) {
+              parsed.unshift('Lucely');
+            }
+            return parsed;
+          }
         }
       } catch (e) {}
       return [...DEFAULT_COURIERS];

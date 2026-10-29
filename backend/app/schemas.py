@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import List, Optional
+from typing import List, Optional, Union, Any
 from datetime import date, datetime
 from app.models import (
     TipoPedido,
@@ -131,6 +131,8 @@ def _normalize_payment_method(v):
             return PaymentMethod.DAVIPLATA
         if val in ("TARJETA", "DATAFONO", "DATÁFONO", "CARD"):
             return PaymentMethod.CARD
+        if val in ("FIADO", "CREDITO", "CRÉDITO", "POR COBRAR"):
+            return PaymentMethod.FIADO
     return v
 
 
@@ -334,6 +336,7 @@ class CashClosureOut(BaseModel):
     total_daviplata_sales: float = 0.0
     total_transfer_sales: float = 0.0
     total_card_sales: float = 0.0
+    total_credit_sales: float = 0.0
     total_delivery_fees: float = 0.0
     total_delivery_payouts: float = 0.0
     total_expenses: float = 0.0
@@ -386,9 +389,41 @@ class DashboardStatsOut(BaseModel):
     bancolombiaSales: float = 0.0
     daviplataSales: float = 0.0
     cardSales: float = 0.0
+    creditSales: float = 0.0
     todayOrderCount: int = 0
     totalCustomers: int = 0
     topDishes: List[TopPlatoOut] = []
+
+
+# --- CONFIGURACIÓN DE ESPECIALES DEL DÍA Y PLATOS ROTATIVOS ---
+
+class DailySpecialsConfigUpdate(BaseModel):
+    sopa_dia: Optional[str] = None
+    sopa: Optional[str] = None
+    principios: Optional[Union[List[str], str]] = None
+    acompanamientos: Optional[Union[List[str], str]] = None
+    especiales_16500: Optional[Union[List[str], str]] = None
+    especiales_16500_etiqueta: Optional[str] = None
+    especial_arroz_nombre: Optional[str] = None
+    especial_arroz_etiqueta: Optional[str] = None
+    especial_arroz_precio: Optional[float] = None
+
+
+class DailySpecialsConfigOut(BaseModel):
+    id: int = 1
+    sopa_dia: str = "Campesina"
+    sopa: str = "Campesina"
+    principios: List[str] = []
+    principios_str: str = ""
+    acompanamientos: List[str] = []
+    acompanamientos_str: str = ""
+    especiales_16500: List[str] = []
+    especiales_16500_str: str = ""
+    especiales_16500_etiqueta: str = "⭐ SOLO POR HOY"
+    especial_arroz_nombre: str = "Arroz ranchero"
+    especial_arroz_etiqueta: str = "⭐ SOLO LOS LUNES"
+    especial_arroz_precio: float = 18000.0
+    updated_at: Optional[datetime] = None
 
 
 # --- USUARIOS & AUTENTICACIÓN ---

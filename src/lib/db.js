@@ -34,8 +34,14 @@ export const fallbackCategories = [...lunchCategories, ...rapidasCategories];
 
 export const fallbackDailySpecials = {
   sopa: 'Campesina',
+  sopa_dia: 'Campesina',
   principios: ['Calabacín al huevo', 'Lentejas caseras', 'Frijoles caseros'],
   acompanamientos: ['Puré de ahuyama', 'Deditos', 'Tajadas maduras'],
+  especiales_16500: ['Hígado al ajillo', 'Desgranado de carne'],
+  especiales_16500_etiqueta: '⭐ SOLO POR HOY',
+  especial_arroz_nombre: 'Arroz ranchero',
+  especial_arroz_etiqueta: '⭐ SOLO LOS LUNES',
+  especial_arroz_precio: 18000,
   updated_at: new Date().toISOString()
 };
 
@@ -338,7 +344,9 @@ export function getDailySpecials() {
       const row = db.prepare('SELECT * FROM daily_specials WHERE id = 1').get();
       if (row) {
         return {
+          ...memSpecials,
           sopa: row.sopa,
+          sopa_dia: row.sopa,
           principios: JSON.parse(row.principios || '[]'),
           acompanamientos: JSON.parse(row.acompanamientos || '[]'),
           updated_at: row.updated_at
@@ -349,18 +357,43 @@ export function getDailySpecials() {
   return memSpecials;
 }
 
-export function updateDailySpecials(sopa, principios, acompanamientos) {
-  memSpecials = { sopa, principios, acompanamientos, updated_at: new Date().toISOString() };
+export function updateDailySpecials(sopa, principios, acompanamientos, extra = {}) {
+  const cleanSopa = sopa || memSpecials.sopa || 'Campesina';
+  const cleanPrincipios = Array.isArray(principios)
+    ? principios
+    : String(principios || '').split(',').map(s => s.trim()).filter(Boolean);
+  const cleanAcomp = Array.isArray(acompanamientos)
+    ? acompanamientos
+    : String(acompanamientos || '').split(',').map(s => s.trim()).filter(Boolean);
+  const cleanEsp165 = extra.especiales_16500
+    ? (Array.isArray(extra.especiales_16500)
+        ? extra.especiales_16500
+        : String(extra.especiales_16500).split(',').map(s => s.trim()).filter(Boolean))
+    : (memSpecials.especiales_16500 || ['Hígado al ajillo', 'Desgranado de carne']);
+
+  memSpecials = {
+    ...memSpecials,
+    sopa: cleanSopa,
+    sopa_dia: cleanSopa,
+    principios: cleanPrincipios,
+    acompanamientos: cleanAcomp,
+    especiales_16500: cleanEsp165,
+    especiales_16500_etiqueta: extra.especiales_16500_etiqueta || memSpecials.especiales_16500_etiqueta || '⭐ SOLO POR HOY',
+    especial_arroz_nombre: extra.especial_arroz_nombre || memSpecials.especial_arroz_nombre || 'Arroz ranchero',
+    especial_arroz_etiqueta: extra.especial_arroz_etiqueta || memSpecials.especial_arroz_etiqueta || '⭐ SOLO LOS LUNES',
+    especial_arroz_precio: Number(extra.especial_arroz_precio || memSpecials.especial_arroz_precio || 18000),
+    updated_at: new Date().toISOString()
+  };
   if (db) {
     try {
       return db.prepare(`
         UPDATE daily_specials 
         SET sopa = ?, principios = ?, acompanamientos = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = 1
-      `).run(sopa, JSON.stringify(principios), JSON.stringify(acompanamientos));
+      `).run(cleanSopa, JSON.stringify(cleanPrincipios), JSON.stringify(cleanAcomp));
     } catch (e) {}
   }
-  return true;
+  return memSpecials;
 }
 
 export function searchCustomers(query = '') {

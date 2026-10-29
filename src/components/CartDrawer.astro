@@ -894,5 +894,36 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
     restoreCartState();
     updateOrderFields();
     updateCartUI();
+
+    function syncSpecialsInCart(data) {
+      if (!data || typeof data !== 'object') return;
+      const newSopa = String(data.sopa_dia || data.sopa || '').trim();
+      const newPrincipios = Array.isArray(data.principios)
+        ? data.principios
+        : (typeof data.principios === 'string' ? data.principios.split(',').map((s) => s.trim()).filter(Boolean) : []);
+      const newAcomp = Array.isArray(data.acompanamientos)
+        ? data.acompanamientos
+        : (typeof data.acompanamientos === 'string' ? data.acompanamientos.split(',').map((s) => s.trim()).filter(Boolean) : []);
+
+      if (newSopa) specials.sopa = newSopa;
+      if (newPrincipios.length > 0) specials.principios = newPrincipios;
+      if (newAcomp.length > 0) specials.acompanamientos = newAcomp;
+
+      if (cart.length > 0) {
+        cart = cart.map(sanitizeItem).filter(Boolean);
+        updateCartUI();
+      }
+    }
+
+    window.addEventListener('sp:specials-updated', (ev) => {
+      if (ev && ev.detail) {
+        syncSpecialsInCart(ev.detail);
+      }
+    });
+
+    try {
+      const cachedSpec = JSON.parse(localStorage.getItem('sp_daily_specials_v1') || 'null');
+      if (cachedSpec) syncSpecialsInCart(cachedSpec);
+    } catch (e) {}
   }
 </script>

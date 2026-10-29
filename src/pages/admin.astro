@@ -180,6 +180,92 @@ const formatPrice = (val) => {
           <span>💳 Datáfono / Tarjeta</span>
           <span id="tab-sum-CARD" class="px-2 py-0.5 rounded-lg bg-blue-100 text-blue-900 font-mono text-[11px]">$0</span>
         </button>
+
+        <button
+          type="button"
+          data-filter="FIADO"
+          class="audit-tab-btn px-3.5 py-2 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-amber-600 transition flex items-center gap-2"
+        >
+          <span>📝 Fiado</span>
+          <span id="tab-sum-FIADO" class="px-2 py-0.5 rounded-lg bg-amber-200 text-amber-950 font-mono text-[11px]">$0</span>
+        </button>
+      </div>
+
+      <!-- Segunda Fila de Filtros por Mensajero / Canal -->
+      <div class="flex flex-wrap items-center gap-2 mb-5 pt-3 border-t border-parrilla-border/60">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-parrilla-muted mr-1">Filtrar Mensajero:</span>
+        <div class="flex flex-wrap items-center gap-2" id="audit-courier-tabs">
+          <button
+            type="button"
+            data-courier="ALL"
+            class="audit-courier-btn active px-3 py-1.5 rounded-xl font-bold text-xs border transition flex items-center gap-1.5 bg-blue-600 text-white border-blue-600 shadow-sm"
+          >
+            <span>👥 Todos</span>
+          </button>
+          <button
+            type="button"
+            data-courier="MESA_LLEVAR"
+            class="audit-courier-btn px-3 py-1.5 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-blue-500 transition flex items-center gap-1.5"
+          >
+            <span>🏠 Mesa / Para Llevar</span>
+          </button>
+          <button
+            type="button"
+            data-courier="Lucely"
+            class="audit-courier-btn px-3 py-1.5 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-blue-500 transition flex items-center gap-1.5"
+          >
+            <span>🛵 Lucely</span>
+          </button>
+        </div>
+        <button
+          type="button"
+          id="btn-admin-add-courier"
+          class="px-2.5 py-1.5 rounded-xl border border-dashed border-parrilla-border text-[11px] font-bold text-parrilla-muted hover:text-parrilla-gold hover:border-parrilla-gold transition"
+          title="Agregar nuevo mensajero a la lista"
+        >
+          + Agregar Mensajero
+        </button>
+      </div>
+
+      <!-- Tarjeta de Liquidación del Mensajero (Courier Settlement) -->
+      <div id="courier-settlement-card" class="hidden mb-5 p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-white to-amber-50 border-2 border-blue-300 shadow-md">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-blue-200">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🛵</span>
+            <div>
+              <h3 class="font-display font-black text-base text-parrilla-ivory">
+                Liquidación de Mensajero: <span id="settlement-courier-name" class="text-blue-700">Lucely</span>
+              </h3>
+              <p class="text-[11px] text-parrilla-muted">Resumen exacto de domicilios entregados, efectivo recogido y fletes del turno</p>
+            </div>
+          </div>
+          <span id="settlement-total-orders" class="px-3 py-1 rounded-full bg-blue-600 text-white font-display font-black text-xs self-start sm:self-center">
+            0 domicilios
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div class="bg-white rounded-xl p-3 border border-parrilla-border shadow-sm">
+            <span class="text-[10px] font-bold uppercase text-parrilla-muted block">Total Pedidos Llevados</span>
+            <span id="settlement-count-box" class="font-display font-black text-lg text-parrilla-ivory mt-0.5 block">0 domicilios</span>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-emerald-300 shadow-sm">
+            <span class="text-[10px] font-bold uppercase text-emerald-800 block">💵 Efectivo Recogido</span>
+            <span id="settlement-cash" class="font-display font-black text-lg text-emerald-700 mt-0.5 block">$0</span>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-purple-300 shadow-sm">
+            <span class="text-[10px] font-bold uppercase text-purple-800 block">🟣 Nequi / 🟡 Banco / 🔴 Davi</span>
+            <span id="settlement-digital" class="font-display font-black text-lg text-purple-700 mt-0.5 block">$0</span>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-amber-300 shadow-sm">
+            <span class="text-[10px] font-bold uppercase text-amber-900 block">📝 Fiados Entregados</span>
+            <span id="settlement-fiado" class="font-display font-black text-lg text-amber-800 mt-0.5 block">$0</span>
+          </div>
+          <div class="bg-blue-600 text-white rounded-xl p-3 border border-blue-700 shadow-sm">
+            <span class="text-[10px] font-bold uppercase text-blue-100 block">🛵 Total Fletes / Carreras</span>
+            <span id="settlement-fees" class="font-display font-black text-lg text-white mt-0.5 block">$0</span>
+          </div>
+        </div>
       </div>
 
       <!-- Banner de confirmación de cambio contable -->
@@ -239,6 +325,7 @@ const formatPrice = (val) => {
               <option value="BANCOLOMBIA">🟡 Bancolombia / QR / Ahorro a la Mano</option>
               <option value="DAVIPLATA">🔴 Daviplata (Transferencia Digital)</option>
               <option value="CARD">💳 Datáfono / Tarjeta</option>
+              <option value="FIADO">📝 Fiado / Crédito (Por Cobrar - No suma a Efectivo)</option>
             </select>
             <span class="text-[11px] text-parrilla-muted mt-1 block">
               Al cambiar el medio de pago, la sesión activa de Caja recalcula efectivo esperado y transferencias de inmediato.
@@ -388,45 +475,160 @@ const formatPrice = (val) => {
         <div class="flex items-center justify-between mb-4 pb-3 border-b border-parrilla-border">
           <div>
             <h2 class="font-display font-bold text-lg text-parrilla-ivory">Editor de Especiales del Día</h2>
-            <p class="text-xs text-parrilla-muted">Modifica la sopa y principios que se muestran en el menú digital.</p>
+            <p class="text-xs text-parrilla-muted">Sincroniza en tiempo real la sopa, principios y platos rotativos en la Carta Digital y el POS.</p>
           </div>
           <i data-lucide="soup" class="w-5 h-5 text-amber-400"></i>
         </div>
 
         <form id="form-specials" class="space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Sopa del Día *</label>
-            <input 
-              type="text" 
-              id="specials-sopa" 
-              value={specials?.sopa || ''} 
-              required
-              class="w-full px-3.5 py-2.5 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none"
-            />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Sopa del Día *</label>
+              <input 
+                type="text" 
+                id="specials-sopa" 
+                value={specials?.sopa || ''} 
+                required
+                placeholder="Ej. Fideos, Sancocho de pescado, Ajiaco"
+                class="w-full px-3.5 py-2.5 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              />
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Principios (separados por coma) *</label>
+              <input 
+                type="text" 
+                id="specials-principios" 
+                value={specials?.principios?.join(', ') || ''} 
+                required
+                class="w-full px-3.5 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              />
+              <span class="text-[10px] text-parrilla-muted mt-0.5 block">Ejemplo: Frijol, Garbanzos con pollo, Mazorca a la crema, Verduras calientes</span>
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Acompañamientos (separados por coma) *</label>
+              <input 
+                type="text" 
+                id="specials-acompanamientos" 
+                value={specials?.acompanamientos?.join(', ') || ''} 
+                required
+                class="w-full px-3.5 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              />
+              <span class="text-[10px] text-parrilla-muted mt-0.5 block">Ejemplo: Francesa casera, Torta de zanahoria, Tajadas maduras</span>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Principios (separados por coma) *</label>
-            <input 
-              type="text" 
-              id="specials-principios" 
-              value={specials?.principios?.join(', ') || ''} 
-              required
-              class="w-full px-3.5 py-2.5 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none"
-            />
-            <span class="text-[10px] text-parrilla-muted mt-1 block">Ejemplo: Ensalada de atún, Garbanzos rancheros, Frijoles</span>
+          <!-- BLOQUE A: Especiales Rotativos Caja $16.500 (★ SOLO POR HOY) -->
+          <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-300 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black uppercase text-amber-950">★ Especiales Rotativos Caja $16.500</span>
+              <span class="px-2 py-0.5 rounded-md bg-amber-500 text-white font-bold text-[10px]">$16.500</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-amber-900 mb-1">Selector Rápido de Pareja Rotativa ($16.500)</label>
+              <select
+                id="specials-16500-preset"
+                class="w-full px-3 py-2 bg-white rounded-xl border border-amber-300 text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              >
+                <option value="Albóndigas napolitanas|Desgranado de carne">Pareja 1: Albóndigas napolitanas + Desgranado de carne</option>
+                <option value="Llanerita (lomo de cerdo y sobrebarriga)|Lomo de cerdo apanado">Pareja 2: Llanerita (lomo de cerdo y sobrebarriga) + Lomo de cerdo apanado</option>
+                <option value="Lomo en salsa a la mostaza|Hígado al ajillo">Pareja 3: Lomo en salsa a la mostaza + Hígado al ajillo</option>
+                <option value="CUSTOM">✏️ Personalizado (Escribir platos manualmente abajo)</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-amber-900 uppercase mb-0.5">Plato Especial 1 ($16.500)</label>
+                <input
+                  type="text"
+                  id="specials-16500-dish1"
+                  value={specials?.especiales_16500?.[0] || 'Albóndigas napolitanas'}
+                  placeholder="Ej. Albóndigas napolitanas"
+                  class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-amber-300 text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                />
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-amber-900 uppercase mb-0.5">Plato Especial 2 ($16.500)</label>
+                <input
+                  type="text"
+                  id="specials-16500-dish2"
+                  value={specials?.especiales_16500?.[1] || 'Desgranado de carne'}
+                  placeholder="Ej. Desgranado de carne"
+                  class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-amber-300 text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">Acompañamientos (separados por coma) *</label>
-            <input 
-              type="text" 
-              id="specials-acompanamientos" 
-              value={specials?.acompanamientos?.join(', ') || ''} 
-              required
-              class="w-full px-3.5 py-2.5 bg-parrilla-dark rounded-xl border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none"
-            />
-            <span class="text-[10px] text-parrilla-muted mt-1 block">Ejemplo: Francesa casera, Torta de zanahoria, Tajadas maduras</span>
+          <!-- BLOQUE B: Especial Rotativo de Arroz / Pasta ($18.000 / $18.500) -->
+          <div class="p-3.5 rounded-xl bg-orange-50/70 border border-orange-300 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black uppercase text-orange-950">★ Especial Rotativo de Arroz / Pasta</span>
+              <span class="px-2 py-0.5 rounded-md bg-orange-600 text-white font-bold text-[10px]">$18.000 / $18.500</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-orange-900 uppercase mb-0.5">Plato Frecuente</label>
+                <select
+                  id="specials-arroz-preset"
+                  class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-orange-300 text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                >
+                  <option value="Arroz ranchero">Arroz ranchero</option>
+                  <option value="Arroz mixto">Arroz mixto</option>
+                  <option value="Espagueti con pollo">Espagueti con pollo</option>
+                  <option value="Arroz con pollo">Arroz con pollo</option>
+                  <option value="Arroz paisa">Arroz paisa</option>
+                  <option value="CUSTOM">✏️ Otro plato (Escribir al lado)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-orange-900 uppercase mb-0.5">Nombre Mostrado en Carta y POS</label>
+                <input
+                  type="text"
+                  id="specials-arroz-nombre"
+                  value={specials?.especial_arroz_nombre || 'Arroz ranchero'}
+                  placeholder="Ej. Arroz ranchero"
+                  class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-orange-300 text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-orange-900 uppercase mb-0.5">Precio Caja Especial ($)</label>
+                <select
+                  id="specials-arroz-precio"
+                  class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-orange-300 text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                >
+                  <option value="18000">$18.000</option>
+                  <option value="18500">$18.500</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-orange-900 uppercase mb-0.5">Etiqueta Destacada</label>
+                <select
+                  id="specials-arroz-etiqueta"
+                  class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-orange-300 text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                >
+                  <option value="⭐ SOLO POR HOY">⭐ SOLO POR HOY</option>
+                  <option value="⭐ ESPECIAL DE HOY">⭐ ESPECIAL DE HOY</option>
+                  <option value="⭐ SOLO LOS LUNES">⭐ SOLO LOS LUNES</option>
+                  <option value="⭐ SOLO LOS MARTES">⭐ SOLO LOS MARTES</option>
+                  <option value="⭐ SOLO LOS MIÉRCOLES">⭐ SOLO LOS MIÉRCOLES</option>
+                  <option value="⭐ SOLO LOS JUEVES">⭐ SOLO LOS JUEVES</option>
+                  <option value="⭐ SOLO LOS VIERNES">⭐ SOLO LOS VIERNES</option>
+                  <option value="⭐ FIN DE SEMANA">⭐ FIN DE SEMANA</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div id="specials-save-feedback" class="hidden px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold">
+            ✓ Especiales del día guardados en Neon DB y sincronizados con `/` y `/pos`.
           </div>
 
           <button 
@@ -434,7 +636,7 @@ const formatPrice = (val) => {
             id="btn-save-specials"
             class="w-full py-3 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-sm shadow-md transition active:scale-95"
           >
-            Guardar Especiales del Día
+            💾 Guardar Especiales del Día (Carta + POS)
           </button>
         </form>
       </div>
@@ -577,6 +779,123 @@ const formatPrice = (val) => {
       });
     }
 
+    // =====================================================================
+    // EDITOR DE ESPECIALES DEL DÍA (PERSISTENCIA NEON + SINCRONIZACIÓN EN VIVO)
+    // =====================================================================
+    const preset16500El = document.getElementById('specials-16500-preset');
+    const dish1El = document.getElementById('specials-16500-dish1');
+    const dish2El = document.getElementById('specials-16500-dish2');
+    const presetArrozEl = document.getElementById('specials-arroz-preset');
+    const nombreArrozEl = document.getElementById('specials-arroz-nombre');
+    const precioArrozEl = document.getElementById('specials-arroz-precio');
+    const etiquetaArrozEl = document.getElementById('specials-arroz-etiqueta');
+
+    if (preset16500El && dish1El && dish2El) {
+      preset16500El.addEventListener('change', (e) => {
+        // @ts-ignore
+        const val = e.target.value;
+        if (val && val !== 'CUSTOM' && val.includes('|')) {
+          const [d1, d2] = val.split('|');
+          // @ts-ignore
+          dish1El.value = d1 || '';
+          // @ts-ignore
+          dish2El.value = d2 || '';
+        }
+      });
+    }
+
+    if (presetArrozEl && nombreArrozEl) {
+      presetArrozEl.addEventListener('change', (e) => {
+        // @ts-ignore
+        const val = e.target.value;
+        if (val && val !== 'CUSTOM') {
+          // @ts-ignore
+          nombreArrozEl.value = val;
+        } else {
+          // @ts-ignore
+          nombreArrozEl.focus();
+        }
+      });
+    }
+
+    function applySpecialsToForm(cfg) {
+      if (!cfg) return;
+      // @ts-ignore
+      const sopaEl = document.getElementById('specials-sopa');
+      // @ts-ignore
+      const prinEl = document.getElementById('specials-principios');
+      // @ts-ignore
+      const acomEl = document.getElementById('specials-acompanamientos');
+
+      const sopaVal = cfg.sopa_dia || cfg.sopa || '';
+      if (sopaEl && sopaVal) sopaEl.value = sopaVal;
+
+      if (prinEl && Array.isArray(cfg.principios)) {
+        prinEl.value = cfg.principios.join(', ');
+      }
+      if (acomEl && Array.isArray(cfg.acompanamientos)) {
+        acomEl.value = cfg.acompanamientos.join(', ');
+      }
+
+      if (Array.isArray(cfg.especiales_16500) && cfg.especiales_16500.length > 0) {
+        // @ts-ignore
+        if (dish1El) dish1El.value = cfg.especiales_16500[0] || '';
+        // @ts-ignore
+        if (dish2El) dish2El.value = cfg.especiales_16500[1] || '';
+        const pairStr = `${cfg.especiales_16500[0] || ''}|${cfg.especiales_16500[1] || ''}`;
+        if (preset16500El) {
+          // @ts-ignore
+          const hasOpt = Array.from(preset16500El.options).some(o => o.value === pairStr);
+          // @ts-ignore
+          preset16500El.value = hasOpt ? pairStr : 'CUSTOM';
+        }
+      }
+
+      if (cfg.especial_arroz_nombre && nombreArrozEl) {
+        // @ts-ignore
+        nombreArrozEl.value = cfg.especial_arroz_nombre;
+        if (presetArrozEl) {
+          // @ts-ignore
+          const hasOpt = Array.from(presetArrozEl.options).some(o => o.value === cfg.especial_arroz_nombre);
+          // @ts-ignore
+          presetArrozEl.value = hasOpt ? cfg.especial_arroz_nombre : 'CUSTOM';
+        }
+      }
+
+      if (cfg.especial_arroz_precio && precioArrozEl) {
+        // @ts-ignore
+        precioArrozEl.value = String(cfg.especial_arroz_precio);
+      }
+
+      if (cfg.especial_arroz_etiqueta && etiquetaArrozEl) {
+        // @ts-ignore
+        const hasTag = Array.from(etiquetaArrozEl.options).some(o => o.value === cfg.especial_arroz_etiqueta);
+        if (!hasTag) {
+          const opt = document.createElement('option');
+          opt.value = cfg.especial_arroz_etiqueta;
+          opt.textContent = cfg.especial_arroz_etiqueta;
+          etiquetaArrozEl.appendChild(opt);
+        }
+        // @ts-ignore
+        etiquetaArrozEl.value = cfg.especial_arroz_etiqueta;
+      }
+    }
+
+    async function loadLiveSpecialsIntoAdmin() {
+      try {
+        const res = await fetch('/api/especiales-dia', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && (data.sopa_dia || data.sopa)) {
+            applySpecialsToForm(data);
+            try { localStorage.setItem('sp_daily_specials_v1', JSON.stringify(data)); } catch (_) {}
+          }
+        }
+      } catch (err) {
+        console.warn('Error cargando /api/especiales-dia en Admin:', err);
+      }
+    }
+
     // Save Daily Specials
     const formSpecials = document.getElementById('form-specials');
     if (formSpecials) {
@@ -588,17 +907,60 @@ const formatPrice = (val) => {
         const principios = document.getElementById('specials-principios').value.split(',').map(s => s.trim()).filter(Boolean);
         // @ts-ignore
         const acompanamientos = document.getElementById('specials-acompanamientos').value.split(',').map(s => s.trim()).filter(Boolean);
+        // @ts-ignore
+        const d1 = (dish1El?.value || '').trim();
+        // @ts-ignore
+        const d2 = (dish2El?.value || '').trim();
+        const especiales_16500 = [d1, d2].filter(Boolean);
+        // @ts-ignore
+        const especial_arroz_nombre = (nombreArrozEl?.value || 'Arroz ranchero').trim();
+        // @ts-ignore
+        const especial_arroz_precio = Number(precioArrozEl?.value || 18000);
+        // @ts-ignore
+        const especial_arroz_etiqueta = (etiquetaArrozEl?.value || '⭐ SOLO POR HOY').trim();
 
-        const res = await fetch('/api/specials', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sopa, principios, acompanamientos })
-        });
-        const data = await res.json();
-        if (data.success) {
-          alert('Especiales del día actualizados correctamente.');
-        } else {
-          alert('Error: ' + data.error);
+        const btnSave = document.getElementById('btn-save-specials');
+        if (btnSave) btnSave.textContent = 'Guardando en Neon DB...';
+
+        const payload = {
+          sopa,
+          sopa_dia: sopa,
+          principios,
+          acompanamientos,
+          especiales_16500,
+          especiales_16500_etiqueta: '⭐ SOLO POR HOY',
+          especial_arroz_nombre,
+          especial_arroz_etiqueta,
+          especial_arroz_precio
+        };
+
+        try {
+          const res = await fetch('/api/especiales-dia', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          const savedSpecials = data.specials || payload;
+
+          try {
+            localStorage.setItem('sp_daily_specials_v1', JSON.stringify(savedSpecials));
+            if (typeof BroadcastChannel !== 'undefined') {
+              const bc = new BroadcastChannel('sp_specials_channel');
+              bc.postMessage(savedSpecials);
+              bc.close();
+            }
+          } catch (_) {}
+
+          const feedback = document.getElementById('specials-save-feedback');
+          if (feedback) {
+            feedback.classList.remove('hidden');
+            setTimeout(() => feedback.classList.add('hidden'), 6000);
+          }
+        } catch (err) {
+          alert('Error al guardar especiales del día: ' + (err.message || err));
+        } finally {
+          if (btnSave) btnSave.textContent = '💾 Guardar Especiales del Día (Carta + POS)';
         }
       });
     }
@@ -660,14 +1022,48 @@ const formatPrice = (val) => {
 
     let allAuditOrders = [];
     let currentPaymentFilter = 'ALL';
+    let currentCourierFilter = 'ALL';
     let currentSearchQuery = '';
+
+    const COURIERS_STORAGE_KEY = 'sp_couriers_list';
+    const DEFAULT_ADMIN_COURIERS = ['Lucely', 'Mensajero 1', 'Mensajero 2'];
+
+    function getAdminCouriersList() {
+      const set = new Set(DEFAULT_ADMIN_COURIERS);
+      try {
+        const raw = localStorage.getItem(COURIERS_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(c => { if (c && String(c).trim()) set.add(String(c).trim()); });
+          }
+        }
+      } catch (_) {}
+      for (const p of allAuditOrders) {
+        if (p.courier_name && String(p.courier_name).trim()) {
+          set.add(String(p.courier_name).trim());
+        }
+      }
+      return Array.from(set);
+    }
+
+    function saveAdminCourier(name) {
+      const clean = (name || '').trim();
+      if (!clean) return;
+      const list = getAdminCouriersList();
+      if (!list.includes(clean)) list.push(clean);
+      try {
+        localStorage.setItem(COURIERS_STORAGE_KEY, JSON.stringify(list));
+      } catch (_) {}
+    }
 
     const METHOD_LABELS = {
       CASH: '💵 Efectivo',
       NEQUI: '🟣 Nequi',
       BANCOLOMBIA: '🟡 Bancolombia',
       DAVIPLATA: '🔴 Daviplata',
-      CARD: '💳 Datáfono / Tarjeta'
+      CARD: '💳 Datáfono / Tarjeta',
+      FIADO: '📝 Fiado'
     };
 
     function getOrderPrimaryMethod(p) {
@@ -697,18 +1093,120 @@ const formatPrice = (val) => {
       }
     }
 
+    function renderCourierFilterButtons() {
+      const container = document.getElementById('audit-courier-tabs');
+      if (!container) return;
+      const couriers = getAdminCouriersList();
+
+      const baseButtons = [
+        { key: 'ALL', label: '👥 Todos' },
+        { key: 'MESA_LLEVAR', label: '🏠 Mesa / Para Llevar' },
+        ...couriers.map(c => ({ key: c, label: `🛵 ${c}` }))
+      ];
+
+      container.innerHTML = baseButtons.map(b => {
+        const isActive = currentCourierFilter.toLowerCase() === b.key.toLowerCase();
+        const cls = isActive
+          ? 'audit-courier-btn active px-3 py-1.5 rounded-xl font-bold text-xs border transition flex items-center gap-1.5 bg-blue-600 text-white border-blue-600 shadow-sm'
+          : 'audit-courier-btn px-3 py-1.5 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-blue-500 transition flex items-center gap-1.5';
+        return `<button type="button" data-courier="${b.key}" class="${cls}"><span>${b.label}</span></button>`;
+      }).join('');
+
+      container.querySelectorAll('.audit-courier-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentCourierFilter = btn.getAttribute('data-courier') || 'ALL';
+          renderCourierFilterButtons();
+          updateAuditTabsAndRender();
+        });
+      });
+    }
+
+    document.getElementById('btn-admin-add-courier')?.addEventListener('click', () => {
+      const name = prompt('Ingresa el nombre del mensajero (ej. Lucely, Carlos):');
+      if (name && name.trim()) {
+        saveAdminCourier(name.trim());
+        currentCourierFilter = name.trim();
+        renderCourierFilterButtons();
+        updateAuditTabsAndRender();
+      }
+    });
+
+    function matchesCourierFilter(p) {
+      if (currentCourierFilter === 'ALL') return true;
+      if (currentCourierFilter === 'MESA_LLEVAR') {
+        return p.tipo !== 'DOMICILIO';
+      }
+      return p.tipo === 'DOMICILIO' && String(p.courier_name || '').trim().toLowerCase() === currentCourierFilter.toLowerCase();
+    }
+
+    function updateCourierSettlementCard() {
+      const card = document.getElementById('courier-settlement-card');
+      if (!card) return;
+
+      if (currentCourierFilter === 'ALL' || currentCourierFilter === 'MESA_LLEVAR') {
+        card.classList.add('hidden');
+        return;
+      }
+
+      card.classList.remove('hidden');
+      const courierOrders = allAuditOrders.filter(p =>
+        p.estado !== 'CANCELADO' &&
+        p.tipo === 'DOMICILIO' &&
+        String(p.courier_name || '').trim().toLowerCase() === currentCourierFilter.toLowerCase()
+      );
+
+      let cashCollected = 0;
+      let digitalTotal = 0;
+      let fiadoTotal = 0;
+      let deliveryFees = 0;
+
+      for (const p of courierOrders) {
+        deliveryFees += Number(p.delivery_fee || 0);
+        if (Array.isArray(p.payments) && p.payments.length > 0) {
+          for (const pay of p.payments) {
+            const m = String(pay.method || 'CASH').toUpperCase();
+            const amt = Number(pay.amount || p.total || 0);
+            if (m === 'CASH') cashCollected += amt;
+            else if (m === 'FIADO') fiadoTotal += amt;
+            else digitalTotal += amt;
+          }
+        }
+      }
+
+      const nameEl = document.getElementById('settlement-courier-name');
+      const badgeEl = document.getElementById('settlement-total-orders');
+      const countBoxEl = document.getElementById('settlement-count-box');
+      const cashEl = document.getElementById('settlement-cash');
+      const digEl = document.getElementById('settlement-digital');
+      const fiadoEl = document.getElementById('settlement-fiado');
+      const feesEl = document.getElementById('settlement-fees');
+
+      if (nameEl) nameEl.textContent = currentCourierFilter;
+      if (badgeEl) badgeEl.textContent = `${courierOrders.length} domicilio(s)`;
+      if (countBoxEl) countBoxEl.textContent = `${courierOrders.length} domicilio(s)`;
+      if (cashEl) cashEl.textContent = fmtCOP(cashCollected);
+      if (digEl) digEl.textContent = fmtCOP(digitalTotal);
+      if (fiadoEl) fiadoEl.textContent = fmtCOP(fiadoTotal);
+      if (feesEl) feesEl.textContent = fmtCOP(deliveryFees);
+    }
+
     function updateAuditTabsAndRender() {
+      renderCourierFilterButtons();
+      updateCourierSettlementCard();
+
       const sums = {
         ALL: 0,
         CASH: 0,
         NEQUI: 0,
         BANCOLOMBIA: 0,
         DAVIPLATA: 0,
-        CARD: 0
+        CARD: 0,
+        FIADO: 0
       };
 
       for (const p of allAuditOrders) {
         if (p.estado === 'CANCELADO') continue;
+        if (!matchesCourierFilter(p)) continue;
         if (Array.isArray(p.payments) && p.payments.length > 0) {
           for (const pay of p.payments) {
             const m = String(pay.method || 'CASH').toUpperCase();
@@ -728,6 +1226,7 @@ const formatPrice = (val) => {
       if (!tbody) return;
 
       const filtered = allAuditOrders.filter(p => {
+        if (!matchesCourierFilter(p)) return false;
         const method = getOrderPrimaryMethod(p);
         if (currentPaymentFilter !== 'ALL') {
           const hasMethod = (Array.isArray(p.payments) && p.payments.some(pay => String(pay.method).toUpperCase() === currentPaymentFilter))
@@ -827,6 +1326,7 @@ const formatPrice = (val) => {
                 <option value="BANCOLOMBIA" ${method === 'BANCOLOMBIA' ? 'selected' : ''}>🟡 Bancolombia</option>
                 <option value="DAVIPLATA" ${method === 'DAVIPLATA' ? 'selected' : ''}>🔴 Daviplata</option>
                 <option value="CARD" ${method === 'CARD' ? 'selected' : ''}>💳 Datáfono / Tarjeta</option>
+                <option value="FIADO" ${method === 'FIADO' ? 'selected' : ''}>📝 Fiado</option>
               </select>
             </td>
             <td class="py-3 px-2.5 text-right whitespace-nowrap">
@@ -1043,7 +1543,8 @@ const formatPrice = (val) => {
 
       if (salesEl) salesEl.textContent = fmtCOP(stats.todaySales || 0);
       if (breakdownEl) {
-        breakdownEl.textContent = `Efectivo: ${fmtCOP(stats.cashSales || 0)} | Digital/Tarjetas: ${fmtCOP(stats.digitalSales || 0)}`;
+        const creditPart = stats.creditSales ? ` | Fiado: ${fmtCOP(stats.creditSales)}` : '';
+        breakdownEl.textContent = `Efectivo: ${fmtCOP(stats.cashSales || 0)} | Digital/Tarjetas: ${fmtCOP(stats.digitalSales || 0)}${creditPart}`;
       }
       if (countEl) countEl.textContent = String(stats.todayOrderCount || 0);
       if (custEl && typeof stats.totalCustomers === 'number') {
@@ -1184,10 +1685,14 @@ const formatPrice = (val) => {
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      loadLiveSpecialsIntoAdmin();
       loadLiveAdminMetrics();
       setInterval(loadLiveAdminMetrics, 15000);
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') loadLiveAdminMetrics();
+        if (document.visibilityState === 'visible') {
+          loadLiveSpecialsIntoAdmin();
+          loadLiveAdminMetrics();
+        }
       });
     });
   </script>

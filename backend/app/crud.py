@@ -663,6 +663,8 @@ def calcular_resumen_caja(db: Session, closure: models.CashClosure) -> schemas.C
     total_daviplata = sum(p.amount for p in pagos if p.method == models.PaymentMethod.DAVIPLATA)
     total_transfer = total_nequi + total_bancolombia + total_daviplata
     total_card = sum(p.amount for p in pagos if p.method == models.PaymentMethod.CARD)
+    # Regla Contable Crítica: FIADO NO suma a total_cash ni expected_cash, sino a total_credit_sales
+    total_credit = sum(p.amount for p in pagos if p.method == models.PaymentMethod.FIADO)
 
     pedido_ids = {p.pedido_id for p in pagos}
     if pedido_ids:
@@ -699,6 +701,7 @@ def calcular_resumen_caja(db: Session, closure: models.CashClosure) -> schemas.C
     closure.total_daviplata_sales = total_daviplata
     closure.total_transfer_sales = total_transfer
     closure.total_card_sales = total_card
+    closure.total_credit_sales = total_credit
     closure.total_delivery_fees = total_delivery_fees
     closure.total_delivery_payouts = total_delivery_payouts
     closure.total_expenses = total_expenses
@@ -718,6 +721,7 @@ def calcular_resumen_caja(db: Session, closure: models.CashClosure) -> schemas.C
         total_daviplata_sales=total_daviplata,
         total_transfer_sales=total_transfer,
         total_card_sales=total_card,
+        total_credit_sales=total_credit,
         total_delivery_fees=total_delivery_fees,
         total_delivery_payouts=total_delivery_payouts,
         total_expenses=total_expenses,
@@ -747,6 +751,7 @@ def open_cash_closure(db: Session, open_in: schemas.CashClosureOpen) -> models.C
         total_daviplata_sales=0.0,
         total_transfer_sales=0.0,
         total_card_sales=0.0,
+        total_credit_sales=0.0,
         total_delivery_fees=0.0,
         total_delivery_payouts=0.0,
         total_expenses=0.0,
@@ -979,6 +984,7 @@ def obtener_estadisticas_dashboard(db: Session) -> schemas.DashboardStatsOut:
     bancolombia_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.BANCOLOMBIA)
     daviplata_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.DAVIPLATA)
     card_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.CARD)
+    credit_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.FIADO)
     transfer_sales = nequi_sales + bancolombia_sales + daviplata_sales
     digital_sales = transfer_sales + card_sales
     today_sales = cash_sales + digital_sales
@@ -1035,7 +1041,111 @@ def obtener_estadisticas_dashboard(db: Session) -> schemas.DashboardStatsOut:
         bancolombiaSales=bancolombia_sales,
         daviplataSales=daviplata_sales,
         cardSales=card_sales,
+        creditSales=credit_sales,
         todayOrderCount=today_order_count,
         totalCustomers=int(total_customers),
         topDishes=top_dishes,
     )
+
+
+# --- CONFIGURACIÓN PERSISTENTE DE ESPECIALES DEL DÍA Y PLATOS ROTATIVOS ---
+
+def _split_csv(val) -> List[str]:
+    if isinstance(val, list):
+        return [str(x).strip() for x in val if str(x).strip()]
+    if isinstance(val, str):
+        return [x.strip() for x in val.split(",") if x.strip()]
+    return []
+
+
+def _format_daily_specials_out(row: models.DailySpecialsConfig) -> schemas.DailySpecialsConfigOut:
+    principios_list = _split_csv(row.principios)
+    acomp_list = _split_csv(row.acompanamientos)
+    esp165_list = _split_csv(row.especiales_16500)
+    return schemas.DailySpecialsConfigOut(
+        id=row.id,
+        sopa_dia=row.sopa_dia or "Campesina",
+        sopa=row.sopa_dia or "Campesina",
+        principios=principios_list,
+        principios_str=", ".join(principios_list),
+        acompanamientos=acomp_list,
+        acompanamientos_str=", ".join(acomp_list),
+        especiales_16500=esp165_list,
+        especiales_16500_str=", ".join(esp165_list),
+        especiales_16500_etiqueta=row.especiales_16500_etiqueta or "⭐ SOLO POR HOY",
+        especial_arroz_nombre=row.especial_arroz_nombre or "Arroz ranchero",
+        especial_arroz_etiqueta=row.especial_arroz_etiqueta or "⭐ SOLO LOS LUNES",
+        especial_arroz_precio=float(row.especial_arroz_precio or 18000.0),
+        updated_at=row.updated_at,
+    )
+
+
+def get_daily_specials_config(db: Session) -> schemas.DailySpecialsConfigOut:
+    row = db.query(models.DailySpecialsConfig).order_by(models.DailySpecialsConfig.id.asc()).first()
+    if not row:
+        row = models.DailySpecialsConfig(
+            id=1,
+            sopa_dia="Campesina",
+            principios="Calabacín al huevo, Lentejas caseras, Frijoles caseros",
+            acompanamientos="Puré de ahuyama, Deditos, Tajadas maduras",
+            especiales_16500="Hígado al ajillo, Desgranado de carne",
+            especiales_16500_etiqueta="⭐ SOLO POR HOY",
+            especial_arroz_nombre="Arroz ranchero",
+            especial_arroz_etiqueta="⭐ SOLO LOS LUNES",
+            especial_arroz_precio=18000.0,
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    return _format_daily_specials_out(row)
+
+
+def update_daily_specials_config(
+    db: Session,
+    data: schemas.DailySpecialsConfigUpdate,
+) -> schemas.DailySpecialsConfigOut:
+    row = db.query(models.DailySpecialsConfig).order_by(models.DailySpecialsConfig.id.asc()).first()
+    if not row:
+        row = models.DailySpecialsConfig(id=1)
+        db.add(row)
+        db.flush()
+
+    sopa_val = data.sopa_dia if data.sopa_dia is not None else data.sopa
+    if sopa_val is not None and sopa_val.strip():
+        row.sopa_dia = sopa_val.strip()
+
+    if data.principios is not None:
+        p_list = _split_csv(data.principios)
+        if p_list:
+            row.principios = ", ".join(p_list)
+
+    if data.acompanamientos is not None:
+        a_list = _split_csv(data.acompanamientos)
+        if a_list:
+            row.acompanamientos = ", ".join(a_list)
+
+    if data.especiales_16500 is not None:
+        e_list = _split_csv(data.especiales_16500)
+        if e_list:
+            row.especiales_16500 = ", ".join(e_list)
+            for dish_name in e_list:
+                _resolver_o_crear_plato(db, None, dish_name, 16500.0)
+
+    if data.especiales_16500_etiqueta is not None and data.especiales_16500_etiqueta.strip():
+        row.especiales_16500_etiqueta = data.especiales_16500_etiqueta.strip()
+
+    if data.especial_arroz_nombre is not None and data.especial_arroz_nombre.strip():
+        row.especial_arroz_nombre = data.especial_arroz_nombre.strip()
+
+    if data.especial_arroz_etiqueta is not None and data.especial_arroz_etiqueta.strip():
+        row.especial_arroz_etiqueta = data.especial_arroz_etiqueta.strip()
+
+    if data.especial_arroz_precio is not None and float(data.especial_arroz_precio) > 0:
+        row.especial_arroz_precio = float(data.especial_arroz_precio)
+
+    if row.especial_arroz_nombre:
+        _resolver_o_crear_plato(db, None, row.especial_arroz_nombre, float(row.especial_arroz_precio or 18000.0))
+
+    db.commit()
+    db.refresh(row)
+    return _format_daily_specials_out(row)
