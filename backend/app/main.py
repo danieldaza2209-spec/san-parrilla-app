@@ -6,7 +6,7 @@ from app.database import engine, Base, get_db
 from app import schemas, crud
 import app.models  # Import standard models so Base.metadata knows about all tables
 
-from app.routers import platos, menu, pedidos, metricas, auth, caja
+from app.routers import platos, menu, pedidos, metricas, auth, caja, clientes
 
 # Create database tables and sync POS catalog automatically
 Base.metadata.create_all(bind=engine)
@@ -45,6 +45,8 @@ app.add_middleware(
 # Incluir Routers Modulares
 app.include_router(auth.router)
 app.include_router(platos.router)
+app.include_router(platos.platos_direct_router)
+app.include_router(clientes.router)
 app.include_router(menu.router)
 app.include_router(pedidos.router)
 app.include_router(caja.router)

@@ -461,6 +461,11 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
         } catch (e) {}
       }
 
+      // Re-aplicar estado de precios y agotados después de re-renderizar especiales
+      if (lastPlatosList && lastPlatosList.length > 0) {
+        applyLivePlatosToDOM(lastPlatosList);
+      }
+
       const normalizedDetail = {
         ...raw,
         sopa: sopa || raw.sopa || 'Campesina',
@@ -475,6 +480,158 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
       };
 
       window.dispatchEvent(new CustomEvent('sp:specials-updated', { detail: normalizedDetail }));
+    }
+
+    // =========================================================
+    // SINCRONIZACIÓN EN TIEMPO REAL DE PRECIOS Y PLATOS AGOTADOS
+    // =========================================================
+    const PLATOS_CACHE_KEY = 'sp_platos_live_v1';
+    let lastPlatosList = [];
+
+    function normDishKey(str) {
+      return String(str || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function applyLivePlatosToDOM(platosArray) {
+      if (!Array.isArray(platosArray) || platosArray.length === 0) return;
+      lastPlatosList = platosArray;
+
+      const platoMap = new Map();
+      platosArray.forEach((p) => {
+        const key = normDishKey(p.nombre || p.name);
+        if (key) platoMap.set(key, p);
+      });
+
+      // 1. Actualizar todos los botones .btn-add-cart en QuickOrderView y vistas hermanas
+      document.querySelectorAll('.btn-add-cart[data-name]').forEach((btn) => {
+        const dishName = btn.getAttribute('data-name') || '';
+        const info = platoMap.get(normDishKey(dishName));
+        if (!info) return;
+
+        const newPrice = Number(info.precio ?? info.price ?? btn.getAttribute('data-price') ?? 0);
+        const isAvailable = info.disponible !== false && info.activo !== false && info.in_stock !== 0;
+
+        if (newPrice > 0) {
+          btn.setAttribute('data-price', String(newPrice));
+          btn.dataset.price = String(newPrice);
+        }
+
+        const rowOrCard = btn.closest('li') || btn.closest('.pos-rapida-card') || btn.parentElement?.parentElement;
+        const nameSpan = rowOrCard
+          ? rowOrCard.querySelector('span.flex-1, h3, .pos-rapida-name, span.truncate')
+          : null;
+
+        // Actualizar precio visible en tarjetas de Picadas, Bebidas o Comidas Rápidas
+        if (rowOrCard && !btn.closest('[data-price-column]')) {
+          const priceLabel = rowOrCard.querySelector('.font-display.text-parrilla-gold, .pos-rapida-price');
+          if (priceLabel && newPrice > 0) {
+            priceLabel.textContent = fmtCOP(newPrice);
+          }
+        }
+
+        // Gestionar estado Agotado por hoy vs Disponible
+        if (!isAvailable) {
+          btn.disabled = true;
+          btn.setAttribute('data-sold-out', 'true');
+          btn.setAttribute('title', 'Agotado por hoy');
+          btn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+          if (rowOrCard) {
+            rowOrCard.classList.add('opacity-60');
+          }
+          if (nameSpan && !nameSpan.querySelector('[data-soldout-badge]')) {
+            const badge = document.createElement('span');
+            badge.setAttribute('data-soldout-badge', 'true');
+            badge.className =
+              'ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-red-100 text-red-700 border border-red-300 align-middle';
+            badge.textContent = 'Agotado por hoy';
+            nameSpan.appendChild(badge);
+          }
+        } else {
+          btn.disabled = false;
+          btn.removeAttribute('data-sold-out');
+          btn.removeAttribute('title');
+          btn.classList.remove('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+          if (rowOrCard) {
+            rowOrCard.classList.remove('opacity-60');
+          }
+          if (nameSpan) {
+            const oldBadge = nameSpan.querySelector('[data-soldout-badge]');
+            if (oldBadge) oldBadge.remove();
+          }
+        }
+      });
+
+      // 2. Actualizar encabezados de columnas de precios ([data-price-column]) y badges individuales si un plato cambió de precio
+      document.querySelectorAll('[data-price-column]').forEach((colEl) => {
+        const regularBtns = Array.from(colEl.querySelectorAll(':scope > ul .btn-add-cart[data-price]'));
+        if (regularBtns.length === 0) return;
+
+        // Calcular el precio dominante (moda) de la columna por si se actualizó todo el grupo en bloque
+        const freq = new Map();
+        let dominantPrice = Number(colEl.getAttribute('data-price-column') || 0);
+        let maxCount = 0;
+        regularBtns.forEach((b) => {
+          const p = Number(b.getAttribute('data-price') || 0);
+          if (p > 0) {
+            const c = (freq.get(p) || 0) + 1;
+            freq.set(p, c);
+            if (c > maxCount) {
+              maxCount = c;
+              dominantPrice = p;
+            }
+          }
+        });
+
+        const headerPriceEl = colEl.querySelector(':scope > div:first-child span');
+        if (headerPriceEl && dominantPrice > 0) {
+          headerPriceEl.textContent = fmtCOP(dominantPrice);
+          colEl.setAttribute('data-price-column', String(dominantPrice));
+        }
+
+        // Si un plato individual dentro de la columna tiene un precio distinto al encabezado de la columna, mostrar su precio al lado
+        regularBtns.forEach((b) => {
+          const p = Number(b.getAttribute('data-price') || 0);
+          const li = b.closest('li');
+          const nameSpan = li ? li.querySelector('span.flex-1') : null;
+          if (!nameSpan) return;
+          const existingPriceTag = nameSpan.querySelector('[data-custom-price-tag]');
+          if (p > 0 && p !== dominantPrice) {
+            if (existingPriceTag) {
+              existingPriceTag.textContent = `(${fmtCOP(p)})`;
+            } else {
+              const tag = document.createElement('span');
+              tag.setAttribute('data-custom-price-tag', 'true');
+              tag.className = 'ml-1 text-[11px] font-extrabold text-parrilla-gold font-mono';
+              tag.textContent = `(${fmtCOP(p)})`;
+              nameSpan.appendChild(tag);
+            }
+          } else if (existingPriceTag) {
+            existingPriceTag.remove();
+          }
+        });
+      });
+
+      window.dispatchEvent(new CustomEvent('sp:platos-updated', { detail: platosArray }));
+    }
+
+    async function fetchAndSyncLivePlatos() {
+      try {
+        const res = await fetch('/api/platos', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data.platos || data.products || []);
+          if (Array.isArray(list) && list.length > 0) {
+            try {
+              localStorage.setItem(PLATOS_CACHE_KEY, JSON.stringify(list));
+            } catch (e) {}
+            applyLivePlatosToDOM(list);
+          }
+        }
+      } catch (e) {}
     }
 
     async function fetchAndSyncLiveSpecials() {
@@ -498,13 +655,21 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
       if (cached && (cached.sopa_dia || cached.sopa)) {
         applyLiveSpecialsToDOM(cached);
       }
+      const cachedPlatos = JSON.parse(localStorage.getItem(PLATOS_CACHE_KEY) || 'null');
+      if (Array.isArray(cachedPlatos) && cachedPlatos.length > 0) {
+        applyLivePlatosToDOM(cachedPlatos);
+      }
     } catch (e) {}
 
     // 2. Consultar Neon DB en vivo
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', fetchAndSyncLiveSpecials);
-    } else {
+    function syncAllLive() {
       fetchAndSyncLiveSpecials();
+      fetchAndSyncLivePlatos();
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', syncAllLive);
+    } else {
+      syncAllLive();
     }
 
     // 3. Escuchar BroadcastChannel y cambios de pestaña para actualización instantánea
@@ -515,17 +680,32 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
       };
     } catch (e) {}
 
+    try {
+      const bcPlatos = new BroadcastChannel('sp_platos_channel');
+      bcPlatos.onmessage = (ev) => {
+        if (Array.isArray(ev.data)) {
+          applyLivePlatosToDOM(ev.data);
+        } else {
+          fetchAndSyncLivePlatos();
+        }
+      };
+    } catch (e) {}
+
     window.addEventListener('storage', (ev) => {
       if (ev.key === CACHE_KEY && ev.newValue) {
         try {
           applyLiveSpecialsToDOM(JSON.parse(ev.newValue));
+        } catch (e) {}
+      } else if (ev.key === PLATOS_CACHE_KEY && ev.newValue) {
+        try {
+          applyLivePlatosToDOM(JSON.parse(ev.newValue));
         } catch (e) {}
       }
     });
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        fetchAndSyncLiveSpecials();
+        syncAllLive();
       }
     });
   })();

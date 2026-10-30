@@ -643,80 +643,296 @@ const formatPrice = (val) => {
 
     </div>
 
-    <!-- 3. GESTOR DE PRECIOS Y DISPONIBILIDAD DEL MENÚ -->
-    <div class="bg-parrilla-surface rounded-2xl border border-parrilla-border p-6 shadow-xl">
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-parrilla-border">
+    <!-- 2.5 CUENTAS POR COBRAR (CLIENTES DE FIADO) & CUENTA DE COBRO MENSUAL -->
+    <div id="section-cuentas-fiado" class="bg-parrilla-surface rounded-2xl border-2 border-amber-400/80 p-6 shadow-xl mb-10">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 mb-5 border-b border-parrilla-border">
         <div>
-          <h2 class="font-display font-bold text-xl text-parrilla-ivory">Gestor de Precios y Platos Agotados</h2>
-          <p class="text-xs text-parrilla-muted">Actualiza precios o pausa platos agotados al instante sin tocar código.</p>
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📒</span>
+            <h2 class="font-display font-black text-xl sm:text-2xl text-parrilla-ivory">
+              Cuentas por Cobrar (Clientes de Fiado) & Cuenta de Cobro Mensual
+            </h2>
+          </div>
+          <p class="text-xs text-parrilla-muted mt-1">
+            Controla el estado de cuenta de cada cliente de fiado, consulta el detalle plato por plato, descarga la Cuenta de Cobro en Excel a fin de mes y liquida la deuda cuando paguen.
+          </p>
         </div>
 
-        <div class="relative w-full sm:w-72">
-          <i data-lucide="search" class="w-4 h-4 text-parrilla-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
-          <input 
-            type="text" 
-            id="admin-search-dish" 
-            placeholder="Filtrar plato..." 
-            class="w-full pl-9 pr-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
-          />
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-300 text-right">
+            <span class="block text-[10px] font-bold uppercase text-amber-800">Total Fiado Pendiente (Periodo)</span>
+            <span id="fiado-kpi-total-pendiente" class="font-display font-black text-lg text-amber-900 font-mono">$0</span>
+          </div>
+          <div class="px-3.5 py-2 rounded-xl bg-slate-50 border border-parrilla-border text-right">
+            <span class="block text-[10px] font-bold uppercase text-parrilla-muted">Clientes con Cuenta</span>
+            <span id="fiado-kpi-clientes-count" class="font-display font-black text-lg text-parrilla-ivory font-mono">0</span>
+          </div>
+          <button
+            type="button"
+            id="btn-new-fiado-customer"
+            class="px-3.5 py-2.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs shadow-sm transition cursor-pointer flex items-center gap-1.5"
+          >
+            <span>➕ Nuevo Cliente</span>
+          </button>
         </div>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead>
-            <tr class="border-b border-parrilla-border text-parrilla-muted uppercase font-bold text-[11px]">
-              <th class="py-3 px-3">Plato / Producto</th>
-              <th class="py-3 px-3">Categoría</th>
-              <th class="py-3 px-3">Precio Actual ($)</th>
-              <th class="py-3 px-3 text-center">Estado / Disponible</th>
-              <th class="py-3 px-3 text-right">Acción</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-parrilla-border/40" id="admin-table-body">
-            {products.map(p => (
-              <tr class="hover:bg-parrilla-dark/40 transition dish-row" data-name={p.name.toLowerCase()}>
-                <td class="py-3 px-3 font-bold text-sm text-parrilla-ivory">
-                  {p.name}
-                </td>
-                <td class="py-3 px-3 text-parrilla-muted">
-                  {categories.find(c => c.id === p.category_id)?.name || p.category_id}
-                </td>
-                <td class="py-3 px-3">
-                  <div class="flex items-center gap-2">
-                    <span class="text-parrilla-gold font-bold font-mono text-sm">$</span>
-                    <input 
-                      type="number" 
-                      class="price-input w-28 px-2 py-1 bg-parrilla-dark rounded-lg border border-parrilla-border text-sm font-mono text-parrilla-gold focus:border-parrilla-gold outline-none"
-                      value={p.price}
-                      data-id={p.id}
-                    />
-                  </div>
-                </td>
-                <td class="py-3 px-3 text-center">
-                  <button 
-                    type="button" 
-                    class="btn-toggle-active px-3 py-1 rounded-full text-[11px] font-bold transition"
-                    data-id={p.id}
-                    data-active={p.is_active}
-                    style={p.is_active ? 'background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1px solid rgba(76, 175, 80, 0.4);' : 'background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);'}
-                  >
-                    {p.is_active ? '✓ Activo' : '✕ Agotado (Pausado)'}
-                  </button>
-                </td>
-                <td class="py-3 px-3 text-right">
-                  <button 
-                    type="button" 
-                    class="btn-save-price bg-white hover:bg-parrilla-gold text-parrilla-ivory hover:text-white font-bold px-3 py-1.5 rounded-lg border border-parrilla-border hover:border-parrilla-gold shadow-sm transition text-xs"
-                    data-id={p.id}
-                  >
-                    Actualizar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <!-- Filtros de Periodo / Mes, Estado (Pendiente vs Pagado) y Buscador de Cliente -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 mb-5 bg-parrilla-dark/60 p-3.5 rounded-xl border border-parrilla-border">
+        <!-- Estado: Pendiente de Pago vs Pagado -->
+        <div class="md:col-span-4 flex flex-col gap-1">
+          <label class="text-[10px] font-bold uppercase text-parrilla-muted">Estado de Cuenta</label>
+          <div class="grid grid-cols-3 gap-1 bg-white p-1 rounded-xl border border-parrilla-border">
+            <button
+              type="button"
+              data-fiado-status="PENDIENTE"
+              class="fiado-status-btn active py-1.5 px-2 rounded-lg text-[11px] font-extrabold bg-amber-500 text-white shadow-xs transition cursor-pointer"
+            >
+              ⏳ Pendientes
+            </button>
+            <button
+              type="button"
+              data-fiado-status="PAGADO"
+              class="fiado-status-btn py-1.5 px-2 rounded-lg text-[11px] font-bold text-parrilla-ivory hover:text-emerald-700 transition cursor-pointer"
+            >
+              ✅ Pagados
+            </button>
+            <button
+              type="button"
+              data-fiado-status="ALL"
+              class="fiado-status-btn py-1.5 px-2 rounded-lg text-[11px] font-bold text-parrilla-ivory hover:text-parrilla-gold transition cursor-pointer"
+            >
+              📋 Todos
+            </button>
+          </div>
+        </div>
+
+        <!-- Mes o Rango de Fechas -->
+        <div class="md:col-span-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-parrilla-muted mb-1">Mes (Cuenta Mensual)</label>
+            <input
+              type="month"
+              id="fiado-filter-month"
+              class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-parrilla-border text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-parrilla-muted mb-1">Desde Fecha</label>
+            <input
+              type="date"
+              id="fiado-filter-from"
+              class="w-full px-2 py-1.5 bg-white rounded-lg border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-parrilla-muted mb-1">Hasta Fecha</label>
+            <input
+              type="date"
+              id="fiado-filter-to"
+              class="w-full px-2 py-1.5 bg-white rounded-lg border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+          </div>
+        </div>
+
+        <!-- Buscador de Cliente -->
+        <div class="md:col-span-3 flex flex-col gap-1">
+          <div class="flex items-center justify-between">
+            <label class="text-[10px] font-bold uppercase text-parrilla-muted">Buscar Cliente / Teléfono</label>
+            <button type="button" id="btn-fiado-clear-dates" class="text-[10px] font-bold text-parrilla-gold hover:underline cursor-pointer">
+              Ver todo el historial
+            </button>
+          </div>
+          <div class="relative">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-parrilla-muted absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+            <input
+              type="text"
+              id="fiado-search-input"
+              placeholder="Ej. Juan Pérez o 318..."
+              class="w-full pl-8 pr-3 py-1.5 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenedor de Clientes de Fiado y su Detalle Desplegable -->
+      <div id="fiado-accounts-container" class="space-y-3">
+        <div class="py-8 text-center text-xs text-parrilla-muted italic">
+          Cargando cuentas por cobrar desde Neon DB...
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL PARA LIQUIDAR CUENTA DE FIADO (MARCAR COMO PAGADA) -->
+    <div id="modal-liquidar-fiado" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div class="bg-white rounded-2xl border border-parrilla-border shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-parrilla-border pb-3">
+          <div>
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 block">Liquidación de Cuenta Mensual</span>
+            <h3 class="font-display font-black text-lg text-parrilla-ivory" id="liquidar-modal-title">✅ Marcar Cuenta como Pagada</h3>
+          </div>
+          <button type="button" id="btn-close-liquidar-modal" class="text-parrilla-muted hover:text-red-500 font-bold text-lg cursor-pointer">✕</button>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs space-y-1">
+          <div class="flex justify-between">
+            <span class="text-amber-900 font-semibold">Cliente:</span>
+            <span class="font-bold text-parrilla-ivory" id="liquidar-modal-cliente">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-amber-900 font-semibold">Teléfono:</span>
+            <span class="font-mono font-bold text-parrilla-ivory" id="liquidar-modal-telefono">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-amber-900 font-semibold">Pedidos a liquidar:</span>
+            <span class="font-bold text-parrilla-ivory" id="liquidar-modal-cantidad">0 pedidos</span>
+          </div>
+          <div class="flex justify-between pt-1.5 border-t border-amber-300 text-sm">
+            <span class="font-black text-amber-950">SALDO TOTAL A PAGAR:</span>
+            <span class="font-display font-black text-emerald-700 font-mono" id="liquidar-modal-total">$0</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-parrilla-gold mb-2">¿Con qué medio de pago canceló el cliente? *</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              data-liq-method="CASH"
+              class="liq-method-btn active py-3 px-2 rounded-xl border-2 border-parrilla-gold bg-parrilla-gold text-white font-extrabold text-xs flex flex-col items-center gap-1 shadow-xs cursor-pointer"
+            >
+              <span class="text-base">💵</span>
+              <span>Efectivo</span>
+            </button>
+            <button
+              type="button"
+              data-liq-method="NEQUI"
+              class="liq-method-btn py-3 px-2 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer"
+            >
+              <span class="text-base">🟣</span>
+              <span>Nequi</span>
+            </button>
+            <button
+              type="button"
+              data-liq-method="BANCOLOMBIA"
+              class="liq-method-btn py-3 px-2 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer"
+            >
+              <span class="text-base">🟡</span>
+              <span>Bancolombia</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            id="btn-cancel-liquidar-modal"
+            class="px-4 py-2.5 rounded-xl border border-parrilla-border text-xs font-bold text-parrilla-muted hover:bg-slate-100 cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            id="btn-confirm-liquidar-fiado"
+            class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-display font-black text-xs shadow-md transition active:scale-95 cursor-pointer"
+          >
+            ✅ Confirmar Pago y Liquidar Deuda
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL PARA REGISTRAR / EDITAR CLIENTE EN EL DIRECTORIO NEON -->
+    <div id="modal-admin-cliente" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div class="bg-white rounded-2xl border border-parrilla-border shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-parrilla-border pb-3">
+          <h3 class="font-display font-black text-lg text-parrilla-ivory">👤 Registrar / Actualizar Cliente en Neon</h3>
+          <button type="button" id="btn-close-cliente-modal" class="text-parrilla-muted hover:text-red-500 font-bold text-lg cursor-pointer">✕</button>
+        </div>
+        <form id="form-admin-cliente" class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-parrilla-ivory mb-1">Teléfono Celular *</label>
+            <input type="tel" id="admin-cust-phone" required placeholder="Ej. 3183821787" class="w-full px-3 py-2 rounded-xl border border-parrilla-border text-xs font-mono font-bold" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-parrilla-ivory mb-1">Nombre Completo *</label>
+            <input type="text" id="admin-cust-name" required placeholder="Nombre del cliente" class="w-full px-3 py-2 rounded-xl border border-parrilla-border text-xs font-bold" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-parrilla-ivory mb-1">Dirección de Entrega</label>
+            <input type="text" id="admin-cust-address" placeholder="Calle / Carrera / Apto" class="w-full px-3 py-2 rounded-xl border border-parrilla-border text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-parrilla-ivory mb-1">Barrio / Indicaciones</label>
+            <input type="text" id="admin-cust-barrio" placeholder="Barrio o referencia" class="w-full px-3 py-2 rounded-xl border border-parrilla-border text-xs" />
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            <button type="button" id="btn-cancel-cliente-modal" class="px-4 py-2.5 rounded-xl border border-parrilla-border text-xs font-bold text-parrilla-muted hover:bg-slate-100 cursor-pointer">Cancelar</button>
+            <button type="submit" id="btn-save-cliente-modal" class="flex-1 py-2.5 px-4 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs shadow-md cursor-pointer">💾 Guardar Cliente</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 3. GESTOR DE PRECIOS Y PLATOS AGOTADOS (AGRUPADO POR BLOQUES DE PRECIO / CATEGORÍA Y CONECTADO EN VIVO A NEON) -->
+    <div id="section-gestor-precios" class="bg-parrilla-surface rounded-2xl border border-parrilla-border p-6 shadow-xl">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5 pb-4 border-b border-parrilla-border">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🍗</span>
+            <h2 class="font-display font-black text-xl sm:text-2xl text-parrilla-ivory">
+              Gestor de Precios y Platos Agotados (Sincronizado en Vivo)
+            </h2>
+          </div>
+          <p class="text-xs text-parrilla-muted mt-1">
+            Agrupado por bloques de precio y categorías. Cambia el precio de todo un bloque a la vez o marca platos como <strong>🚫 No Disponible (Agotado)</strong> en 1 clic con reflejo inmediato en <code>/pos</code> y en la Carta Digital (<code>/</code>).
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative w-full sm:w-64">
+            <i data-lucide="search" class="w-4 h-4 text-parrilla-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input 
+              type="text" 
+              id="admin-search-dish" 
+              placeholder="Buscar plato o precio..." 
+              class="w-full pl-9 pr-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+            />
+          </div>
+          <button
+            type="button"
+            id="btn-refresh-platos-admin"
+            class="px-3 py-2 rounded-xl bg-parrilla-dark hover:bg-slate-200 border border-parrilla-border text-xs font-bold text-parrilla-ivory transition cursor-pointer"
+          >
+            🔄 Sincronizar
+          </button>
+        </div>
+      </div>
+
+      <!-- Pestañas rápidas por familia de menú -->
+      <div class="flex flex-wrap items-center gap-2 mb-5">
+        <button type="button" data-platos-tab="ALL" class="platos-family-tab active px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-parrilla-gold text-white shadow-xs transition cursor-pointer">
+          📋 Todos los Bloques
+        </button>
+        <button type="button" data-platos-tab="ALMUERZOS" class="platos-family-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-parrilla-dark text-parrilla-ivory border border-parrilla-border hover:border-parrilla-gold transition cursor-pointer">
+          🍛 Almuerzos por Precio ($16.500 - $33.000)
+        </button>
+        <button type="button" data-platos-tab="RAPIDAS" class="platos-family-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-parrilla-dark text-parrilla-ivory border border-parrilla-border hover:border-parrilla-gold transition cursor-pointer">
+          🍔 Comidas Rápidas y Noche
+        </button>
+        <button type="button" data-platos-tab="OTROS" class="platos-family-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-parrilla-dark text-parrilla-ivory border border-parrilla-border hover:border-parrilla-gold transition cursor-pointer">
+          🥩 Picadas y 🥤 Bebidas
+        </button>
+        <span id="platos-sync-badge" class="ml-auto text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg hidden">
+          ✓ Sincronizado con Neon DB
+        </span>
+      </div>
+
+      <!-- Contenedor de Bloques de Precio y Categorías -->
+      <div id="admin-price-groups-container" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="col-span-full py-10 text-center text-xs text-parrilla-muted italic">
+          Cargando catálogo de platos desde Neon DB...
+        </div>
       </div>
     </div>
 
@@ -763,21 +979,7 @@ const formatPrice = (val) => {
       });
     }
 
-    // Search dishes in table
-    const searchDishInput = document.getElementById('admin-search-dish');
-    const dishRows = document.querySelectorAll('.dish-row');
-
-    if (searchDishInput) {
-      searchDishInput.addEventListener('input', (e) => {
-        // @ts-ignore
-        const q = e.target.value.toLowerCase().trim();
-        dishRows.forEach(row => {
-          const name = row.getAttribute('data-name') || '';
-          // @ts-ignore
-          row.style.display = name.includes(q) ? 'table-row' : 'none';
-        });
-      });
-    }
+    // Search dishes in grouped price blocks (wired in GESTOR DE PRECIOS section below)
 
     // =====================================================================
     // EDITOR DE ESPECIALES DEL DÍA (PERSISTENCIA NEON + SINCRONIZACIÓN EN VIVO)
@@ -965,55 +1167,537 @@ const formatPrice = (val) => {
       });
     }
 
-    // Update Price buttons
-    document.querySelectorAll('.btn-save-price').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-id');
-        // @ts-ignore
-        const input = document.querySelector(`.price-input[data-id="${id}"]`);
-        // @ts-ignore
-        const price = Number(input.value);
+    // =====================================================================
+    // 3. GESTOR DE PRECIOS Y PLATOS AGOTADOS AGRUPADO POR BLOQUES EN VIVO
+    // =====================================================================
+    let allLivePlatos = [];
+    let currentPlatosFamilyTab = 'ALL';
+    let currentPlatosSearch = '';
 
-        const res = await fetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'update_price', id, price })
-        });
-        const data = await res.json();
-        if (data.success) {
-          btn.textContent = '✓ Guardado';
-          setTimeout(() => { btn.textContent = 'Actualizar'; }, 1500);
-        } else {
-          alert('Error al guardar precio');
+    const normDishText = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    function broadcastPlatosUpdate(platosList) {
+      try {
+        const list = Array.isArray(platosList) ? platosList : allLivePlatos;
+        localStorage.setItem('sp_platos_live_v1', JSON.stringify(list));
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('sp_platos_channel');
+          bc.postMessage(list);
+          bc.close();
         }
-      });
-    });
+      } catch (_) {}
+    }
 
-    // Toggle Active / Agotado buttons
-    document.querySelectorAll('.btn-toggle-active').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-id');
-        const currentActive = btn.getAttribute('data-active') === '1';
-        const newActive = !currentActive;
+    // Bloques estructurales de Almuerzos y Comidas Rápidas (idénticos a index.astro y pos.astro)
+    const ADMIN_PRICE_GROUP_DEFS = [
+      {
+        key: 'ALM_16500',
+        family: 'ALMUERZOS',
+        title: '🍛 Almuerzos de $16.500 (Ejecutivos y Especiales del Día)',
+        subtitle: 'Milanesa, Nuggets, Pernil, Lomo de Cerdo, Hígado, Chuleta y Especiales de Hoy',
+        badgeColor: 'bg-amber-600 text-white',
+        names: [
+          'Milanesa de pollo', 'Nuggets de pollo', 'Pernil frito', 'Pernil bbq',
+          'Lomo de cerdo a la plancha', 'Hígado en bistec', 'Chuleta de cerdo',
+          'Hígado al ajillo', 'Desgranado de carne', 'Albóndigas napolitanas',
+          'Llanerita (lomo de cerdo y sobrebarriga)', 'Lomo de cerdo apanado',
+          'Lomo en salsa a la mostaza'
+        ]
+      },
+      {
+        key: 'ALM_17500',
+        family: 'ALMUERZOS',
+        title: '🥩 Almuerzos de $17.500 (Res, Pechuga y Cerdo Especial)',
+        subtitle: 'Carne a la plancha/bistec/bbq, Pechugas, Pernil Hawaiano, Lomo y Chuleta al ajillo/bbq',
+        badgeColor: 'bg-orange-600 text-white',
+        names: [
+          'Carne a la plancha', 'Carne en bistec', 'Carne bbq',
+          'Pechuga a la plancha', 'Pechuga en salsa criolla', 'Pechuga apanada',
+          'Pechuga bbq', 'Pechuga al ajillo', 'Pernil hawaiano',
+          'Lomo de cerdo a la bbq', 'Lomo de cerdo al ajillo',
+          'Chuleta de cerdo al ajillo', 'Chuleta de cerdo a la bbq'
+        ]
+      },
+      {
+        key: 'ALM_18000',
+        family: 'ALMUERZOS',
+        title: '🍲 Almuerzos de $18.000 (Bandeja Paisa, Arroces y Especiales)',
+        subtitle: 'Bandeja Paisa, Alitas BBQ, Creps, Bistec a Caballo, Pechuga Hawaiana/Bechamel y Arroces',
+        badgeColor: 'bg-red-600 text-white',
+        names: [
+          'Bandeja paisa', 'Alitas bbq', 'Creps de pollo', 'Bistec a caballo',
+          'Pechuga hawaiana', 'Pechuga en salsa bechamel', 'Combo Personal',
+          'Arroz ranchero', 'Arroz mixto', 'Espagueti con pollo',
+          'Arroz con pollo', 'Arroz paisa'
+        ]
+      },
+      {
+        key: 'ALM_21000',
+        family: 'ALMUERZOS',
+        title: '🐟 Almuerzos de $21.000 (Sobrebarriga, Bagre y Róbalo)',
+        subtitle: 'Sobrebarriga dorada, Bagre frito / al ajillo y Róbalo apanado / al ajillo',
+        badgeColor: 'bg-rose-700 text-white',
+        names: [
+          'Sobrebarriga dorada', 'Bagre frito', 'Bagre al ajillo',
+          'Róbalo apanado', 'Róbalo al ajillo'
+        ]
+      },
+      {
+        key: 'ALM_22000',
+        family: 'ALMUERZOS',
+        title: '🍲 Almuerzos de $22.000 (Sudados, Mojarra y Mini Cazuela)',
+        subtitle: 'Bagre sudado, Mojarra frita / sudada y Mini cazuela de mariscos',
+        badgeColor: 'bg-purple-700 text-white',
+        names: [
+          'Bagre sudado', 'Bagre frito sudado', 'Mojarra frita',
+          'Mojarra sudada', 'Mojarra frita sudada', 'Mini cazuela de mariscos'
+        ]
+      },
+      {
+        key: 'ALM_23000',
+        family: 'ALMUERZOS',
+        title: '🍖 Almuerzos de $23.000 (Costillas BBQ y Pechugas Gratinadas)',
+        subtitle: 'Costillas BBQ, Pechuga con maíz gratinada y Pechuga en champiñones',
+        badgeColor: 'bg-indigo-700 text-white',
+        names: [
+          'Costillas bbq', 'Pechuga con maíz gratinada', 'Pechuga en champiñones'
+        ]
+      },
+      {
+        key: 'ALM_27500',
+        family: 'ALMUERZOS',
+        title: '🔥 Almuerzos de $27.500 (Churrasco, Parrilladas y Cazuelas)',
+        subtitle: 'Churrasco, Parrillada, Llanera mixta, Parrilla mixta, Carne/Pechuga grande y Mini cazuelas',
+        badgeColor: 'bg-amber-800 text-white',
+        names: [
+          'Churrasco', 'Parrillada', 'Pechuga con tocineta y champ.',
+          'Pollo Santo domingo', 'Llanera mixta', 'Parrilla mixta',
+          'Carne grande', 'Pechuga grande', 'Mini cazuela de camarones',
+          'Mini cazuela de bagre'
+        ]
+      },
+      {
+        key: 'ALM_33000',
+        family: 'ALMUERZOS',
+        title: '🦞 Almuerzos de $33.000 (Cazuela de Mariscos y Marineras)',
+        subtitle: 'Cazuela de mariscos, Róbalo a la marinera, Bagre a la marinera y Róbalo con camarones',
+        badgeColor: 'bg-cyan-800 text-white',
+        names: [
+          'Cazuela de mariscos', 'Róbalo a la marinera',
+          'Bagre a la marinera', 'Róbalo con camarones'
+        ]
+      },
+      {
+        key: 'OTROS_PICADAS',
+        family: 'OTROS',
+        title: '🥩 Picadas Especiales (Almuerzo / Compartir)',
+        subtitle: 'Picada x 1, Picada x 2, Picada x 3 y Picada Berraca',
+        badgeColor: 'bg-emerald-700 text-white',
+        names: [
+          'Picada x 1', 'Picada x 2', 'Picada x 3', 'Picada Berraca'
+        ]
+      },
+      {
+        key: 'OTROS_BEBIDAS',
+        family: 'OTROS',
+        title: '🥤 Bebidas, Jugos y Porciones Adicionales',
+        subtitle: 'Gaseosas, Jugos Naturales, Cerveza y Porciones de Papa / Patacón',
+        badgeColor: 'bg-teal-700 text-white',
+        names: [
+          'Gaseosa 400ml', 'Gaseosa 1.5L', 'Jugo Natural en Agua',
+          'Jugo Natural en Leche', 'Cerveza Club Colombia / Águila',
+          'Porción de Papas a la Francesa', 'Porción de Patacón con Hogao'
+        ]
+      }
+    ];
 
-        const res = await fetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'toggle_active', id, is_active: newActive })
+    function categorizeDishesIntoBlocks(platos) {
+      const assignedIds = new Set();
+      const blocks = [];
+
+      // 1. Asignar bloques definidos por lista de nombres o categoría
+      for (const def of ADMIN_PRICE_GROUP_DEFS) {
+        const normTargets = new Set(def.names.map(normDishText));
+        const items = platos.filter(p => {
+          if (assignedIds.has(p.id)) return false;
+          const n = normDishText(p.nombre);
+          if (normTargets.has(n)) return true;
+          if (def.key === 'OTROS_PICADAS_BEBIDAS' && Number(p.categoria_id) === 3) return true;
+          return false;
         });
-        const data = await res.json();
-        if (data.success) {
-          btn.setAttribute('data-active', newActive ? '1' : '0');
-          btn.textContent = newActive ? '✓ Activo' : '✕ Agotado (Pausado)';
+
+        if (items.length > 0) {
+          items.forEach(i => assignedIds.add(i.id));
+          items.sort((a, b) => Number(a.precio || 0) - Number(b.precio || 0) || String(a.nombre).localeCompare(String(b.nombre)));
+          const repPrice = items[0]?.precio || 16500;
+          blocks.push({
+            key: def.key,
+            family: def.family,
+            title: def.title,
+            subtitle: def.subtitle,
+            badgeColor: def.badgeColor,
+            representativePrice: repPrice,
+            items
+          });
+        }
+      }
+
+      // 2. Platos de Comidas Rápidas (por descripción de seed_rapidas o categoría/nombre)
+      const rapidasItems = platos.filter(p => {
+        if (assignedIds.has(p.id)) return false;
+        const d = normDishText(p.descripcion);
+        const n = normDishText(p.nombre);
+        if (d.includes('comidas rapidas') || d.includes('noche')) return true;
+        if (
+          n.includes('hamburguesa') || n.includes('burguer') || n.includes('burger') ||
+          n.includes('perro') || n.includes('suizo') || n.includes('salchipapa') ||
+          n.includes('papas locas') || n.includes('patacon') || n.includes('sandwich') ||
+          n.includes('bandeja san parrilla') || n.includes('picada duo') || n.includes('picada trio') ||
+          n.includes('granizado') || n.includes('gaseosa mega') || n.includes('gaseosa p400')
+        ) {
+          return true;
+        }
+        return false;
+      });
+      if (rapidasItems.length > 0) {
+        const rapidasSubgroups = [
+          { key: 'RAP_BURGER', title: '🍔 Hamburguesas Artesanales (Comidas Rápidas)', match: (n) => n.includes('hamburguesa') || n.includes('burguer') || n.includes('burger') },
+          { key: 'RAP_PERROS', title: '🌭 Perros Calientes y Choriperros (Comidas Rápidas)', match: (n) => n.includes('perro') || n.includes('suizo') },
+          { key: 'RAP_SALCHI_PAPAS', title: '🍟 Salchipapas y Papas Locas (Comidas Rápidas)', match: (n) => n.includes('salchipapa') || n.includes('papas locas') },
+          { key: 'RAP_PATACON_SANDWICH', title: '🫓 Patacones y 🥪 Sándwiches (Comidas Rápidas)', match: (n) => n.includes('patacon') || n.includes('sandwich') },
+          { key: 'RAP_PICADAS_ESPECIALES', title: '🔥 Picadas Noche, Bandejas y Alitas (Comidas Rápidas)', match: (n) => n.includes('picada') || n.includes('bandeja') || n.includes('alitas') || n.includes('costillitas') || n.includes('desgranado') },
+          { key: 'RAP_BEBIDAS_NOCHE', title: '🥤 Granizados, Jugos y Bebidas (Comidas Rápidas)', match: () => true }
+        ];
+
+        for (const sg of rapidasSubgroups) {
+          const subItems = rapidasItems.filter(p => !assignedIds.has(p.id) && sg.match(normDishText(p.nombre)));
+          if (subItems.length > 0) {
+            subItems.forEach(i => assignedIds.add(i.id));
+            subItems.sort((a, b) => Number(a.precio || 0) - Number(b.precio || 0) || String(a.nombre).localeCompare(String(b.nombre)));
+            blocks.push({
+              key: sg.key,
+              family: 'RAPIDAS',
+              title: sg.title,
+              subtitle: `${subItems.length} plato(s) en este grupo de Comidas Rápidas`,
+              badgeColor: 'bg-slate-800 text-amber-300',
+              representativePrice: subItems[0]?.precio || 18000,
+              items: subItems
+            });
+          }
+        }
+      }
+
+      // 3. Cualquier plato restante en Neon DB (agrupado por su precio actual)
+      const remaining = platos.filter(p => !assignedIds.has(p.id));
+      if (remaining.length > 0) {
+        const byPriceMap = new Map();
+        for (const p of remaining) {
+          const pr = Math.round(Number(p.precio || 0));
+          const list = byPriceMap.get(pr) || [];
+          list.push(p);
+          byPriceMap.set(pr, list);
+        }
+        const sortedPrices = Array.from(byPriceMap.keys()).sort((a, b) => a - b);
+        for (const pr of sortedPrices) {
+          const items = byPriceMap.get(pr) || [];
+          const fmtPr = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(pr);
+          blocks.push({
+            key: `EXTRA_${pr}`,
+            family: 'ALMUERZOS',
+            title: `🍽️ Otros Platos de ${fmtPr}`,
+            subtitle: `${items.length} plato(s) con tarifa de ${fmtPr}`,
+            badgeColor: 'bg-parrilla-gold text-white',
+            representativePrice: pr,
+            items
+          });
+        }
+      }
+
+      return blocks;
+    }
+
+    function renderAdminPriceGroups() {
+      const container = document.getElementById('admin-price-groups-container');
+      if (!container) return;
+
+      if (!Array.isArray(allLivePlatos) || allLivePlatos.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-10 text-center text-xs text-parrilla-muted italic">
+            No se encontraron platos en Neon DB. Haz clic en "🔄 Sincronizar".
+          </div>
+        `;
+        return;
+      }
+
+      const blocks = categorizeDishesIntoBlocks(allLivePlatos);
+      const q = normDishText(currentPlatosSearch);
+
+      const visibleBlocks = blocks
+        .filter(b => currentPlatosFamilyTab === 'ALL' || b.family === currentPlatosFamilyTab)
+        .map(b => {
+          if (!q) return b;
+          const filteredItems = b.items.filter(item =>
+            normDishText(item.nombre).includes(q) ||
+            String(Math.round(Number(item.precio || 0))).includes(q) ||
+            normDishText(b.title).includes(q)
+          );
+          return { ...b, items: filteredItems };
+        })
+        .filter(b => b.items.length > 0);
+
+      if (visibleBlocks.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-10 text-center text-xs text-parrilla-muted italic">
+            No hay platos que coincidan con la búsqueda "${currentPlatosSearch}".
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = visibleBlocks.map(block => {
+        const idsJson = JSON.stringify(block.items.map(i => i.id));
+        const defaultBulkPrice = Math.round(Number(block.items[0]?.precio || block.representativePrice || 16500));
+        const agotadosCount = block.items.filter(i => i.disponible === false || i.activo === false).length;
+
+        return `
+          <div class="bg-parrilla-dark/70 rounded-2xl border border-parrilla-border overflow-hidden flex flex-col shadow-sm" data-block-key="${block.key}">
+            <!-- Encabezado del Bloque de Precio + Actualización Masiva -->
+            <div class="p-4 bg-white border-b border-parrilla-border space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${block.badgeColor} mb-1">
+                    ${block.items.length} Platos ${agotadosCount > 0 ? `• 🚫 ${agotadosCount} Agotado(s)` : '• ✓ Todos Disponibles'}
+                  </span>
+                  <h3 class="font-display font-black text-sm sm:text-base text-parrilla-ivory leading-tight">${block.title}</h3>
+                  <p class="text-[11px] text-parrilla-muted mt-0.5">${block.subtitle}</p>
+                </div>
+              </div>
+
+              <!-- Barra de actualización masiva del grupo -->
+              <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-amber-50/90 border border-amber-200 rounded-xl p-2.5">
+                <label class="text-[11px] font-extrabold text-amber-950 whitespace-nowrap">
+                  Actualizar precio de todo este grupo a:
+                </label>
+                <div class="flex items-center gap-1.5 flex-1 min-w-[160px]">
+                  <span class="text-xs font-black text-amber-900">$</span>
+                  <input
+                    type="number"
+                    step="100"
+                    value="${defaultBulkPrice}"
+                    data-bulk-input="${block.key}"
+                    class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-amber-300 text-xs font-mono font-black text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                  />
+                  <button
+                    type="button"
+                    data-bulk-btn="${block.key}"
+                    data-plato-ids='${idsJson}'
+                    class="btn-apply-bulk-price px-3 py-1.5 rounded-lg bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-extrabold text-[11px] whitespace-nowrap shadow-xs transition active:scale-95 cursor-pointer"
+                  >
+                    Aplicar a todos
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lista de Platos del Grupo -->
+            <div class="divide-y divide-parrilla-border/60 max-h-[420px] overflow-y-auto p-2 space-y-1">
+              ${block.items.map(dish => {
+                const isDisp = dish.disponible !== false && dish.activo !== false;
+                const priceNum = Math.round(Number(dish.precio || 0));
+                return `
+                  <div class="dish-item-row flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 px-3 py-2 rounded-xl transition ${isDisp ? 'bg-white hover:bg-slate-50' : 'bg-red-50/70 border border-red-200'}" data-plato-id="${dish.id}">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-1.5">
+                        <span class="font-bold text-xs text-parrilla-ivory truncate ${!isDisp ? 'line-through opacity-70' : ''}">${dish.nombre}</span>
+                        ${!isDisp ? '<span class="px-1.5 py-0.5 rounded bg-red-600 text-white font-extrabold text-[9px] uppercase">Agotado hoy</span>' : ''}
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <!-- Precio individual -->
+                      <div class="flex items-center bg-parrilla-dark rounded-lg border border-parrilla-border px-2 py-1">
+                        <span class="text-[10px] font-bold text-parrilla-muted mr-1">$</span>
+                        <input
+                          type="number"
+                          step="100"
+                          value="${priceNum}"
+                          data-single-price-input="${dish.id}"
+                          class="w-20 bg-transparent text-xs font-mono font-bold text-parrilla-ivory outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        data-save-single-id="${dish.id}"
+                        class="btn-save-single-plato px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-[10px] transition cursor-pointer"
+                        title="Guardar nuevo precio de este plato"
+                      >
+                        Guardar $
+                      </button>
+
+                      <!-- Interruptor 1-Clic Disponible / Agotado -->
+                      <button
+                        type="button"
+                        data-toggle-disp-id="${dish.id}"
+                        data-current-disp="${isDisp ? '1' : '0'}"
+                        class="btn-toggle-plato-disp px-2.5 py-1.5 rounded-lg font-extrabold text-[10px] transition cursor-pointer whitespace-nowrap ${
+                          isDisp
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                            : 'bg-red-600 text-white border border-red-700 hover:bg-red-700 shadow-xs'
+                        }"
+                      >
+                        ${isDisp ? '✓ Disponible' : '🚫 No Disponible (Agotado)'}
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Bind eventos de actualización masiva por bloque
+      container.querySelectorAll('.btn-apply-bulk-price').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const blockKey = btn.getAttribute('data-bulk-btn');
+          const idsRaw = btn.getAttribute('data-plato-ids') || '[]';
+          let platoIds = [];
+          try { platoIds = JSON.parse(idsRaw); } catch (_) {}
           // @ts-ignore
-          btn.style.cssText = newActive 
-            ? 'background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1px solid rgba(76, 175, 80, 0.4);' 
-            : 'background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);';
-        } else {
-          alert('Error al actualizar disponibilidad');
+          const inputEl = container.querySelector(`input[data-bulk-input="${blockKey}"]`);
+          // @ts-ignore
+          const nuevoPrecio = Number(inputEl?.value || 0);
+          if (!platoIds.length || !nuevoPrecio || nuevoPrecio <= 0) {
+            alert('Ingresa un precio válido mayor a $0 para actualizar el grupo.');
+            return;
+          }
+
+          const origText = btn.textContent;
+          btn.textContent = 'Aplicando...';
+          try {
+            const res = await fetch('/api/platos/bulk-price', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ plato_ids: platoIds, nuevo_precio: nuevoPrecio })
+            });
+            if (!res.ok) throw new Error('Error HTTP ' + res.status);
+            // Actualizar estado local y propagar a POS e Index
+            const idSet = new Set(platoIds.map(Number));
+            allLivePlatos = allLivePlatos.map(p => idSet.has(Number(p.id)) ? { ...p, precio: nuevoPrecio } : p);
+            broadcastPlatosUpdate(allLivePlatos);
+            renderAdminPriceGroups();
+          } catch (err) {
+            alert('No se pudo actualizar el precio del grupo: ' + (err.message || err));
+            btn.textContent = origText;
+          }
+        });
+      });
+
+      // Bind eventos de guardar precio individual
+      container.querySelectorAll('.btn-save-single-plato').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const platoId = Number(btn.getAttribute('data-save-single-id'));
+          // @ts-ignore
+          const inputEl = container.querySelector(`input[data-single-price-input="${platoId}"]`);
+          // @ts-ignore
+          const nuevoPrecio = Number(inputEl?.value || 0);
+          if (!platoId || !nuevoPrecio || nuevoPrecio <= 0) return;
+
+          const origText = btn.textContent;
+          btn.textContent = '⏳';
+          try {
+            const res = await fetch(`/api/platos/${platoId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ precio: nuevoPrecio })
+            });
+            if (!res.ok) throw new Error('Error HTTP ' + res.status);
+            const updated = await res.json();
+            allLivePlatos = allLivePlatos.map(p => Number(p.id) === platoId ? { ...p, ...updated, precio: nuevoPrecio } : p);
+            broadcastPlatosUpdate(allLivePlatos);
+            btn.textContent = '✓ Guardado';
+            setTimeout(() => { btn.textContent = origText; }, 1400);
+          } catch (err) {
+            alert('Error al guardar precio del plato: ' + (err.message || err));
+            btn.textContent = origText;
+          }
+        });
+      });
+
+      // Bind interruptor 1-Clic Disponible / No Disponible (Agotado)
+      container.querySelectorAll('.btn-toggle-plato-disp').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const platoId = Number(btn.getAttribute('data-toggle-disp-id'));
+          const curDisp = btn.getAttribute('data-current-disp') === '1';
+          const nextDisp = !curDisp;
+
+          btn.textContent = '⏳...';
+          try {
+            const res = await fetch(`/api/platos/${platoId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ disponible: nextDisp, activo: nextDisp })
+            });
+            if (!res.ok) throw new Error('Error HTTP ' + res.status);
+            const updated = await res.json();
+            allLivePlatos = allLivePlatos.map(p =>
+              Number(p.id) === platoId ? { ...p, ...updated, disponible: nextDisp, activo: nextDisp } : p
+            );
+            broadcastPlatosUpdate(allLivePlatos);
+            renderAdminPriceGroups();
+          } catch (err) {
+            alert('Error cambiando disponibilidad del plato: ' + (err.message || err));
+            renderAdminPriceGroups();
+          }
+        });
+      });
+    }
+
+    async function loadLivePlatosIntoAdmin() {
+      try {
+        const res = await fetch('/api/platos', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            allLivePlatos = data;
+            broadcastPlatosUpdate(allLivePlatos);
+            renderAdminPriceGroups();
+            const badge = document.getElementById('platos-sync-badge');
+            if (badge) badge.classList.remove('hidden');
+          }
         }
+      } catch (err) {
+        console.warn('Error cargando /api/platos en Admin:', err);
+      }
+    }
+
+    // Buscador de platos y pestañas de familia en Gestor de Precios
+    const adminSearchDishEl = document.getElementById('admin-search-dish');
+    if (adminSearchDishEl) {
+      adminSearchDishEl.addEventListener('input', (e) => {
+        // @ts-ignore
+        currentPlatosSearch = e.target.value || '';
+        renderAdminPriceGroups();
+      });
+    }
+
+    document.querySelectorAll('.platos-family-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        currentPlatosFamilyTab = tab.getAttribute('data-platos-tab') || 'ALL';
+        document.querySelectorAll('.platos-family-tab').forEach(t => {
+          t.classList.remove('bg-parrilla-gold', 'text-white', 'font-extrabold');
+          t.classList.add('bg-parrilla-dark', 'text-parrilla-ivory', 'font-bold');
+        });
+        tab.classList.remove('bg-parrilla-dark', 'text-parrilla-ivory', 'font-bold');
+        tab.classList.add('bg-parrilla-gold', 'text-white', 'font-extrabold');
+        renderAdminPriceGroups();
       });
     });
+
+    const btnRefreshPlatosAdmin = document.getElementById('btn-refresh-platos-admin');
+    if (btnRefreshPlatosAdmin) {
+      btnRefreshPlatosAdmin.addEventListener('click', () => loadLivePlatosIntoAdmin());
+    }
 
     // =====================================================================
     // SINCRONIZACIÓN EN VIVO CON NEON DB, AUDITORÍA DE PEDIDOS & CAJA (/admin)
@@ -1584,17 +2268,654 @@ const formatPrice = (val) => {
       }
     }
 
+    // =====================================================================
+    // 2.5 MÓDULO DE CUENTAS DE FIADO Y EXPORTACIÓN A EXCEL MENSUAL
+    // =====================================================================
+    let allHistoricalOrders = [];
+    let allNeonClientes = [];
+    let fiadoStatusFilter = 'PENDIENTE'; // 'PENDIENTE' | 'PAGADO' | 'ALL'
+    let fiadoMonthFilter = '';
+    let fiadoFromDate = '';
+    let fiadoToDate = '';
+    let fiadoSearchQuery = '';
+    const expandedFiadoCustomerKeys = new Set();
+
+    // Estado para el modal de liquidación de fiado
+    let currentLiquidarAccount = null;
+    let selectedLiquidarMethod = 'CASH';
+
+    function parseOrderDateCol(order) {
+      const ts = order?.fecha_hora || order?.created_at;
+      if (!ts) return { dateObj: null, ymd: '', ym: '', display: 'Sin fecha' };
+      const raw = (typeof ts === 'string' && !ts.endsWith('Z') && !ts.includes('+') && !ts.includes('-', 10)) ? ts + 'Z' : ts;
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return { dateObj: null, ymd: '', ym: '', display: String(ts) };
+      const ymd = d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }); // YYYY-MM-DD
+      const ym = ymd.slice(0, 7); // YYYY-MM
+      const display = d.toLocaleString('es-CO', {
+        timeZone: 'America/Bogota',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      return { dateObj: d, ymd, ym, display };
+    }
+
+    function classifyFiadoOrder(order) {
+      if (!order || order.estado === 'CANCELADO') return null;
+      const payments = Array.isArray(order.payments) ? order.payments : [];
+      const notas = String(order.notas || '');
+      const hasFiadoPayment = payments.some(pay => String(pay.method || '').toUpperCase() === 'FIADO');
+      const paidMatch = notas.match(/\[FIADO_PAGADO:([^:\]]+):([^\]]+)\]/i);
+      const isHistoricalFiadoPaid = Boolean(paidMatch);
+
+      if (!hasFiadoPayment && !isHistoricalFiadoPaid) return null;
+
+      return {
+        isPendingFiado: hasFiadoPayment,
+        isPaidFiado: !hasFiadoPayment && isHistoricalFiadoPaid,
+        paidViaMethod: paidMatch ? paidMatch[1] : null,
+        paidAtStr: paidMatch ? paidMatch[2] : null
+      };
+    }
+
+    function buildOrderDishesSummary(order) {
+      const detalles = Array.isArray(order.detalles) ? order.detalles : [];
+      let totalItems = 0;
+      const parts = [];
+      for (const det of detalles) {
+        const qty = Number(det.cantidad || 1);
+        totalItems += qty;
+        const name = det.plato?.nombre || det.nombre_plato || `Plato #${det.plato_id || ''}`;
+        const obs = det.observaciones ? ` (${det.observaciones})` : '';
+        parts.push(`${qty}x ${name}${obs}`);
+      }
+      if (parts.length === 0) {
+        totalItems = 1;
+        parts.push('Consumo registrado en POS');
+      }
+      return {
+        description: parts.join(' + '),
+        totalItems
+      };
+    }
+
+    function buildFiadoCustomerAccounts() {
+      // Mapa de clientes registrados en Neon por ID y por teléfono
+      const clienteById = new Map();
+      const clienteByPhone = new Map();
+      for (const c of allNeonClientes) {
+        if (c.id) clienteById.set(Number(c.id), c);
+        if (c.telefono) clienteByPhone.set(String(c.telefono).trim(), c);
+      }
+
+      const accountsMap = new Map();
+
+      for (const order of allHistoricalOrders) {
+        const fiadoMeta = classifyFiadoOrder(order);
+        if (!fiadoMeta) continue;
+
+        // Filtro por Estado (Pendiente vs Pagado vs Todos)
+        if (fiadoStatusFilter === 'PENDIENTE' && !fiadoMeta.isPendingFiado) continue;
+        if (fiadoStatusFilter === 'PAGADO' && !fiadoMeta.isPaidFiado) continue;
+
+        // Filtro por Mes o Rango de Fechas
+        const dateInfo = parseOrderDateCol(order);
+        if (fiadoMonthFilter && dateInfo.ym && dateInfo.ym !== fiadoMonthFilter) continue;
+        if (fiadoFromDate && dateInfo.ymd && dateInfo.ymd < fiadoFromDate) continue;
+        if (fiadoToDate && dateInfo.ymd && dateInfo.ymd > fiadoToDate) continue;
+
+        // Identificar cliente
+        const rawPhone = String(order.cliente_telefono || '').trim();
+        const rawName = String(order.cliente_nombre || '').trim();
+        const linkedCliente = (order.cliente_id && clienteById.get(Number(order.cliente_id)))
+          || (rawPhone && clienteByPhone.get(rawPhone))
+          || null;
+
+        const custId = linkedCliente?.id || order.cliente_id || null;
+        const custPhone = linkedCliente?.telefono || rawPhone || 'S/N';
+        const custName = linkedCliente?.nombre || rawName || 'Cliente Fiado (Sin Nombre)';
+        const custAddress = linkedCliente?.direccion || order.direccion || '';
+        const custBarrio = linkedCliente?.barrio || order.barrio || '';
+
+        const key = custId ? `ID_${custId}` : (custPhone !== 'S/N' ? `TEL_${custPhone}` : `NAME_${normDishText(custName)}`);
+
+        let acc = accountsMap.get(key);
+        if (!acc) {
+          acc = {
+            key,
+            cliente_id: custId,
+            nombre: custName,
+            telefono: custPhone,
+            direccion: custAddress,
+            barrio: custBarrio,
+            orders: [],
+            totalAmount: 0,
+            pendingAmount: 0,
+            paidAmount: 0
+          };
+          accountsMap.set(key, acc);
+        }
+
+        const orderTotal = Number(order.total || 0);
+        const dishInfo = buildOrderDishesSummary(order);
+
+        acc.orders.push({
+          id: order.id,
+          codigo: order.codigo_factura || `#${order.id}`,
+          fechaDisplay: dateInfo.display,
+          ymd: dateInfo.ymd,
+          description: dishInfo.description,
+          totalItems: dishInfo.totalItems,
+          amount: orderTotal,
+          isPending: fiadoMeta.isPendingFiado,
+          paidViaMethod: fiadoMeta.paidViaMethod,
+          paidAtStr: fiadoMeta.paidAtStr
+        });
+
+        acc.totalAmount += orderTotal;
+        if (fiadoMeta.isPendingFiado) acc.pendingAmount += orderTotal;
+        else acc.paidAmount += orderTotal;
+      }
+
+      // Filtrar por buscador de nombre o teléfono
+      const q = normDishText(fiadoSearchQuery);
+      let list = Array.from(accountsMap.values());
+      if (q) {
+        list = list.filter(acc =>
+          normDishText(acc.nombre).includes(q) ||
+          normDishText(acc.telefono).includes(q) ||
+          normDishText(acc.barrio).includes(q)
+        );
+      }
+
+      // Ordenar por mayor saldo pendiente y luego por total
+      list.sort((a, b) => b.pendingAmount - a.pendingAmount || b.totalAmount - a.totalAmount);
+      return list;
+    }
+
+    function downloadFiadoExcel(account) {
+      if (!account || !Array.isArray(account.orders) || account.orders.length === 0) return;
+
+      const periodLabel = fiadoMonthFilter
+        ? `Mes ${fiadoMonthFilter}`
+        : (fiadoFromDate || fiadoToDate)
+          ? `${fiadoFromDate || 'Inicio'} a ${fiadoToDate || 'Hoy'}`
+          : 'Historial Acumulado';
+
+      const totalAPagar = fiadoStatusFilter === 'PAGADO' ? account.paidAmount : (account.pendingAmount || account.totalAmount);
+      const safeName = String(account.nombre || 'Cliente').replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ _-]/g, '').trim().replace(/\s+/g, '_');
+
+      // Generar tabla HTML con codificación UTF-8 BOM compatible nativamente con Microsoft Excel (.xls)
+      const rowsHtml = account.orders.map(o => `
+        <tr>
+          <td style="border:1px solid #cbd5e1; padding:6px 10px;">${o.fechaDisplay}</td>
+          <td style="border:1px solid #cbd5e1; padding:6px 10px; font-weight:bold;">${o.codigo}</td>
+          <td style="border:1px solid #cbd5e1; padding:6px 10px;">${o.description}</td>
+          <td style="border:1px solid #cbd5e1; padding:6px 10px; text-align:center;">${o.totalItems}</td>
+          <td style="border:1px solid #cbd5e1; padding:6px 10px; text-align:right; font-weight:bold;">${Math.round(o.amount)}</td>
+        </tr>
+      `).join('');
+
+      const excelTemplate = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="UTF-8" />
+          <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Cuenta de Cobro</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+        </head>
+        <body style="font-family: Calibri, Arial, sans-serif; font-size: 11pt;">
+          <table style="border-collapse: collapse; width: 100%;">
+            <tr>
+              <td colspan="5" style="background-color:#92400e; color:#ffffff; font-size:15pt; font-weight:bold; text-align:center; padding:12px;">
+                RESTAURANTE SAN PARRILLA - CUENTA DE COBRO
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Cliente:</td>
+              <td colspan="3" style="padding:6px 10px; font-weight:bold;">${account.nombre}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Teléfono:</td>
+              <td colspan="3" style="padding:6px 10px;">${account.telefono}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Dirección / Barrio:</td>
+              <td colspan="3" style="padding:6px 10px;">${[account.direccion, account.barrio].filter(Boolean).join(' - ') || 'Registrado en restaurante'}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Periodo / Fechas:</td>
+              <td colspan="3" style="padding:6px 10px;">${periodLabel} (Generado: ${new Date().toLocaleDateString('es-CO')})</td>
+            </tr>
+            <tr><td colspan="5"></td></tr>
+            <thead>
+              <tr style="background-color:#1e293b; color:#ffffff; font-weight:bold;">
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:left;">Fecha</th>
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:left;">Pedido</th>
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:left;">Descripción / Platos</th>
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:center;">Cantidad</th>
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:right;">Valor ($)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+            <tfoot>
+              <tr style="background-color:#fde68a; font-weight:bold; font-size:12pt;">
+                <td colspan="3" style="border:2px solid #92400e; padding:10px; text-align:right;">TOTAL A PAGAR:</td>
+                <td style="border:2px solid #92400e; padding:10px; text-align:center;">${account.orders.reduce((s, o) => s + o.totalItems, 0)} ítems</td>
+                <td style="border:2px solid #92400e; padding:10px; text-align:right;">${fmtCOP(totalAPagar)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\uFEFF' + excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Cuenta_Cobro_San_Parrilla_${safeName}_${periodLabel.replace(/\s+/g, '_')}.xls`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function openLiquidarFiadoModal(account) {
+      if (!account) return;
+      const pendingOrders = account.orders.filter(o => o.isPending);
+      if (pendingOrders.length === 0) {
+        alert('Este cliente no tiene pedidos fiados pendientes de pago en el periodo seleccionado.');
+        return;
+      }
+      currentLiquidarAccount = account;
+      selectedLiquidarMethod = 'CASH';
+
+      const modal = document.getElementById('modal-liquidar-fiado');
+      const elCliente = document.getElementById('liquidar-modal-cliente');
+      const elTel = document.getElementById('liquidar-modal-telefono');
+      const elCant = document.getElementById('liquidar-modal-cantidad');
+      const elTotal = document.getElementById('liquidar-modal-total');
+
+      if (elCliente) elCliente.textContent = account.nombre;
+      if (elTel) elTel.textContent = account.telefono;
+      if (elCant) elCant.textContent = `${pendingOrders.length} pedido(s) pendiente(s)`;
+      if (elTotal) elTotal.textContent = fmtCOP(account.pendingAmount);
+
+      document.querySelectorAll('.liq-method-btn').forEach(btn => {
+        const m = btn.getAttribute('data-liq-method');
+        if (m === 'CASH') {
+          btn.className = 'liq-method-btn active py-3 px-2 rounded-xl border-2 border-parrilla-gold bg-parrilla-gold text-white font-extrabold text-xs flex flex-col items-center gap-1 shadow-xs cursor-pointer';
+        } else {
+          btn.className = 'liq-method-btn py-3 px-2 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer';
+        }
+      });
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function renderFiadoAccountsModule() {
+      const container = document.getElementById('fiado-accounts-container');
+      const kpiTotalEl = document.getElementById('fiado-kpi-total-pendiente');
+      const kpiCountEl = document.getElementById('fiado-kpi-clientes-count');
+      if (!container) return;
+
+      const accounts = buildFiadoCustomerAccounts();
+      const totalPendingAll = accounts.reduce((sum, a) => sum + a.pendingAmount, 0);
+
+      if (kpiTotalEl) kpiTotalEl.textContent = fmtCOP(totalPendingAll);
+      if (kpiCountEl) kpiCountEl.textContent = String(accounts.length);
+
+      if (accounts.length === 0) {
+        container.innerHTML = `
+          <div class="py-10 px-4 text-center bg-parrilla-dark/40 rounded-xl border border-dashed border-parrilla-border">
+            <p class="text-sm font-bold text-parrilla-ivory">No se encontraron cuentas de fiado con los filtros seleccionados</p>
+            <p class="text-xs text-parrilla-muted mt-1">
+              Cuando registres un pedido con método de pago <strong>📝 Fiado</strong> en <code>/pos</code>, aparecerá aquí automáticamente agrupado por cliente.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = accounts.map((acc, idx) => {
+        const isExpanded = expandedFiadoCustomerKeys.has(acc.key) || idx === 0;
+        const pendingOrdersCount = acc.orders.filter(o => o.isPending).length;
+        const displayBalance = fiadoStatusFilter === 'PAGADO' ? acc.paidAmount : (acc.pendingAmount || acc.totalAmount);
+
+        return `
+          <div class="bg-white rounded-2xl border ${acc.pendingAmount > 0 ? 'border-amber-300' : 'border-emerald-300'} shadow-sm overflow-hidden">
+            <!-- Fila Resumen del Cliente (Clic para expandir) -->
+            <div class="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r ${acc.pendingAmount > 0 ? 'from-amber-50/70 to-white' : 'from-emerald-50/60 to-white'}">
+              <div
+                class="flex items-start sm:items-center gap-3 cursor-pointer flex-1"
+                data-toggle-fiado-key="${acc.key}"
+              >
+                <div class="w-10 h-10 rounded-xl ${acc.pendingAmount > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'} flex items-center justify-center font-display font-black text-sm shrink-0 shadow-xs">
+                  ${String(acc.nombre || 'C').slice(0, 2).toUpperCase()}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="font-display font-black text-base text-parrilla-ivory">${acc.nombre}</h3>
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-300 font-mono font-bold text-xs text-parrilla-ivory">
+                      📞 ${acc.telefono}
+                    </span>
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${acc.pendingAmount > 0 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'}">
+                      ${acc.orders.length} pedido(s) en el periodo
+                    </span>
+                  </div>
+                  <p class="text-xs text-parrilla-muted mt-0.5">
+                    ${[acc.direccion, acc.barrio].filter(Boolean).join(' • ') || 'Cliente registrado en directorio San Parrilla'}
+                    <span class="ml-2 text-parrilla-gold font-bold underline">
+                      ${isExpanded ? '▲ Ocultar detalle de consumo' : '▼ Ver detalle plato por plato'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <!-- Saldo Total Adeudado y Botones de Acción -->
+              <div class="flex flex-wrap items-center justify-between lg:justify-end gap-3 pt-2 lg:pt-0 border-t lg:border-t-0 border-parrilla-border/60">
+                <div class="text-left lg:text-right pr-2">
+                  <span class="block text-[10px] font-extrabold uppercase ${acc.pendingAmount > 0 ? 'text-amber-800' : 'text-emerald-700'}">
+                    ${acc.pendingAmount > 0 ? 'Saldo Total Adeudado' : 'Total Pagado / Liquidado'}
+                  </span>
+                  <span class="font-display font-black text-xl font-mono ${acc.pendingAmount > 0 ? 'text-red-600' : 'text-emerald-700'}">
+                    ${fmtCOP(displayBalance)}
+                  </span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    data-excel-fiado-key="${acc.key}"
+                    class="btn-fiado-excel px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  >
+                    <span>📥 Descargar Cuenta de Cobro (Excel .xlsx / .csv)</span>
+                  </button>
+
+                  ${pendingOrdersCount > 0 ? `
+                    <button
+                      type="button"
+                      data-liquidar-fiado-key="${acc.key}"
+                      class="btn-fiado-liquidar px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                    >
+                      <span>✅ Marcar Cuenta como Pagada (Liquidar Fiado)</span>
+                    </button>
+                  ` : `
+                    <span class="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-extrabold text-xs">
+                      ✓ Cuenta al Día
+                    </span>
+                  `}
+                </div>
+              </div>
+            </div>
+
+            <!-- Tabla Detallada de Consumo del Cliente -->
+            <div class="${isExpanded ? 'block' : 'hidden'} border-t border-parrilla-border bg-slate-50/60 p-4" data-fiado-detail-box="${acc.key}">
+              <div class="overflow-x-auto rounded-xl border border-parrilla-border bg-white">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="bg-slate-100 text-parrilla-muted uppercase text-[10px] font-extrabold border-b border-parrilla-border">
+                      <th class="py-2.5 px-3">Fecha y Hora</th>
+                      <th class="py-2.5 px-3">Código Pedido</th>
+                      <th class="py-2.5 px-3">Detalle de Platos / Productos</th>
+                      <th class="py-2.5 px-3 text-center">Cantidad Total de Ítems</th>
+                      <th class="py-2.5 px-3 text-right">Monto del Pedido ($)</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-parrilla-border/60">
+                    ${acc.orders.map(ord => `
+                      <tr class="hover:bg-amber-50/40">
+                        <td class="py-2.5 px-3 font-mono text-[11px] text-parrilla-ivory whitespace-nowrap">${ord.fechaDisplay}</td>
+                        <td class="py-2.5 px-3 font-mono font-bold text-parrilla-gold whitespace-nowrap">
+                          ${ord.codigo}
+                          ${ord.isPending
+                            ? '<span class="ml-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-extrabold">FIADO</span>'
+                            : `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold">PAGADO (${ord.paidViaMethod || 'CAJA'})</span>`
+                          }
+                        </td>
+                        <td class="py-2.5 px-3 text-parrilla-ivory font-medium">${ord.description}</td>
+                        <td class="py-2.5 px-3 text-center font-mono font-bold text-parrilla-ivory">${ord.totalItems}</td>
+                        <td class="py-2.5 px-3 text-right font-mono font-extrabold text-parrilla-ivory whitespace-nowrap">${fmtCOP(ord.amount)}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr class="bg-amber-100/90 border-t-2 border-amber-400 font-display font-black text-sm">
+                      <td colspan="3" class="py-3 px-3 text-right text-amber-950 uppercase">TOTAL A PAGAR ($):</td>
+                      <td class="py-3 px-3 text-center font-mono text-amber-950">
+                        ${acc.orders.reduce((s, o) => s + o.totalItems, 0)} ítems
+                      </td>
+                      <td class="py-3 px-3 text-right font-mono text-base text-red-700">
+                        ${fmtCOP(displayBalance)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Eventos para desplegar / ocultar detalle de cada cliente
+      container.querySelectorAll('[data-toggle-fiado-key]').forEach(el => {
+        el.addEventListener('click', () => {
+          const key = el.getAttribute('data-toggle-fiado-key');
+          if (!key) return;
+          if (expandedFiadoCustomerKeys.has(key)) expandedFiadoCustomerKeys.delete(key);
+          else expandedFiadoCustomerKeys.add(key);
+          renderFiadoAccountsModule();
+        });
+      });
+
+      // Eventos para descargar Cuenta de Cobro en Excel
+      container.querySelectorAll('.btn-fiado-excel').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const key = btn.getAttribute('data-excel-fiado-key');
+          const account = accounts.find(a => a.key === key);
+          if (account) downloadFiadoExcel(account);
+        });
+      });
+
+      // Eventos para abrir modal de Liquidar Fiado
+      container.querySelectorAll('.btn-fiado-liquidar').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const key = btn.getAttribute('data-liquidar-fiado-key');
+          const account = accounts.find(a => a.key === key);
+          if (account) openLiquidarFiadoModal(account);
+        });
+      });
+    }
+
+    // Inicializar filtros de Cuentas por Cobrar
+    document.querySelectorAll('.fiado-status-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        fiadoStatusFilter = btn.getAttribute('data-fiado-status') || 'PENDIENTE';
+        document.querySelectorAll('.fiado-status-btn').forEach(b => {
+          b.className = 'fiado-status-btn py-1.5 px-2 rounded-lg text-[11px] font-bold text-parrilla-ivory hover:text-parrilla-gold transition cursor-pointer';
+        });
+        btn.className = 'fiado-status-btn active py-1.5 px-2 rounded-lg text-[11px] font-extrabold bg-amber-500 text-white shadow-xs transition cursor-pointer';
+        renderFiadoAccountsModule();
+      });
+    });
+
+    const fiadoMonthEl = document.getElementById('fiado-filter-month');
+    const fiadoFromEl = document.getElementById('fiado-filter-from');
+    const fiadoToEl = document.getElementById('fiado-filter-to');
+    const fiadoSearchEl = document.getElementById('fiado-search-input');
+    const btnClearFiadoDates = document.getElementById('btn-fiado-clear-dates');
+
+    if (fiadoMonthEl) {
+      fiadoMonthEl.addEventListener('change', (e) => {
+        // @ts-ignore
+        fiadoMonthFilter = e.target.value || '';
+        renderFiadoAccountsModule();
+      });
+    }
+    if (fiadoFromEl) {
+      fiadoFromEl.addEventListener('change', (e) => {
+        // @ts-ignore
+        fiadoFromDate = e.target.value || '';
+        renderFiadoAccountsModule();
+      });
+    }
+    if (fiadoToEl) {
+      fiadoToEl.addEventListener('change', (e) => {
+        // @ts-ignore
+        fiadoToDate = e.target.value || '';
+        renderFiadoAccountsModule();
+      });
+    }
+    if (fiadoSearchEl) {
+      fiadoSearchEl.addEventListener('input', (e) => {
+        // @ts-ignore
+        fiadoSearchQuery = e.target.value || '';
+        renderFiadoAccountsModule();
+      });
+    }
+    if (btnClearFiadoDates) {
+      btnClearFiadoDates.addEventListener('click', () => {
+        fiadoMonthFilter = '';
+        fiadoFromDate = '';
+        fiadoToDate = '';
+        // @ts-ignore
+        if (fiadoMonthEl) fiadoMonthEl.value = '';
+        // @ts-ignore
+        if (fiadoFromEl) fiadoFromEl.value = '';
+        // @ts-ignore
+        if (fiadoToEl) fiadoToEl.value = '';
+        renderFiadoAccountsModule();
+      });
+    }
+
+    // Eventos del modal Liquidar Fiado
+    document.querySelectorAll('.liq-method-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedLiquidarMethod = btn.getAttribute('data-liq-method') || 'CASH';
+        document.querySelectorAll('.liq-method-btn').forEach(b => {
+          b.className = 'liq-method-btn py-3 px-2 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer';
+        });
+        btn.className = 'liq-method-btn active py-3 px-2 rounded-xl border-2 border-parrilla-gold bg-parrilla-gold text-white font-extrabold text-xs flex flex-col items-center gap-1 shadow-xs cursor-pointer';
+      });
+    });
+
+    const closeLiquidarModal = () => {
+      const modal = document.getElementById('modal-liquidar-fiado');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      currentLiquidarAccount = null;
+    };
+    document.getElementById('btn-close-liquidar-modal')?.addEventListener('click', closeLiquidarModal);
+    document.getElementById('btn-cancel-liquidar-modal')?.addEventListener('click', closeLiquidarModal);
+
+    document.getElementById('btn-confirm-liquidar-fiado')?.addEventListener('click', async () => {
+      if (!currentLiquidarAccount) return;
+      const pendingOrderIds = currentLiquidarAccount.orders.filter(o => o.isPending).map(o => o.id);
+      if (pendingOrderIds.length === 0) return;
+
+      const btnConfirm = document.getElementById('btn-confirm-liquidar-fiado');
+      if (btnConfirm) btnConfirm.textContent = 'Liquidando cuenta en Neon DB...';
+
+      try {
+        const res = await fetch('/api/clientes/liquidar-fiado', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cliente_id: currentLiquidarAccount.cliente_id || null,
+            telefono: currentLiquidarAccount.telefono !== 'S/N' ? currentLiquidarAccount.telefono : null,
+            cliente_nombre: currentLiquidarAccount.nombre,
+            pedido_ids: pendingOrderIds,
+            metodo_pago: selectedLiquidarMethod
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.detail || 'Error al liquidar cuenta');
+        closeLiquidarModal();
+        await loadLiveAdminMetrics();
+      } catch (err) {
+        alert('No se pudo liquidar la cuenta de fiado: ' + (err.message || err));
+      } finally {
+        if (btnConfirm) btnConfirm.textContent = '✅ Confirmar Pago y Liquidar Deuda';
+      }
+    });
+
+    // Modal para crear / actualizar cliente en Neon desde Admin
+    const openClienteModal = () => {
+      const m = document.getElementById('modal-admin-cliente');
+      if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+    };
+    const closeClienteModal = () => {
+      const m = document.getElementById('modal-admin-cliente');
+      if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+    };
+    document.getElementById('btn-new-fiado-customer')?.addEventListener('click', openClienteModal);
+    document.getElementById('btn-close-cliente-modal')?.addEventListener('click', closeClienteModal);
+    document.getElementById('btn-cancel-cliente-modal')?.addEventListener('click', closeClienteModal);
+
+    document.getElementById('form-admin-cliente')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      // @ts-ignore
+      const telefono = document.getElementById('admin-cust-phone')?.value?.trim() || '';
+      // @ts-ignore
+      const nombre = document.getElementById('admin-cust-name')?.value?.trim() || '';
+      // @ts-ignore
+      const direccion = document.getElementById('admin-cust-address')?.value?.trim() || '';
+      // @ts-ignore
+      const barrio = document.getElementById('admin-cust-barrio')?.value?.trim() || '';
+
+      if (!telefono || !nombre) {
+        alert('Ingresa el nombre y el número de teléfono del cliente.');
+        return;
+      }
+
+      const btnSave = document.getElementById('btn-save-cliente-modal');
+      if (btnSave) btnSave.textContent = 'Guardando...';
+      try {
+        const res = await fetch('/api/clientes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, telefono, direccion, barrio })
+        });
+        if (!res.ok) throw new Error('Error HTTP ' + res.status);
+        closeClienteModal();
+        // @ts-ignore
+        document.getElementById('form-admin-cliente')?.reset();
+        await loadLiveAdminMetrics();
+      } catch (err) {
+        alert('Error al guardar el cliente: ' + (err.message || err));
+      } finally {
+        if (btnSave) btnSave.textContent = '💾 Guardar Cliente';
+      }
+    });
+
     async function loadLiveAdminMetrics() {
       try {
-        const [cajaRes, pedRes, dashRes] = await Promise.all([
+        const [cajaRes, pedRes, dashRes, cliRes] = await Promise.all([
           fetch('/api/caja/active', { cache: 'no-store' }),
-          fetch('/api/pedidos?limit=250', { cache: 'no-store' }),
-          fetch('/api/pedidos/stats/dashboard', { cache: 'no-store' }).catch(() => null)
+          fetch('/api/pedidos?limit=500', { cache: 'no-store' }),
+          fetch('/api/pedidos/stats/dashboard', { cache: 'no-store' }).catch(() => null),
+          fetch('/api/clientes', { cache: 'no-store' }).catch(() => null)
         ]);
 
         const caja = (cajaRes && cajaRes.ok) ? await cajaRes.json() : null;
         const pedidos = (pedRes && pedRes.ok) ? await pedRes.json() : [];
+        const clientesData = (cliRes && cliRes.ok) ? await cliRes.json() : [];
         const listaPedidos = Array.isArray(pedidos) ? pedidos : [];
+
+        allHistoricalOrders = listaPedidos;
+        allNeonClientes = Array.isArray(clientesData) ? clientesData : [];
+        renderFiadoAccountsModule();
 
         // Filtrar pedidos del turno activo de caja o del día de hoy en Colombia
         const hoyCol = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
@@ -1638,7 +2959,9 @@ const formatPrice = (val) => {
         } else {
           for (const p of pedidosPagados) {
             for (const pay of (p.payments || [])) {
-              if (String(pay.method).toUpperCase() === 'CASH') cashSales += Number(pay.amount || 0);
+              const m = String(pay.method).toUpperCase();
+              if (m === 'FIADO') continue;
+              if (m === 'CASH') cashSales += Number(pay.amount || 0);
               else digitalSales += Number(pay.amount || 0);
             }
           }
@@ -1648,6 +2971,9 @@ const formatPrice = (val) => {
         const todayOrderCount = pedidosPagados.length;
 
         const phoneSet = new Set();
+        for (const c of allNeonClientes) {
+          if (c.telefono) phoneSet.add(String(c.telefono).trim());
+        }
         for (const p of listaPedidos) {
           if (p.cliente_telefono && String(p.cliente_telefono).trim()) {
             phoneSet.add(String(p.cliente_telefono).trim());
@@ -1686,11 +3012,13 @@ const formatPrice = (val) => {
 
     document.addEventListener('DOMContentLoaded', () => {
       loadLiveSpecialsIntoAdmin();
+      loadLivePlatosIntoAdmin();
       loadLiveAdminMetrics();
       setInterval(loadLiveAdminMetrics, 15000);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
           loadLiveSpecialsIntoAdmin();
+          loadLivePlatosIntoAdmin();
           loadLiveAdminMetrics();
         }
       });

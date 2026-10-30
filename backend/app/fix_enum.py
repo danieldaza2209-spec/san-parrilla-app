@@ -18,11 +18,30 @@ def fix():
             "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'ENTREGADO';",
             "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'BANCOLOMBIA';",
             "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'FIADO';",
+            """
+            CREATE TABLE IF NOT EXISTS clientes (
+                id SERIAL PRIMARY KEY,
+                nombre VARCHAR(120) NOT NULL,
+                telefono VARCHAR(30) UNIQUE NOT NULL,
+                direccion VARCHAR(255),
+                barrio VARCHAR(150),
+                notas TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_clientes_id ON clientes (id);",
+            "CREATE INDEX IF NOT EXISTS ix_clientes_nombre ON clientes (nombre);",
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_clientes_telefono ON clientes (telefono);",
+            "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cliente_id INTEGER REFERENCES clientes(id) ON DELETE SET NULL;",
+            "CREATE INDEX IF NOT EXISTS ix_pedidos_cliente_id ON pedidos (cliente_id);",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cliente_telefono VARCHAR(20);",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS subtotal DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS delivery_fee DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS packaging_fee DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS courier_name VARCHAR(100);",
+            "ALTER TABLE platos ADD COLUMN IF NOT EXISTS disponible BOOLEAN NOT NULL DEFAULT TRUE;",
+            "UPDATE platos SET disponible = activo WHERE disponible IS NULL;",
             "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_bancolombia_sales DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_transfer_sales DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE cash_closures ADD COLUMN IF NOT EXISTS total_credit_sales DOUBLE PRECISION DEFAULT 0.0;",
@@ -67,6 +86,7 @@ def fix():
     # Sincronizar todos los platos del catálogo POS en la tabla `platos` de Neon DB
     from app.database import SessionLocal
     from sqlalchemy import func
+    from app import crud
     db = SessionLocal()
     try:
         cat = db.query(app.models.Categoria).order_by(app.models.Categoria.orden.asc()).first()
@@ -169,13 +189,38 @@ def fix():
                     descripcion="Catálogo POS San Parrilla",
                     precio=precio,
                     activo=True,
+                    disponible=True,
                     categoria_id=cat.id,
                 ))
                 creados += 1
-            elif existente.precio != precio:
-                existente.precio = precio
         db.commit()
-        print(f"[+] Catálogo POS sincronizado en Neon DB ({creados} platos nuevos agregados).")
+        print(f"[+] Catálogo POS sincronizado en Neon DB ({creados} platos nuevos agregados, respetando precios editados).")
+
+        # Backfill de clientes existentes desde el historial de pedidos en Neon
+        pedidos_con_cliente = (
+            db.query(app.models.Pedido)
+            .filter(app.models.Pedido.estado != app.models.EstadoPedido.CANCELADO)
+            .order_by(app.models.Pedido.id.asc())
+            .all()
+        )
+        clientes_sincronizados = 0
+        for ped in pedidos_con_cliente:
+            has_fiado = any(p.method == app.models.PaymentMethod.FIADO for p in (ped.payments or []))
+            if (ped.cliente_telefono and ped.cliente_telefono.strip()) or has_fiado:
+                dir_ext, barrio_ext = crud._extraer_direccion_y_barrio_de_notas(ped.notas)
+                cli = crud.upsert_cliente(
+                    db,
+                    nombre=ped.cliente_nombre,
+                    telefono=ped.cliente_telefono,
+                    direccion=dir_ext,
+                    barrio=barrio_ext,
+                    allow_without_phone=has_fiado,
+                )
+                if cli and ped.cliente_id != cli.id:
+                    ped.cliente_id = cli.id
+                    clientes_sincronizados += 1
+        db.commit()
+        print(f"[+] Directorio de Clientes sincronizado con historial ({clientes_sincronizados} pedidos vinculados).")
 
         cfg = db.query(app.models.DailySpecialsConfig).order_by(app.models.DailySpecialsConfig.id.asc()).first()
         if not cfg:

@@ -427,7 +427,25 @@ export function getCustomerByPhone(phone) {
   return memCustomers.find(c => c.phone === cleanPhone) || null;
 }
 
-export function upsertCustomer({ name, phone, address, neighborhood = '', notes = '' }) {
+export function upsertCustomer(arg1, arg2 = '', arg3 = '', arg4 = '') {
+  let name = '';
+  let phone = '';
+  let address = '';
+  let neighborhood = '';
+  let notes = '';
+  if (arg1 && typeof arg1 === 'object') {
+    name = arg1.name || arg1.nombre || '';
+    phone = arg1.phone || arg1.telefono || '';
+    address = arg1.address || arg1.direccion || '';
+    neighborhood = arg1.neighborhood || arg1.barrio || '';
+    notes = arg1.notes || arg1.notas || '';
+  } else {
+    phone = String(arg1 || '');
+    name = String(arg2 || '');
+    address = String(arg3 || '');
+    neighborhood = String(arg4 || '');
+    notes = String(arg4 || '');
+  }
   const cleanPhone = phone.trim();
   if (db) {
     try {
@@ -744,6 +762,34 @@ export function getDashboardMetrics() {
     topDishes: computedTopDishes,
     activeCash: memCash
   };
+}
+
+export function getAllCustomers() {
+  return searchCustomers('');
+}
+
+export function getAllProducts() {
+  return getProducts(false);
+}
+
+export function updateProductPrice(id, price) {
+  const numPrice = Number(price || 0);
+  if (db) {
+    try {
+      db.prepare('UPDATE products SET price = ? WHERE id = ?').run(numPrice, String(id));
+    } catch (e) {}
+  }
+  memProducts = memProducts.map(p => String(p.id) === String(id) ? { ...p, price: numPrice } : p);
+}
+
+export function toggleProductStock(id, isActive) {
+  const act = isActive ? 1 : 0;
+  if (db) {
+    try {
+      db.prepare('UPDATE products SET is_active = ? WHERE id = ?').run(act, String(id));
+    } catch (e) {}
+  }
+  memProducts = memProducts.map(p => String(p.id) === String(id) ? { ...p, is_active: act, in_stock: Boolean(isActive) } : p);
 }
 
 export { db };

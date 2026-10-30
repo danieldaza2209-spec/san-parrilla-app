@@ -53,6 +53,17 @@ def actualizar_especiales_dia_en_pedidos(
     return crud.update_daily_specials_config(db, payload)
 
 
+@router.post("/liquidar-fiado")
+def liquidar_fiado_en_pedidos(
+    payload: schemas.LiquidarFiadoRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        return crud.liquidar_fiado_cliente(db, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/", response_model=List[schemas.PedidoOut])
 def listar_pedidos(
     limit: int = 200,

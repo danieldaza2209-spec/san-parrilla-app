@@ -1,22 +1,476 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date, datetime, timedelta, timezone
+import unicodedata
 import uuid
 from typing import List, Optional
 
 from app import models, schemas
 
 
-# --- CATÁLOGOS ---
+def _normalizar_texto(texto: Optional[str]) -> str:
+    if not texto:
+        return ""
+    s = unicodedata.normalize("NFD", str(texto).strip().lower())
+    return "".join(c for c in s if unicodedata.category(c) != "Mn")
+
+
+# --- CATÁLOGOS Y GESTIÓN DE PLATOS EN TIEMPO REAL ---
 
 def get_categorias(db: Session) -> List[models.Categoria]:
     return db.query(models.Categoria).order_by(models.Categoria.orden).all()
 
-def get_platos(db: Session, categoria_id: Optional[int] = None) -> List[models.Plato]:
-    query = db.query(models.Plato).filter(models.Plato.activo == True)
+def get_platos(
+    db: Session,
+    categoria_id: Optional[int] = None,
+    solo_activos: bool = False,
+) -> List[models.Plato]:
+    query = db.query(models.Plato)
+    if solo_activos:
+        query = query.filter(models.Plato.activo == True)
     if categoria_id:
         query = query.filter(models.Plato.categoria_id == categoria_id)
-    return query.all()
+    return query.order_by(models.Plato.categoria_id.asc(), models.Plato.id.asc()).all()
+
+
+def update_plato(
+    db: Session,
+    plato_id: int,
+    data: schemas.PlatoUpdate,
+) -> models.Plato:
+    plato = db.query(models.Plato).filter(models.Plato.id == plato_id).first()
+    if not plato:
+        raise LookupError(f"Plato con ID {plato_id} no encontrado.")
+
+    if data.nombre is not None and data.nombre.strip():
+        plato.nombre = data.nombre.strip()
+    if data.descripcion is not None:
+        plato.descripcion = data.descripcion.strip()
+    if data.precio is not None and float(data.precio) >= 0:
+        plato.precio = float(data.precio)
+    if data.imagen_emoji is not None:
+        plato.imagen_emoji = data.imagen_emoji
+    if data.categoria_id is not None:
+        plato.categoria_id = int(data.categoria_id)
+    if data.disponible is not None:
+        plato.disponible = bool(data.disponible)
+        plato.activo = bool(data.disponible)
+    elif data.activo is not None:
+        plato.activo = bool(data.activo)
+        plato.disponible = bool(data.activo)
+
+    db.commit()
+    db.refresh(plato)
+    return plato
+
+
+def update_plato_by_name(
+    db: Session,
+    nombre: str,
+    data: schemas.PlatoUpdate,
+) -> models.Plato:
+    clean_name = (nombre or "").strip()
+    if not clean_name:
+        raise ValueError("El nombre del plato es obligatorio.")
+    plato = (
+        db.query(models.Plato)
+        .filter(func.lower(models.Plato.nombre) == clean_name.lower())
+        .first()
+    )
+    if not plato:
+        norm_target = _normalizar_texto(clean_name)
+        for p in db.query(models.Plato).all():
+            if _normalizar_texto(p.nombre) == norm_target:
+                plato = p
+                break
+    if not plato:
+        plato = _resolver_o_crear_plato(db, None, clean_name, data.precio or 0.0)
+
+    return update_plato(db, plato.id, data)
+
+
+def bulk_update_plato_prices(
+    db: Session,
+    data: schemas.PlatoBulkPriceUpdate,
+) -> List[models.Plato]:
+    if data.nuevo_precio is None or float(data.nuevo_precio) <= 0:
+        raise ValueError("El nuevo precio debe ser mayor a 0.")
+
+    nuevo_precio = float(data.nuevo_precio)
+    updated_platos: List[models.Plato] = []
+
+    if data.plato_ids and len(data.plato_ids) > 0:
+        platos = db.query(models.Plato).filter(models.Plato.id.in_(data.plato_ids)).all()
+        for p in platos:
+            p.precio = nuevo_precio
+            updated_platos.append(p)
+    elif data.nombres and len(data.nombres) > 0:
+        norm_names = {_normalizar_texto(n) for n in data.nombres if n and n.strip()}
+        all_platos = db.query(models.Plato).all()
+        matched_norms = set()
+        for p in all_platos:
+            pn = _normalizar_texto(p.nombre)
+            if pn in norm_names:
+                p.precio = nuevo_precio
+                updated_platos.append(p)
+                matched_norms.add(pn)
+        for raw_name in data.nombres:
+            if raw_name and _normalizar_texto(raw_name) not in matched_norms:
+                created = _resolver_o_crear_plato(db, None, raw_name.strip(), nuevo_precio)
+                created.precio = nuevo_precio
+                updated_platos.append(created)
+    elif data.categoria_id is not None:
+        query = db.query(models.Plato).filter(models.Plato.categoria_id == data.categoria_id)
+        if data.precio_actual is not None:
+            query = query.filter(models.Plato.precio == float(data.precio_actual))
+        for p in query.all():
+            p.precio = nuevo_precio
+            updated_platos.append(p)
+    elif data.precio_actual is not None:
+        platos = db.query(models.Plato).filter(models.Plato.precio == float(data.precio_actual)).all()
+        for p in platos:
+            p.precio = nuevo_precio
+            updated_platos.append(p)
+    else:
+        raise ValueError("Debe especificar plato_ids, nombres, categoria_id o precio_actual para actualizar en bloque.")
+
+    db.commit()
+    for p in updated_platos:
+        db.refresh(p)
+    return updated_platos
+
+
+# --- DIRECTORIO DE CLIENTES Y CUENTAS DE FIADO ---
+
+def _limpiar_telefono(telefono: Optional[str]) -> str:
+    if not telefono:
+        return ""
+    raw = str(telefono).strip()
+    digits = "".join(c for c in raw if c.isdigit())
+    return digits or raw
+
+
+def _extraer_direccion_y_barrio_de_notas(notas: Optional[str]):
+    """Extrae dirección y barrio de las notas de un pedido si vienen embebidos."""
+    if not notas:
+        return None, None
+    direccion = None
+    barrio = None
+    partes = [p.strip() for p in str(notas).split("|") if p.strip()]
+    for p in partes:
+        low = p.lower()
+        if low.startswith("dirección:") or low.startswith("direccion:"):
+            val = p.split(":", 1)[1].strip()
+            if val:
+                direccion = val
+        elif low.startswith("barrio:") or low.startswith("indicaciones:"):
+            val = p.split(":", 1)[1].strip()
+            if val:
+                barrio = val
+    return direccion, barrio
+
+
+def upsert_cliente(
+    db: Session,
+    nombre: Optional[str],
+    telefono: Optional[str],
+    direccion: Optional[str] = None,
+    barrio: Optional[str] = None,
+    notas: Optional[str] = None,
+    allow_without_phone: bool = False,
+) -> Optional[models.Cliente]:
+    clean_phone = _limpiar_telefono(telefono)
+    clean_name = (nombre or "").strip()
+
+    GENERIC_NAMES = {
+        "",
+        "consumidor final",
+        "cliente mostrador",
+        "cliente",
+        "mostrador",
+        "mesa",
+        "domicilio",
+        "para llevar",
+    }
+    is_generic_name = _normalizar_texto(clean_name) in GENERIC_NAMES
+
+    if not clean_phone:
+        if not allow_without_phone or is_generic_name:
+            return None
+        existing_by_name = (
+            db.query(models.Cliente)
+            .filter(func.lower(models.Cliente.nombre) == clean_name.lower())
+            .first()
+        )
+        if existing_by_name:
+            if direccion and direccion.strip():
+                existing_by_name.direccion = direccion.strip()
+            if barrio and barrio.strip():
+                existing_by_name.barrio = barrio.strip()
+            if notas and notas.strip():
+                existing_by_name.notas = notas.strip()
+            db.flush()
+            return existing_by_name
+
+        synthetic_phone = f"SINTEL-{_normalizar_texto(clean_name)[:20].upper()}"
+        existing_syn = db.query(models.Cliente).filter(models.Cliente.telefono == synthetic_phone).first()
+        if existing_syn:
+            return existing_syn
+        nuevo = models.Cliente(
+            nombre=clean_name,
+            telefono=synthetic_phone,
+            direccion=(direccion or "").strip() or None,
+            barrio=(barrio or "").strip() or None,
+            notas=(notas or "").strip() or None,
+        )
+        db.add(nuevo)
+        db.flush()
+        return nuevo
+
+    cliente = db.query(models.Cliente).filter(models.Cliente.telefono == clean_phone).first()
+    if not cliente and telefono and str(telefono).strip() != clean_phone:
+        cliente = db.query(models.Cliente).filter(models.Cliente.telefono == str(telefono).strip()).first()
+
+    if cliente:
+        if clean_name and not is_generic_name:
+            cliente.nombre = clean_name
+        if clean_phone:
+            cliente.telefono = clean_phone
+        if direccion and direccion.strip():
+            cliente.direccion = direccion.strip()
+        if barrio and barrio.strip():
+            cliente.barrio = barrio.strip()
+        if notas and notas.strip():
+            cliente.notas = notas.strip()
+        db.flush()
+        return cliente
+
+    final_name = clean_name if (clean_name and not is_generic_name) else f"Cliente {clean_phone}"
+    nuevo = models.Cliente(
+        nombre=final_name,
+        telefono=clean_phone,
+        direccion=(direccion or "").strip() or None,
+        barrio=(barrio or "").strip() or None,
+        notas=(notas or "").strip() or None,
+    )
+    db.add(nuevo)
+    db.flush()
+    return nuevo
+
+
+def _enrich_cliente_out(db: Session, c: models.Cliente, stats_map: Optional[dict] = None) -> schemas.ClienteOut:
+    phone_key = _limpiar_telefono(c.telefono)
+    st = (stats_map or {}).get(phone_key) or (stats_map or {}).get(c.id) or {}
+    order_count = int(st.get("order_count", 0))
+    total_fiado = float(st.get("total_fiado", 0.0))
+    return schemas.ClienteOut(
+        id=c.id,
+        nombre=c.nombre,
+        name=c.nombre,
+        telefono=c.telefono,
+        phone=c.telefono,
+        direccion=c.direccion,
+        address=c.direccion,
+        barrio=c.barrio,
+        notas=c.notas,
+        notes=c.notas,
+        created_at=c.created_at,
+        total_pedidos=order_count,
+        order_count=order_count,
+        total_fiado=total_fiado,
+    )
+
+
+def search_clientes(
+    db: Session,
+    q: Optional[str] = None,
+    telefono: Optional[str] = None,
+    limit: int = 50,
+) -> List[schemas.ClienteOut]:
+    all_clientes = db.query(models.Cliente).order_by(models.Cliente.updated_at.desc(), models.Cliente.id.desc()).all()
+
+    # Estadísticas rápidas por teléfono / cliente_id
+    pedidos_activos = (
+        db.query(models.Pedido)
+        .filter(models.Pedido.estado != models.EstadoPedido.CANCELADO)
+        .all()
+    )
+    stats_map = {}
+    for ped in pedidos_activos:
+        pk = _limpiar_telefono(ped.cliente_telefono)
+        if pk:
+            entry = stats_map.setdefault(pk, {"order_count": 0, "total_fiado": 0.0})
+            entry["order_count"] += 1
+            for pay in (ped.payments or []):
+                if pay.method == models.PaymentMethod.FIADO:
+                    entry["total_fiado"] += float(pay.amount or 0.0)
+        if ped.cliente_id:
+            entry_id = stats_map.setdefault(ped.cliente_id, {"order_count": 0, "total_fiado": 0.0})
+            entry_id["order_count"] += 1
+            for pay in (ped.payments or []):
+                if pay.method == models.PaymentMethod.FIADO:
+                    entry_id["total_fiado"] += float(pay.amount or 0.0)
+
+    if telefono and str(telefono).strip():
+        target_phone = _limpiar_telefono(telefono)
+        matched = [
+            c for c in all_clientes
+            if _limpiar_telefono(c.telefono) == target_phone or str(c.telefono).strip() == str(telefono).strip()
+        ]
+        return [_enrich_cliente_out(db, c, stats_map) for c in matched[:limit]]
+
+    query_str = (q or "").strip()
+    if not query_str:
+        return [_enrich_cliente_out(db, c, stats_map) for c in all_clientes[:limit]]
+
+    norm_q = _normalizar_texto(query_str)
+    digits_q = _limpiar_telefono(query_str)
+
+    exact_matches = []
+    partial_matches = []
+    for c in all_clientes:
+        c_phone = _limpiar_telefono(c.telefono)
+        c_name = _normalizar_texto(c.nombre)
+        c_dir = _normalizar_texto(c.direccion)
+        c_barrio = _normalizar_texto(c.barrio)
+
+        if (digits_q and c_phone == digits_q) or c_name == norm_q:
+            exact_matches.append(c)
+        elif (
+            (digits_q and digits_q in c_phone)
+            or (norm_q in c_name)
+            or (norm_q in c_dir)
+            or (norm_q in c_barrio)
+        ):
+            partial_matches.append(c)
+
+    results = exact_matches + partial_matches
+    return [_enrich_cliente_out(db, c, stats_map) for c in results[:limit]]
+
+
+def update_cliente(
+    db: Session,
+    cliente_id: int,
+    data: schemas.ClienteUpdate,
+) -> schemas.ClienteOut:
+    cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    if not cliente:
+        raise LookupError(f"Cliente con ID {cliente_id} no encontrado.")
+
+    if data.nombre is not None and data.nombre.strip():
+        cliente.nombre = data.nombre.strip()
+    if data.telefono is not None and data.telefono.strip():
+        clean_p = _limpiar_telefono(data.telefono)
+        other = (
+            db.query(models.Cliente)
+            .filter(models.Cliente.telefono == clean_p, models.Cliente.id != cliente.id)
+            .first()
+        )
+        if not other:
+            cliente.telefono = clean_p
+    if data.direccion is not None:
+        cliente.direccion = data.direccion.strip() or None
+    if data.barrio is not None:
+        cliente.barrio = data.barrio.strip() or None
+    if data.notas is not None:
+        cliente.notas = data.notas.strip() or None
+
+    db.commit()
+    db.refresh(cliente)
+    return _enrich_cliente_out(db, cliente)
+
+
+def liquidar_fiado_cliente(
+    db: Session,
+    data: schemas.LiquidarFiadoRequest,
+) -> dict:
+    """
+    Marca como pagados todos los pedidos en FIADO seleccionados (o todos los pendientes de un cliente/teléfono),
+    actualizando su método de pago a Efectivo (CASH), Nequi (NEQUI) o Bancolombia (BANCOLOMBIA) y dejando trazabilidad
+    en las notas del pedido `[FIADO_PAGADO:METODO:FECHA]` para que sigan visibles en el filtro de 'Pagados' del módulo de Fiados.
+    """
+    target_method = data.payment_method or models.PaymentMethod.CASH
+    if target_method == models.PaymentMethod.FIADO:
+        raise ValueError("El método de liquidación debe ser Efectivo, Nequi, Bancolombia, Daviplata o Tarjeta.")
+
+    query = (
+        db.query(models.Pedido)
+        .join(models.Payment, models.Payment.pedido_id == models.Pedido.id)
+        .filter(
+            models.Pedido.estado != models.EstadoPedido.CANCELADO,
+            models.Payment.method == models.PaymentMethod.FIADO,
+        )
+    )
+
+    if data.pedido_ids and len(data.pedido_ids) > 0:
+        query = query.filter(models.Pedido.id.in_(data.pedido_ids))
+    elif data.cliente_id:
+        cliente = db.query(models.Cliente).filter(models.Cliente.id == data.cliente_id).first()
+        if cliente:
+            clean_p = _limpiar_telefono(cliente.telefono)
+            query = query.filter(
+                (models.Pedido.cliente_id == cliente.id)
+                | (models.Pedido.cliente_telefono == clean_p)
+                | (func.lower(models.Pedido.cliente_nombre) == cliente.nombre.lower())
+            )
+        else:
+            query = query.filter(models.Pedido.cliente_id == data.cliente_id)
+    elif data.cliente_telefono and data.cliente_telefono.strip():
+        clean_p = _limpiar_telefono(data.cliente_telefono)
+        query = query.filter(
+            (models.Pedido.cliente_telefono == clean_p)
+            | (models.Pedido.cliente_telefono == data.cliente_telefono.strip())
+        )
+    elif data.cliente_nombre and data.cliente_nombre.strip():
+        clean_n = data.cliente_nombre.strip().lower()
+        query = query.filter(func.lower(models.Pedido.cliente_nombre) == clean_n)
+    else:
+        raise ValueError("Debe especificar pedido_ids, cliente_id, cliente_telefono o cliente_nombre para liquidar el fiado.")
+
+    pedidos_fiado = query.all()
+    if not pedidos_fiado:
+        return {"liquidados": 0, "monto_total": 0.0, "pedido_ids": []}
+
+    tz_col = timezone(timedelta(hours=-5))
+    fecha_liq = datetime.now(tz_col).strftime("%Y-%m-%d %H:%M")
+    tag_liq = f"[FIADO_PAGADO:{target_method.value}:{fecha_liq}]"
+
+    caja_activa = get_active_cash_closure(db)
+    affected_closures = set()
+    if caja_activa:
+        affected_closures.add(caja_activa.id)
+
+    monto_total = 0.0
+    liquidados_ids = []
+
+    for ped in pedidos_fiado:
+        for pay in (ped.payments or []):
+            if pay.method == models.PaymentMethod.FIADO:
+                if pay.cash_closure_id:
+                    affected_closures.add(pay.cash_closure_id)
+                if caja_activa:
+                    pay.cash_closure_id = caja_activa.id
+                pay.method = target_method
+                monto_total += float(pay.amount or 0.0)
+        ped.estado = models.EstadoPedido.PAGADO
+        cur_notas = ped.notas or ""
+        if "[FIADO_PAGADO:" not in cur_notas:
+            ped.notas = f"{cur_notas} | {tag_liq}".strip(" |") if cur_notas else tag_liq
+        liquidados_ids.append(ped.id)
+
+    db.flush()
+    for cid in affected_closures:
+        closure = db.query(models.CashClosure).filter(models.CashClosure.id == cid).first()
+        if closure:
+            calcular_resumen_caja(db, closure)
+
+    db.commit()
+    return {
+        "liquidados": len(liquidados_ids),
+        "monto_total": monto_total,
+        "metodo_pago": target_method.value,
+        "pedido_ids": liquidados_ids,
+    }
 
 def get_sopas(db: Session) -> List[models.Sopa]:
     return db.query(models.Sopa).filter(models.Sopa.activo == True).all()
@@ -236,9 +690,24 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         dir_str = pedido_in.direccion.strip()
         if dir_str not in notas_pedido:
             notas_pedido = f"Dirección: {dir_str}" + (f" | {notas_pedido}" if notas_pedido else "")
+    if pedido_in.barrio and pedido_in.barrio.strip():
+        barrio_str = pedido_in.barrio.strip()
+        if barrio_str not in notas_pedido:
+            notas_pedido = f"{notas_pedido} | Barrio: {barrio_str}".strip(" |")
+
+    dir_extraida, barrio_extraido = _extraer_direccion_y_barrio_de_notas(notas_pedido)
+    cliente_obj = upsert_cliente(
+        db,
+        nombre=pedido_in.cliente_nombre,
+        telefono=pedido_in.cliente_telefono,
+        direccion=pedido_in.direccion or dir_extraida,
+        barrio=pedido_in.barrio or barrio_extraido,
+        allow_without_phone=False,
+    )
 
     nuevo_pedido = models.Pedido(
         codigo_pedido=codigo,
+        cliente_id=cliente_obj.id if cliente_obj else pedido_in.cliente_id,
         cliente_nombre=pedido_in.cliente_nombre,
         cliente_telefono=pedido_in.cliente_telefono,
         mesa=pedido_in.mesa,
@@ -381,6 +850,18 @@ def aprobar_pedido_borrador(
     menu_hoy = get_menu_dia_by_fecha(db, hoy)
     _verificar_y_descontar_stock(db, pedido.detalles, menu_hoy, verificar_disponibilidad=True)
 
+    dir_extraida, barrio_extraido = _extraer_direccion_y_barrio_de_notas(pedido.notas)
+    cliente_obj = upsert_cliente(
+        db,
+        nombre=pedido.cliente_nombre,
+        telefono=pedido.cliente_telefono,
+        direccion=dir_extraida,
+        barrio=barrio_extraido,
+        allow_without_phone=False,
+    )
+    if cliente_obj:
+        pedido.cliente_id = cliente_obj.id
+
     pedido.estado = models.EstadoPedido.PENDIENTE
     db.commit()
     db.refresh(pedido)
@@ -477,6 +958,20 @@ def actualizar_pedido(
         pedido.subtotal = sum(d.precio_unitario * d.cantidad for d in pedido.detalles)
     pedido.total = float(pedido.subtotal or 0.0) + pedido.delivery_fee + pedido.packaging_fee
 
+    dir_extraida, barrio_extraido = _extraer_direccion_y_barrio_de_notas(pedido.notas)
+    cliente_obj = upsert_cliente(
+        db,
+        nombre=pedido.cliente_nombre,
+        telefono=pedido.cliente_telefono,
+        direccion=data.direccion or dir_extraida,
+        barrio=data.barrio or barrio_extraido,
+        allow_without_phone=False,
+    )
+    if cliente_obj:
+        pedido.cliente_id = cliente_obj.id
+    elif data.cliente_id:
+        pedido.cliente_id = data.cliente_id
+
     affected_closure_ids = {p.cash_closure_id for p in (pedido.payments or []) if p.cash_closure_id}
     if data.estado is not None:
         pedido.estado = data.estado
@@ -557,6 +1052,21 @@ def cambiar_metodo_pago_pedido(
         return pedido
 
     target_method = data.method or data.payment_method
+    has_fiado = (target_method == models.PaymentMethod.FIADO) or any(
+        p.method == models.PaymentMethod.FIADO for p in (data.payments or [])
+    )
+    dir_extraida, barrio_extraido = _extraer_direccion_y_barrio_de_notas(pedido.notas)
+    cliente_obj = upsert_cliente(
+        db,
+        nombre=pedido.cliente_nombre,
+        telefono=pedido.cliente_telefono,
+        direccion=dir_extraida,
+        barrio=barrio_extraido,
+        allow_without_phone=has_fiado,
+    )
+    if cliente_obj:
+        pedido.cliente_id = cliente_obj.id
+
     target_closure_id = (
         pagos_existentes[0].cash_closure_id
         if pagos_existentes
@@ -848,6 +1358,19 @@ def pagar_pedido(
             f"El total de los pagos (${total_pagado:,.2f}) es menor al total del pedido (${pedido.total:,.2f})."
         )
 
+    has_fiado = any(p_in.method == models.PaymentMethod.FIADO for p_in in pagos_in)
+    dir_extraida, barrio_extraido = _extraer_direccion_y_barrio_de_notas(pedido.notas)
+    cliente_obj = upsert_cliente(
+        db,
+        nombre=pedido.cliente_nombre,
+        telefono=pedido.cliente_telefono,
+        direccion=dir_extraida,
+        barrio=barrio_extraido,
+        allow_without_phone=has_fiado,
+    )
+    if cliente_obj:
+        pedido.cliente_id = cliente_obj.id
+
     for p_in in pagos_in:
         nuevo_pago = models.Payment(
             pedido_id=pedido.id,
@@ -992,8 +1515,9 @@ def obtener_estadisticas_dashboard(db: Session) -> schemas.DashboardStatsOut:
     pedido_ids_hoy = {p.pedido_id for p in pagos_hoy}
     today_order_count = len(pedido_ids_hoy)
 
-    # Clientes únicos registrados con teléfono
-    total_customers = (
+    # Clientes únicos registrados en directorio clientes o en pedidos
+    total_clientes_tabla = db.query(func.count(models.Cliente.id)).scalar() or 0
+    total_customers_pedidos = (
         db.query(func.count(func.distinct(models.Pedido.cliente_telefono)))
         .filter(
             models.Pedido.cliente_telefono.isnot(None),
@@ -1002,6 +1526,7 @@ def obtener_estadisticas_dashboard(db: Session) -> schemas.DashboardStatsOut:
         .scalar()
         or 0
     )
+    total_customers = max(int(total_clientes_tabla), int(total_customers_pedidos))
 
     # Platos más vendidos reales en pedidos PAGADO (del turno/día actual, o histórico si hoy aún va en 0)
     top_rows = []

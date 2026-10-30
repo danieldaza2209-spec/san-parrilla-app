@@ -33,14 +33,85 @@ class PlatoBase(BaseModel):
     imagen_emoji: str = "🥩"
     categoria_id: int
     activo: bool = True
+    disponible: bool = True
 
 class PlatoCreate(PlatoBase):
     pass
+
+class PlatoUpdate(BaseModel):
+    id: Optional[int] = None
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio: Optional[float] = None
+    imagen_emoji: Optional[str] = None
+    activo: Optional[bool] = None
+    disponible: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+class PlatoBulkPriceUpdate(BaseModel):
+    plato_ids: Optional[List[int]] = None
+    nombres: Optional[List[str]] = None
+    categoria_id: Optional[int] = None
+    precio_actual: Optional[float] = None
+    nuevo_precio: float
 
 class PlatoOut(PlatoBase):
     id: int
     categoria: CategoriaOut
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- CLIENTES & DIRECTORIO ---
+
+class ClienteBase(BaseModel):
+    nombre: Optional[str] = None
+    telefono: Optional[str] = None
+    direccion: Optional[str] = None
+    barrio: Optional[str] = None
+    notas: Optional[str] = None
+    # Aliases de compatibilidad en inglés
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    neighborhood: Optional[str] = None
+    notes: Optional[str] = None
+
+class ClienteCreate(ClienteBase):
+    pass
+
+class ClienteUpdate(ClienteBase):
+    pass
+
+class ClienteOut(BaseModel):
+    id: int
+    nombre: str
+    telefono: str
+    direccion: Optional[str] = None
+    barrio: Optional[str] = None
+    notas: Optional[str] = None
+    created_at: Optional[datetime] = None
+    # Aliases para frontend legacy / nuevo
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    neighborhood: Optional[str] = None
+    notes: Optional[str] = None
+    order_count: Optional[int] = 0
+    total_pedidos: Optional[int] = 0
+    total_fiado: Optional[float] = 0.0
+    model_config = ConfigDict(from_attributes=True)
+
+class LiquidarFiadoRequest(BaseModel):
+    cliente_id: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    cliente_telefono: Optional[str] = None
+    pedido_ids: Optional[List[int]] = None
+    metodo_pago: PaymentMethod = PaymentMethod.CASH
+
+    @field_validator("metodo_pago", mode="before")
+    @classmethod
+    def normalize_liq_method(cls, v):
+        return _normalize_payment_method(v)
 
 
 # --- SOPAS, PRINCIPIOS Y ACOMPAÑAMIENTOS ---
@@ -192,9 +263,11 @@ class DetallePedidoOut(BaseModel):
 
 
 class PedidoCreate(BaseModel):
+    cliente_id: Optional[int] = None
     cliente_nombre: str = "Cliente"
     cliente_telefono: Optional[str] = None
     direccion: Optional[str] = None
+    barrio: Optional[str] = None
     mesa: Optional[str] = None
     tipo: TipoPedido = TipoPedido.EN_MESA
     estado: Optional[EstadoPedido] = None
@@ -260,9 +333,11 @@ class PedidoUpdatePaymentMethod(BaseModel):
 
 
 class PedidoUpdate(BaseModel):
+    cliente_id: Optional[int] = None
     cliente_nombre: Optional[str] = None
     cliente_telefono: Optional[str] = None
     direccion: Optional[str] = None
+    barrio: Optional[str] = None
     mesa: Optional[str] = None
     tipo: Optional[TipoPedido] = None
     estado: Optional[EstadoPedido] = None
@@ -280,6 +355,7 @@ class PedidoOut(BaseModel):
     codigo_pedido: str
     fecha_hora: datetime
     created_at: Optional[datetime] = None
+    cliente_id: Optional[int] = None
     cliente_nombre: str
     cliente_telefono: Optional[str] = None
     mesa: Optional[str] = None

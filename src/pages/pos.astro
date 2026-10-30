@@ -347,72 +347,82 @@ const searchableCatalog = publicProducts.map((p) => ({
           </button>
         </div>
 
-        <!-- CONDITIONAL FORM: DOMICILIOS & CLIENTES DATABASE -->
-        <div id="form-domicilio" class="hidden bg-parrilla-dark/90 rounded-xl p-3 border border-parrilla-gold/30 flex-col gap-2.5">
+        <!-- CONDITIONAL FORM: DOMICILIOS & CLIENTES DATABASE (También obligatorio para pedidos en FIADO) -->
+        <div id="form-domicilio" class="hidden bg-parrilla-dark/90 rounded-xl p-3 border border-parrilla-gold/30 flex-col gap-2.5 relative">
           <div class="flex items-center justify-between pb-1 border-b border-parrilla-border/60">
             <span class="text-xs font-bold text-parrilla-gold uppercase flex items-center gap-1.5">
               <i data-lucide="user-check" class="w-4 h-4"></i>
-              <span>Datos del Cliente & Mensajero</span>
+              <span id="form-customer-title">Datos del Cliente & Mensajero</span>
             </span>
-            <span class="text-[10px] text-parrilla-muted">Guarda en BD automáticamente</span>
+            <span id="form-customer-badge" class="text-[10px] text-parrilla-muted">Autocompletado Neon en vivo</span>
           </div>
 
-          <!-- Teléfono con autocompletado instantáneo -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div>
+          <!-- Teléfono y Nombre con autocompletado instantáneo desde Neon -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 relative">
+            <div class="relative">
               <label class="block text-[11px] text-parrilla-muted mb-1 font-semibold">Teléfono Celular *</label>
               <div class="relative">
                 <input 
                   type="tel" 
                   id="cust-phone" 
+                  autocomplete="off"
                   placeholder="3183821787" 
                   class="w-full px-3 py-2 bg-parrilla-surface rounded-lg border border-parrilla-border text-sm font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
                 />
-                <span id="cust-status" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs"></span>
+                <span id="cust-status" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] pointer-events-none"></span>
               </div>
             </div>
 
-            <div>
+            <div class="relative">
               <label class="block text-[11px] text-parrilla-muted mb-1 font-semibold">Nombre del Cliente *</label>
               <input 
                 type="text" 
                 id="cust-name" 
-                placeholder="Nombre completo" 
+                autocomplete="off"
+                placeholder="Buscar o escribir nombre..." 
                 class="w-full px-3 py-2 bg-parrilla-surface rounded-lg border border-parrilla-border text-sm text-parrilla-ivory focus:border-parrilla-gold outline-none"
               />
             </div>
+
+            <!-- Desplegable de Autocompletado de Clientes en Vivo (Neon DB) -->
+            <div
+              id="cust-autocomplete-dropdown"
+              class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl border-2 border-parrilla-gold shadow-2xl max-h-60 overflow-y-auto divide-y divide-slate-100"
+            ></div>
           </div>
 
-          <!-- Dirección y Barrio/Referencia -->
-          <div>
-            <label class="block text-[11px] text-parrilla-muted mb-1 font-semibold">Dirección de Entrega * (Se imprime en grande para mensajero)</label>
-            <input 
-              type="text" 
-              id="cust-address" 
-              placeholder="Calle 123 # 45 - 67 Apto 302" 
-              class="w-full px-3 py-2 bg-parrilla-surface rounded-lg border border-parrilla-border text-sm font-semibold text-parrilla-gold focus:border-parrilla-gold outline-none"
-            />
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <!-- Dirección y Barrio/Referencia (Ocultable cuando es solo Fiado en Mesa/Llevar, pero rellenable) -->
+          <div id="domicilio-extra-fields" class="flex flex-col gap-2.5">
             <div>
-              <label class="block text-[11px] text-parrilla-muted mb-1 font-semibold">Barrio / Indicaciones</label>
+              <label class="block text-[11px] text-parrilla-muted mb-1 font-semibold" id="cust-address-label">Dirección de Entrega * (Se imprime en grande para mensajero)</label>
               <input 
                 type="text" 
-                id="cust-neighborhood" 
-                placeholder="Ej. Centro, frente al parque" 
-                class="w-full px-3 py-1.5 bg-parrilla-surface rounded-lg border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                id="cust-address" 
+                placeholder="Calle 123 # 45 - 67 Apto 302" 
+                class="w-full px-3 py-2 bg-parrilla-surface rounded-lg border border-parrilla-border text-sm font-semibold text-parrilla-gold focus:border-parrilla-gold outline-none"
               />
             </div>
-            <div>
-              <label class="block text-[11px] text-parrilla-muted mb-1 font-semibold">Costo Domicilio ($)</label>
-              <input 
-                type="number" 
-                id="delivery-fee-input" 
-                value="3000" 
-                step="500" 
-                class="w-full px-3 py-1.5 bg-parrilla-surface rounded-lg border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
-              />
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[11px] text-parrilla-muted mb-1 font-semibold">Barrio / Indicaciones</label>
+                <input 
+                  type="text" 
+                  id="cust-neighborhood" 
+                  placeholder="Ej. Centro, frente al parque" 
+                  class="w-full px-3 py-1.5 bg-parrilla-surface rounded-lg border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                />
+              </div>
+              <div id="delivery-fee-field-wrapper">
+                <label class="block text-[11px] text-parrilla-muted mb-1 font-semibold">Costo Domicilio ($)</label>
+                <input 
+                  type="number" 
+                  id="delivery-fee-input" 
+                  value="3000" 
+                  step="500" 
+                  class="w-full px-3 py-1.5 bg-parrilla-surface rounded-lg border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -941,6 +951,42 @@ const searchableCatalog = publicProducts.map((p) => ({
           </div>
         </div>
 
+        <!-- SELECTOR OBLIGATORIO DE CLIENTE CUANDO EL PAGO ES FIADO -->
+        <div id="modal-fiado-customer-box" class="hidden bg-amber-50/90 p-3.5 rounded-xl border-2 border-amber-400 space-y-2.5 relative">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold text-amber-900 uppercase flex items-center gap-1.5">
+              <span>📝 Cliente de Fiado (Obligatorio vincular cuenta)</span>
+            </span>
+            <span class="text-[10px] font-bold text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded">Cuenta por Cobrar</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 relative">
+            <div>
+              <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">Teléfono del Cliente *</label>
+              <input
+                type="tel"
+                id="modal-fiado-phone"
+                autocomplete="off"
+                placeholder="Ej. 3183821787"
+                class="w-full px-3 py-2 bg-white rounded-lg border border-amber-300 text-xs font-mono font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">Nombre del Cliente *</label>
+              <input
+                type="text"
+                id="modal-fiado-name"
+                autocomplete="off"
+                placeholder="Buscar o escribir nombre..."
+                class="w-full px-3 py-2 bg-white rounded-lg border border-amber-300 text-xs font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              />
+            </div>
+            <div
+              id="modal-fiado-autocomplete"
+              class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl border-2 border-parrilla-gold shadow-2xl max-h-48 overflow-y-auto divide-y divide-slate-100"
+            ></div>
+          </div>
+        </div>
+
         <!-- MODO 2: PAGO MIXTO / DIVIDIDO -->
         <div id="cobro-view-split" class="hidden space-y-3">
           <div class="bg-amber-50 border border-amber-200 text-amber-800 p-2.5 rounded-xl text-xs">
@@ -1318,14 +1364,20 @@ const searchableCatalog = publicProducts.map((p) => ({
       }
 
       searchResultsGrid.innerHTML = matches
-        .map(
-          (item) => `
-          <div class="flex items-center justify-between gap-2.5 p-3 rounded-xl border border-parrilla-border hover:border-parrilla-gold bg-slate-50/70 hover:bg-orange-50/30 transition shadow-2xs">
+        .map((item) => {
+          const isSoldOut = item.disponible === false || item.in_stock === 0;
+          return `
+          <div class="flex items-center justify-between gap-2.5 p-3 rounded-xl border border-parrilla-border hover:border-parrilla-gold bg-slate-50/70 hover:bg-orange-50/30 transition shadow-2xs ${isSoldOut ? 'opacity-60' : ''}">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="font-display font-bold text-sm text-parrilla-ivory leading-tight">
                   ${escapeHtml(item.name)}
                 </span>
+                ${
+                  isSoldOut
+                    ? `<span class="bg-red-100 text-red-700 border border-red-300 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded">Agotado por hoy</span>`
+                    : ''
+                }
                 ${
                   item.special_badge
                     ? `<span class="bg-parrilla-gold text-white text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded">${escapeHtml(item.special_badge)}</span>`
@@ -1346,14 +1398,15 @@ const searchableCatalog = publicProducts.map((p) => ({
               data-cat="${item.category_id || ''}"
               data-menu="${item.menu_type || ''}"
               data-customizable="${String(item.customizable)}"
+              ${isSoldOut ? 'disabled data-sold-out="true" title="Agotado por hoy"' : ''}
               aria-label="Agregar ${escapeHtml(item.name)}"
-              class="btn-add-cart flex-shrink-0 w-9 h-9 rounded-full bg-parrilla-gold hover:bg-parrilla-goldLight text-white flex items-center justify-center shadow-sm transition active:scale-90 cursor-pointer font-black text-base"
+              class="btn-add-cart flex-shrink-0 w-9 h-9 rounded-full bg-parrilla-gold hover:bg-parrilla-goldLight text-white flex items-center justify-center shadow-sm transition active:scale-90 cursor-pointer font-black text-base ${isSoldOut ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}"
             >
               +
             </button>
           </div>
-        `
-        )
+        `;
+        })
         .join('');
     }
 
@@ -1795,7 +1848,7 @@ const searchableCatalog = publicProducts.map((p) => ({
     document.addEventListener('click', (e) => {
       // @ts-ignore
       const btn = e.target.closest('.btn-add-cart');
-      if (!btn || btn.disabled) return;
+      if (!btn || btn.disabled || btn.getAttribute('data-sold-out') === 'true') return;
 
       btn.classList.add('ring-4', 'ring-emerald-400', 'bg-emerald-600', 'scale-110');
       setTimeout(() => {
@@ -2276,6 +2329,42 @@ const searchableCatalog = publicProducts.map((p) => ({
       renderCart();
     });
 
+    const formCustomerTitle = document.getElementById('form-customer-title');
+    const formCustomerBadge = document.getElementById('form-customer-badge');
+    const domicilioExtraFields = document.getElementById('domicilio-extra-fields');
+    const deliveryFeeFieldWrapper = document.getElementById('delivery-fee-field-wrapper');
+    const custAddressLabel = document.getElementById('cust-address-label');
+
+    function updateCustomerFormVisibility() {
+      const isDom = currentOrderType === 'domicilio';
+      const isFiado = currentPaymentMethod === 'fiado' || selectedSingleMethod === 'FIADO';
+
+      if (isDom || isFiado) {
+        formDomicilio.style.display = 'flex';
+        formDomicilio.classList.remove('hidden');
+        if (isFiado && !isDom) {
+          if (formCustomerTitle) formCustomerTitle.textContent = '📝 Cliente de Fiado (Obligatorio: Teléfono y Nombre)';
+          if (formCustomerBadge) {
+            formCustomerBadge.textContent = 'Cuenta por Cobrar';
+            formCustomerBadge.className = 'text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded';
+          }
+          if (custAddressLabel) custAddressLabel.textContent = 'Dirección del Cliente (Opcional)';
+          if (deliveryFeeFieldWrapper) deliveryFeeFieldWrapper.style.display = 'none';
+        } else {
+          if (formCustomerTitle) formCustomerTitle.textContent = 'Datos del Cliente & Mensajero';
+          if (formCustomerBadge) {
+            formCustomerBadge.textContent = 'Autocompletado Neon en vivo';
+            formCustomerBadge.className = 'text-[10px] text-parrilla-muted';
+          }
+          if (custAddressLabel) custAddressLabel.textContent = 'Dirección de Entrega * (Se imprime en grande para mensajero)';
+          if (deliveryFeeFieldWrapper) deliveryFeeFieldWrapper.style.display = 'block';
+        }
+      } else {
+        formDomicilio.style.display = 'none';
+        formDomicilio.classList.add('hidden');
+      }
+    }
+
     function setOrderType(type) {
       currentOrderType = type;
       [typeMesaBtn, typeDomicilioBtn, typeLlevarBtn].forEach((b) => {
@@ -2285,7 +2374,6 @@ const searchableCatalog = publicProducts.map((p) => ({
       if (type === 'mesa') {
         typeMesaBtn.className = 'order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-extrabold text-xs shadow-sm transition';
         formMesa.style.display = 'flex';
-        formDomicilio.style.display = 'none';
         if (formLlevar) {
           formLlevar.classList.add('hidden');
           formLlevar.classList.remove('flex');
@@ -2295,7 +2383,6 @@ const searchableCatalog = publicProducts.map((p) => ({
       } else if (type === 'domicilio') {
         typeDomicilioBtn.className = 'order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-parrilla-accent bg-parrilla-accent text-white font-extrabold text-xs shadow-sm transition';
         formMesa.style.display = 'none';
-        formDomicilio.style.display = 'flex';
         if (formLlevar) {
           formLlevar.classList.add('hidden');
           formLlevar.classList.remove('flex');
@@ -2306,7 +2393,6 @@ const searchableCatalog = publicProducts.map((p) => ({
       } else {
         typeLlevarBtn.className = 'order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-amber-600 bg-amber-600 text-white font-extrabold text-xs shadow-sm transition';
         formMesa.style.display = 'none';
-        formDomicilio.style.display = 'none';
         if (formLlevar) {
           formLlevar.classList.remove('hidden');
           formLlevar.classList.add('flex');
@@ -2315,6 +2401,8 @@ const searchableCatalog = publicProducts.map((p) => ({
           packagingQty = countFoodPlates();
         }
       }
+
+      updateCustomerFormVisibility();
 
       // Sincronizar notas de empaque según el nuevo tipo de pedido
       updateAllItemsPackagingNotes();
@@ -2341,40 +2429,174 @@ const searchableCatalog = publicProducts.map((p) => ({
     typeDomicilioBtn?.addEventListener('click', () => setOrderType('domicilio'));
     typeLlevarBtn?.addEventListener('click', () => setOrderType('para_llevar'));
 
-    // 5. CUSTOMER INSTANT AUTOCOMPLETE VIA PHONE
+    // 5. DIRECTORIO DE CLIENTES NEON Y AUTOCOMPLETADO INSTANTÁNEO (TELÉFONO Y NOMBRE)
+    let selectedCustomerId = null;
     let searchTimeout = null;
-    if (custPhoneInput) {
-      custPhoneInput.addEventListener('input', (e) => {
-        // @ts-ignore
-        const phone = e.target.value.trim();
-        custStatus.textContent = '';
-        if (phone.length >= 7) {
-          clearTimeout(searchTimeout);
-          searchTimeout = setTimeout(async () => {
-            try {
-              custStatus.textContent = '🔍';
-              const res = await fetch(`/api/customers?phone=${encodeURIComponent(phone)}`);
-              const cust = await res.json();
-              if (cust && cust.id) {
-                // @ts-ignore
-                custNameInput.value = cust.name;
-                // @ts-ignore
-                custAddressInput.value = cust.address;
-                // @ts-ignore
-                custNeighborhoodInput.value = cust.neighborhood || '';
-                custStatus.textContent = '✅ Cliente recurrente (' + cust.order_count + ' pedidos)';
-                custStatus.className = 'absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-parrilla-accent font-bold';
-              } else {
-                custStatus.textContent = '✨ Nuevo';
-                custStatus.className = 'absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-amber-400 font-bold';
-              }
-            } catch (err) {
-              custStatus.textContent = '';
-            }
-          }, 400);
-        }
+    const custDropdown = document.getElementById('cust-autocomplete-dropdown');
+    const modalFiadoBox = document.getElementById('modal-fiado-customer-box');
+    const modalFiadoPhone = document.getElementById('modal-fiado-phone');
+    const modalFiadoName = document.getElementById('modal-fiado-name');
+    const modalFiadoDropdown = document.getElementById('modal-fiado-autocomplete');
+
+    function applySelectedCustomer(cust) {
+      if (!cust) return;
+      selectedCustomerId = cust.id || null;
+      const cName = String(cust.nombre || cust.name || '').trim();
+      const cPhone = String(cust.telefono || cust.phone || '').trim();
+      const cAddress = String(cust.direccion || cust.address || '').trim();
+      const cBarrio = String(cust.barrio || cust.notas || cust.notes || cust.neighborhood || '').trim();
+      const orderCount = Number(cust.total_pedidos || cust.order_count || 0);
+
+      // @ts-ignore
+      if (custPhoneInput && cPhone && !cPhone.startsWith('SINTEL-')) custPhoneInput.value = cPhone;
+      // @ts-ignore
+      if (custNameInput && cName) custNameInput.value = cName;
+      // @ts-ignore
+      if (custAddressInput && cAddress) custAddressInput.value = cAddress;
+      // @ts-ignore
+      if (custNeighborhoodInput && cBarrio) custNeighborhoodInput.value = cBarrio;
+      // @ts-ignore
+      if (llevarCustNameInput && cName && currentOrderType === 'para_llevar') llevarCustNameInput.value = cName;
+      // @ts-ignore
+      if (modalFiadoPhone && cPhone && !cPhone.startsWith('SINTEL-')) modalFiadoPhone.value = cPhone;
+      // @ts-ignore
+      if (modalFiadoName && cName) modalFiadoName.value = cName;
+
+      if (custStatus) {
+        custStatus.textContent = `✅ Registrado${orderCount > 0 ? ' (' + orderCount + ')' : ''}`;
+        custStatus.className = 'absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-emerald-600 font-extrabold pointer-events-none';
+      }
+      custDropdown?.classList.add('hidden');
+      modalFiadoDropdown?.classList.add('hidden');
+    }
+
+    function renderCustomerAutocompleteList(list, dropdownEl, queryStr) {
+      if (!dropdownEl) return;
+      if (!Array.isArray(list) || list.length === 0) {
+        dropdownEl.classList.add('hidden');
+        dropdownEl.innerHTML = '';
+        return;
+      }
+
+      dropdownEl.innerHTML = list
+        .slice(0, 8)
+        .map((c, idx) => {
+          const cName = escapeHtml(c.nombre || c.name || 'Cliente');
+          const rawPhone = String(c.telefono || c.phone || '');
+          const cPhone = rawPhone.startsWith('SINTEL-') ? 'Sin teléfono' : escapeHtml(rawPhone);
+          const cDir = escapeHtml(c.direccion || c.address || '');
+          const cBarrio = escapeHtml(c.barrio || c.notas || c.notes || '');
+          const fiadoVal = Number(c.total_fiado || 0);
+          return `
+            <button
+              type="button"
+              data-cust-idx="${idx}"
+              class="cust-auto-item w-full text-left px-3 py-2 hover:bg-orange-50 transition flex items-center justify-between gap-2 cursor-pointer"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="font-bold text-xs text-parrilla-ivory truncate">${cName}</div>
+                <div class="text-[11px] text-parrilla-muted truncate">
+                  <span class="font-mono font-bold text-parrilla-gold">${cPhone}</span>
+                  ${cDir ? ` • ${cDir}` : ''}${cBarrio ? ` (${cBarrio})` : ''}
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                ${
+                  fiadoVal > 0
+                    ? `<span class="text-[10px] font-extrabold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded block">Fiado: ${fmt(fiadoVal)}</span>`
+                    : `<span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded block">Seleccionar</span>`
+                }
+              </div>
+            </button>
+          `;
+        })
+        .join('');
+
+      dropdownEl.classList.remove('hidden');
+      dropdownEl.querySelectorAll('.cust-auto-item').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.getAttribute('data-cust-idx'));
+          if (list[i]) applySelectedCustomer(list[i]);
+        });
       });
     }
+
+    function triggerCustomerSearch(rawQuery, dropdownEl, isPhoneInput = false) {
+      const q = String(rawQuery || '').trim();
+      if (custStatus && isPhoneInput) custStatus.textContent = '';
+      if (q.length < 2) {
+        dropdownEl?.classList.add('hidden');
+        return;
+      }
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(async () => {
+        try {
+          if (custStatus && isPhoneInput) custStatus.textContent = '🔍';
+          const res = await fetch(`/api/clientes/search?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
+          if (!res.ok) return;
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data.customers || []);
+          renderCustomerAutocompleteList(list, dropdownEl, q);
+
+          // Si escribió el teléfono exacto (mínimo 7 dígitos) y hay coincidencia exacta, rellenar automáticamente
+          const digitsQ = q.replace(/\D/g, '');
+          if (isPhoneInput && digitsQ.length >= 7) {
+            const exact = list.find((c) => String(c.telefono || c.phone || '').replace(/\D/g, '') === digitsQ);
+            if (exact) {
+              applySelectedCustomer(exact);
+            } else if (custStatus) {
+              custStatus.textContent = '✨ Nuevo';
+              custStatus.className = 'absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-amber-600 font-bold pointer-events-none';
+            }
+          }
+        } catch (err) {
+          if (custStatus && isPhoneInput) custStatus.textContent = '';
+        }
+      }, 220);
+    }
+
+    custPhoneInput?.addEventListener('input', (e) => {
+      // @ts-ignore
+      const val = e.target.value;
+      // @ts-ignore
+      if (modalFiadoPhone) modalFiadoPhone.value = val;
+      triggerCustomerSearch(val, custDropdown, true);
+    });
+
+    custNameInput?.addEventListener('input', (e) => {
+      // @ts-ignore
+      const val = e.target.value;
+      // @ts-ignore
+      if (modalFiadoName) modalFiadoName.value = val;
+      triggerCustomerSearch(val, custDropdown, false);
+    });
+
+    modalFiadoPhone?.addEventListener('input', (e) => {
+      // @ts-ignore
+      const val = e.target.value;
+      // @ts-ignore
+      if (custPhoneInput) custPhoneInput.value = val;
+      triggerCustomerSearch(val, modalFiadoDropdown, true);
+    });
+
+    modalFiadoName?.addEventListener('input', (e) => {
+      // @ts-ignore
+      const val = e.target.value;
+      // @ts-ignore
+      if (custNameInput) custNameInput.value = val;
+      triggerCustomerSearch(val, modalFiadoDropdown, false);
+    });
+
+    document.addEventListener('click', (e) => {
+      // @ts-ignore
+      if (custDropdown && !custDropdown.contains(e.target) && e.target !== custPhoneInput && e.target !== custNameInput) {
+        custDropdown.classList.add('hidden');
+      }
+      // @ts-ignore
+      if (modalFiadoDropdown && !modalFiadoDropdown.contains(e.target) && e.target !== modalFiadoPhone && e.target !== modalFiadoName) {
+        modalFiadoDropdown.classList.add('hidden');
+      }
+    });
 
     // 6. PAYMENT METHOD SWITCHER
     const methodFrontToBackMap = {
@@ -2473,10 +2695,65 @@ const searchableCatalog = publicProducts.map((p) => ({
       }
     });
 
+    // 6.2 SINCRONIZACIÓN EN VIVO DE PRECIOS Y PLATOS AGOTADOS EN POS (DESDE NEON DB)
+    function syncPosCatalogPlatos(platosArray) {
+      if (!Array.isArray(platosArray) || platosArray.length === 0) return;
+      const platoMap = new Map();
+      platosArray.forEach((p) => {
+        const k = normalizeStr(p.nombre || p.name);
+        if (k) platoMap.set(k, p);
+      });
+
+      catalogData.forEach((item) => {
+        const info = platoMap.get(normalizeStr(item.name));
+        if (info) {
+          const newPrice = Number(info.precio ?? info.price ?? item.price ?? 0);
+          if (newPrice > 0) item.price = newPrice;
+          const isAvail = info.disponible !== false && info.activo !== false && info.in_stock !== 0;
+          item.disponible = isAvail;
+          item.in_stock = isAvail ? 1 : 0;
+          if (info.id) item.plato_id = info.id;
+        }
+      });
+
+      // @ts-ignore
+      if (searchInput && searchInput.value && searchInput.value.trim()) {
+        // @ts-ignore
+        runUniversalSearch(searchInput.value);
+      }
+    }
+
+    window.addEventListener('sp:platos-updated', (ev) => {
+      // @ts-ignore
+      if (ev && Array.isArray(ev.detail)) {
+        // @ts-ignore
+        syncPosCatalogPlatos(ev.detail);
+      }
+    });
+
     try {
       const cachedSpec = JSON.parse(localStorage.getItem('sp_daily_specials_v1') || 'null');
       if (cachedSpec) syncPosLiveSpecials(cachedSpec);
+      const cachedPlatos = JSON.parse(localStorage.getItem('sp_platos_live_v1') || 'null');
+      if (Array.isArray(cachedPlatos)) syncPosCatalogPlatos(cachedPlatos);
     } catch (e) {}
+
+    function updateModalFiadoBoxVisibility() {
+      if (!modalFiadoBox) return;
+      const isSingleFiado = cobroPaymentMode === 'single' && selectedSingleMethod === 'FIADO';
+      // @ts-ignore
+      const isSplitFiado = cobroPaymentMode === 'split' && (splitMethod1?.value === 'FIADO' || splitMethod2?.value === 'FIADO');
+      const needsFiadoBox = isSingleFiado || isSplitFiado;
+      if (needsFiadoBox) {
+        modalFiadoBox.classList.remove('hidden');
+        // @ts-ignore
+        if (modalFiadoPhone && custPhoneInput && !modalFiadoPhone.value) modalFiadoPhone.value = custPhoneInput.value;
+        // @ts-ignore
+        if (modalFiadoName && custNameInput && !modalFiadoName.value) modalFiadoName.value = custNameInput.value;
+      } else {
+        modalFiadoBox.classList.add('hidden');
+      }
+    }
 
     payButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -2503,6 +2780,12 @@ const searchableCatalog = publicProducts.map((p) => ({
           cashChangeBox.style.display = 'flex';
         } else {
           cashChangeBox.style.display = 'none';
+        }
+        updateCustomerFormVisibility();
+        updateModalFiadoBoxVisibility();
+        if (currentPaymentMethod === 'fiado') {
+          // @ts-ignore
+          if (custPhoneInput && !custPhoneInput.value) custPhoneInput.focus();
         }
         renderCart();
       });
@@ -2581,6 +2864,7 @@ const searchableCatalog = publicProducts.map((p) => ({
       btnModeSplit.className = 'py-2 rounded-lg text-xs font-bold text-parrilla-muted hover:text-parrilla-ivory transition';
       viewSingle.classList.remove('hidden');
       viewSplit.classList.add('hidden');
+      updateModalFiadoBoxVisibility();
     });
 
     btnModeSplit?.addEventListener('click', () => {
@@ -2603,7 +2887,11 @@ const searchableCatalog = publicProducts.map((p) => ({
         splitAmount2.value = total - Math.round(total / 2);
       }
       updateSplitBalance(total);
+      updateModalFiadoBoxVisibility();
     });
+
+    splitMethod1?.addEventListener('change', updateModalFiadoBoxVisibility);
+    splitMethod2?.addEventListener('change', updateModalFiadoBoxVisibility);
 
     // Single payment method selector buttons
     document.querySelectorAll('.single-pay-btn').forEach(btn => {
@@ -2619,6 +2907,8 @@ const searchableCatalog = publicProducts.map((p) => ({
         } else {
           singleCashCalc.classList.add('hidden');
         }
+        updateCustomerFormVisibility();
+        updateModalFiadoBoxVisibility();
       });
     });
 
@@ -2687,6 +2977,22 @@ const searchableCatalog = publicProducts.map((p) => ({
         }
       }
 
+      if (currentPaymentMethod === 'fiado') {
+        // @ts-ignore
+        const fPhone = (custPhoneInput?.value || '').trim();
+        // @ts-ignore
+        const fName = (custNameInput?.value || '').trim();
+        if (!fPhone || !fName) {
+          updateCustomerFormVisibility();
+          alert('⚠️ Para pedidos en FIADO es obligatorio seleccionar o ingresar el Teléfono y Nombre del Cliente.');
+          // @ts-ignore
+          if (!fPhone) custPhoneInput?.focus();
+          // @ts-ignore
+          else custNameInput?.focus();
+          return;
+        }
+      }
+
       const { subtotal, packagingFee, deliveryFee, total, isDeliveryOrTakeout } = calculateTotals();
 
       // Populate modal values
@@ -2727,6 +3033,7 @@ const searchableCatalog = publicProducts.map((p) => ({
         singleCashReceived.value = cashReceivedInput.value;
       }
 
+      updateModalFiadoBoxVisibility();
       modalCobro.classList.remove('hidden');
       modalCobro.classList.add('flex');
     });
@@ -2744,17 +3051,23 @@ const searchableCatalog = publicProducts.map((p) => ({
       // @ts-ignore
       const mesaStr = currentOrderType === 'mesa' ? (tableInput?.value || 'Mesa 1') : '';
       // @ts-ignore
-      const custPhone = currentOrderType === 'domicilio' ? (custPhoneInput?.value || '').trim() : '';
+      const typedPhone = (custPhoneInput?.value || modalFiadoPhone?.value || '').trim();
+      // @ts-ignore
+      const typedName = (custNameInput?.value || modalFiadoName?.value || '').trim();
       // @ts-ignore
       const llevarName = currentOrderType === 'para_llevar' ? (llevarCustNameInput?.value || '').trim() : '';
+      const custPhone = typedPhone;
+      const custName = typedName
+        ? typedName
+        : currentOrderType === 'domicilio'
+        ? 'Cliente Domicilio'
+        : currentOrderType === 'para_llevar'
+        ? (llevarName || 'Para Llevar')
+        : (mesaStr || 'Cliente Mesa');
       // @ts-ignore
-      const custName = currentOrderType === 'domicilio'
-        ? ((custNameInput?.value || '').trim() || 'Cliente Domicilio')
-        : (currentOrderType === 'para_llevar' ? (llevarName || 'Para Llevar') : (mesaStr || 'Cliente Mesa'));
+      const custAddress = (custAddressInput?.value || '').trim();
       // @ts-ignore
-      const custAddress = currentOrderType === 'domicilio' ? (custAddressInput?.value || '').trim() : '';
-      // @ts-ignore
-      const custNeighborhood = currentOrderType === 'domicilio' ? (custNeighborhoodInput?.value || '').trim() : '';
+      const custNeighborhood = (custNeighborhoodInput?.value || '').trim();
 
       const notasPartes = [];
       if (custAddress) notasPartes.push(`Dirección: ${custAddress}`);
@@ -2778,9 +3091,11 @@ const searchableCatalog = publicProducts.map((p) => ({
       const payload = {
         tipo: tipoBackend,
         mesa: mesaStr || null,
+        cliente_id: selectedCustomerId || null,
         cliente_nombre: custName,
         cliente_telefono: custPhone || null,
         direccion: custAddress || null,
+        barrio: custNeighborhood || null,
         notas: notasPedido || null,
         subtotal: subtotal,
         packaging_fee: packagingFee,
@@ -2808,6 +3123,22 @@ const searchableCatalog = publicProducts.map((p) => ({
         // @ts-ignore
         if (!custPhoneInput.value.trim() || !custNameInput.value.trim() || !custAddressInput.value.trim()) {
           alert('Para domicilios es obligatorio indicar Teléfono, Nombre y Dirección.');
+          return;
+        }
+      }
+
+      if (currentPaymentMethod === 'fiado') {
+        // @ts-ignore
+        const fPhone = (custPhoneInput?.value || '').trim();
+        // @ts-ignore
+        const fName = (custNameInput?.value || '').trim();
+        if (!fPhone || !fName) {
+          updateCustomerFormVisibility();
+          alert('⚠️ Para pedidos en FIADO es obligatorio vincular un cliente indicando su Teléfono y Nombre.');
+          // @ts-ignore
+          if (!fPhone) custPhoneInput?.focus();
+          // @ts-ignore
+          else custNameInput?.focus();
           return;
         }
       }
@@ -2933,6 +3264,27 @@ const searchableCatalog = publicProducts.map((p) => ({
           { method: m1, amount: a1, change_given: 0 },
           { method: m2, amount: a2, change_given: 0 }
         ];
+      }
+
+      const includesFiado = paymentsPayload.some((p) => p.method === 'FIADO');
+      if (includesFiado) {
+        // @ts-ignore
+        const fPhone = (modalFiadoPhone?.value || custPhoneInput?.value || '').trim();
+        // @ts-ignore
+        const fName = (modalFiadoName?.value || custNameInput?.value || '').trim();
+        if (!fPhone || !fName) {
+          updateModalFiadoBoxVisibility();
+          alert('⚠️ Todo pedido en FIADO debe estar vinculado a un cliente. Por favor ingresa o selecciona el Teléfono y Nombre del Cliente.');
+          // @ts-ignore
+          if (!fPhone) modalFiadoPhone?.focus();
+          // @ts-ignore
+          else modalFiadoName?.focus();
+          return;
+        }
+        // @ts-ignore
+        if (custPhoneInput) custPhoneInput.value = fPhone;
+        // @ts-ignore
+        if (custNameInput) custNameInput.value = fName;
       }
 
       btnConfirmPayment.disabled = true;

@@ -60,6 +60,20 @@ class Usuario(Base):
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class Cliente(Base):
+    __tablename__ = "clientes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(150), nullable=False, index=True)
+    telefono = Column(String(30), nullable=False, unique=True, index=True)
+    direccion = Column(String(255), nullable=True)
+    barrio = Column(String(100), nullable=True)
+    notas = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    pedidos = relationship("Pedido", back_populates="cliente")
+
+
 class Categoria(Base):
     __tablename__ = "categorias"
 
@@ -81,6 +95,7 @@ class Plato(Base):
     precio = Column(Float, nullable=False)
     imagen_emoji = Column(String(10), default="🥩")
     activo = Column(Boolean, default=True)
+    disponible = Column(Boolean, default=True)
 
     categoria = relationship("Categoria", back_populates="platos")
     detalles_pedido = relationship("DetallePedido", back_populates="plato")
@@ -161,6 +176,7 @@ class Pedido(Base):
     id = Column(Integer, primary_key=True, index=True)
     codigo_pedido = Column(String(20), nullable=False, unique=True, index=True)
     fecha_hora = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True)
     cliente_nombre = Column(String(100), default="Cliente")
     cliente_telefono = Column(String(20), nullable=True)
     mesa = Column(String(20), nullable=True)
@@ -173,6 +189,7 @@ class Pedido(Base):
     courier_name = Column(String(100), nullable=True)
     notas = Column(Text, nullable=True)
 
+    cliente = relationship("Cliente", back_populates="pedidos")
     detalles = relationship("DetallePedido", back_populates="pedido", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="pedido", cascade="all, delete-orphan")
 

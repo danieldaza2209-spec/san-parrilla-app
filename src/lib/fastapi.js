@@ -106,4 +106,12 @@ export async function proxyToFastAPI(request, targetPath) {
   }
 }
 
+export async function fetchFastapi(targetPath, options = {}) {
+  const baseUrl = getSanitizedFastapiUrl();
+  const cleanPath = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
+  const targetUrl = new URL(cleanPath, baseUrl);
+  const { timeoutMs, ...fetchOpts } = options;
+  return fetchWithRetry(targetUrl.toString(), fetchOpts, 2);
+}
+
 export { FASTAPI_URL };
