@@ -30,13 +30,9 @@ const formatPrice = (val) => {
           <i data-lucide="vault" class="w-4 h-4 text-emerald-600"></i>
           <span>Caja & Arqueo</span>
         </a>
-        <button id="btn-download-print-agent" type="button" class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-emerald-700 font-bold text-xs px-4 py-2.5 rounded-xl border border-emerald-200 shadow-sm transition cursor-pointer" title="Descarga el instalador automático del Agente de Impresión para la SAT Q22 en Windows">
-          <i data-lucide="printer" class="w-4 h-4 text-emerald-600"></i>
-          <span>Agente SAT Q22 (.bat)</span>
-        </button>
-        <button id="btn-download-launcher" type="button" class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-parrilla-ivory font-bold text-xs px-4 py-2.5 rounded-xl border border-parrilla-border shadow-sm transition" title="Descarga el acceso directo de Windows que abre el POS e imprime sin ventanas">
-          <i data-lucide="download" class="w-4 h-4"></i>
-          <span>Lanzador PC de caja (.bat)</span>
+        <button id="btn-download-print-agent" type="button" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer" title="Instalar Agente de Impresión Automática SAT Q22 en Windows">
+          <i data-lucide="printer" class="w-4 h-4 text-white"></i>
+          <span>🖨️ Instalar Impresor SAT Q22</span>
         </button>
         <a href="/pos" class="inline-flex items-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition">
           <i data-lucide="zap" class="w-4 h-4"></i>
@@ -1014,100 +1010,13 @@ const formatPrice = (val) => {
 
   <!-- Client JavaScript for Admin Actions -->
   <script>
-    // Download Windows SAT Q22 Print Agent (.bat)
+    // Conectar el botón de instalación del agente de impresión SAT Q22
     const btnPrintAgent = document.getElementById('btn-download-print-agent');
     if (btnPrintAgent) {
       btnPrintAgent.addEventListener('click', () => {
-        const origin = window.location.origin;
-        const batLines = [
-          '@echo off',
-          'chcp 65001 >nul',
-          'title San Parrilla POS - Agente de Impresion Automatica (SAT Q22)',
-          'echo ============================================================',
-          'echo      RESTAURANTE SAN PARRILLA - IMPRESION AUTOMATICA',
-          'echo ============================================================',
-          'echo  Servidor conectado: ' + origin,
-          'echo  Impresora configurada: SAT Q22 (80mm)',
-          'echo ============================================================',
-          'echo.',
-          'python --version >nul 2>&1',
-          'if %errorlevel% neq 0 (',
-          '    echo [ERROR] Python no esta instalado o no esta en el PATH.',
-          '    echo Por favor instala Python 3 desde https://www.python.org/downloads/',
-          '    echo marcando la casilla "Add Python to PATH".',
-          '    pause',
-          '    exit /b 1',
-          ')',
-          'set "DEST=%LOCALAPPDATA%\\SanParrillaImpresor"',
-          'if not exist "%DEST%" mkdir "%DEST%"',
-          'cd /d "%DEST%"',
-          'echo [*] Verificando dependencias (requests, pywin32)...',
-          'python -m pip install --quiet requests pywin32 >nul 2>&1',
-          'echo [*] Descargando agente actualizado desde el servidor...',
-          'curl -s -o print_agent.py "' + origin + '/scripts/print_agent.py" || powershell -Command "Invoke-WebRequest -Uri \'' + origin + '/scripts/print_agent.py\' -OutFile \'print_agent.py\'"',
-          'set "SP_API_URL=' + origin + '"',
-          'set "SP_PRINTER_NAME=SAT Q22"',
-          'echo.',
-          'echo ------------------------------------------------------------',
-          'echo  TIP: Para que este agente inicie solo al prender el PC:',
-          'echo  1. Presiona Win + R y escribe: shell:startup',
-          'echo  2. Copia o crea un acceso directo de este archivo .bat alli.',
-          'echo ------------------------------------------------------------',
-          'echo.',
-          'python print_agent.py',
-          'if %errorlevel% neq 0 (',
-          '    echo [!] El agente se detuvo. Presiona una tecla para cerrar.',
-          '    pause',
-          ')'
-        ];
-        const blob = new Blob([batLines.join('\r\n') + '\r\n'], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'Iniciar_Impresor_SAT_Q22.bat';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      });
-    }
-
-    // Download Windows POS Launcher (.bat) with --kiosk-printing
-    const btnLauncher = document.getElementById('btn-download-launcher');
-    if (btnLauncher) {
-      btnLauncher.addEventListener('click', () => {
-        const posUrl = `${window.location.origin}/pos`;
-        const batLines = [
-          '@echo off',
-          'REM ===============================================================',
-          'REM  San Parrilla POS - Lanzador con impresion termica silenciosa',
-          'REM ===============================================================',
-          'set "POS_URL=' + posUrl + '"',
-          'set "PROFILE_DIR=%LOCALAPPDATA%\\SanParrillaPOS"',
-          '',
-          'for %%P in (',
-          '  "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe"',
-          '  "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe"',
-          '  "%LOCALAPPDATA%\\Google\\Chrome\\Application\\chrome.exe"',
-          '  "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe"',
-          '  "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe"',
-          ') do (',
-          '  if exist "%%~P" (',
-          '    start "" "%%~P" --user-data-dir="%PROFILE_DIR%" --kiosk-printing --app="%POS_URL%"',
-          '    exit /b 0',
-          '  )',
-          ')',
-          'start "" "%POS_URL%"',
-        ];
-        const blob = new Blob([batLines.join('\r\n') + '\r\n'], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'San Parrilla POS.bat';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        if (typeof window.openPrintAgentModal === 'function') {
+          window.openPrintAgentModal();
+        }
       });
     }
 

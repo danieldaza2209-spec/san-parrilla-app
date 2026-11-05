@@ -25,18 +25,25 @@ if %errorlevel% neq 0 (
 rem 2. Ir a la carpeta donde reside este script
 cd /d "%~dp0"
 
-rem 3. Instalar dependencias si no estan presentes
+rem 3. Configurar auto-inicio permanente en Windows (shell:startup)
+echo [*] Configurando auto-inicio permanente con Windows...
+set "STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
+if exist "%STARTUP_FOLDER%" (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%STARTUP_FOLDER%\SanParrillaImpresor.lnk'); $s.TargetPath = '%~f0'; $s.WorkingDirectory = '%~dp0'; $s.Description = 'San Parrilla POS Impresor Automatico'; $s.Save()" >nul 2>&1
+    echo [OK] Auto-inicio configurado: Se iniciara solo cada vez que se prenda el PC.
+)
+
+rem 4. Instalar dependencias si no estan presentes
 echo [*] Verificando dependencias necesarias (requests, pywin32)...
 python -m pip install --quiet requests pywin32 >nul 2>&1
 
-echo [*] Iniciando agente de impresion...
+echo [*] Iniciando agente de impresion para SAT Q22...
 echo.
-echo ------------------------------------------------------------
-echo  TIP: Para que inicie solo al prender el PC:
-echo  1. Presiona Win + R y escribe: shell:startup
-echo  2. Crea un acceso directo de este archivo 'iniciar_impresor.bat'
-echo     dentro de esa carpeta.
-echo ------------------------------------------------------------
+echo ============================================================
+echo  LISTO: El agente de impresion ya esta activo y funcionando.
+echo  NO TIENES QUE HACER NADA MAS.
+echo  Cada vez que se prenda el computador arrancara solo.
+echo ============================================================
 echo.
 
 python print_agent.py

@@ -20,25 +20,38 @@ import StaffLayout from '../layouts/StaffLayout.astro';
       </div>
 
       <!-- Navigation Tabs -->
-      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-parrilla-border">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-parrilla-border">
+          <button 
+            type="button" 
+            id="tab-btn-caja" 
+            class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold bg-parrilla-gold text-white shadow-sm transition"
+          >
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="vault" class="w-4 h-4"></i>
+              <span>Turno y Cierre</span>
+            </span>
+          </button>
+          <button 
+            type="button" 
+            id="tab-btn-borradores" 
+            class="tab-btn px-4 py-2 rounded-lg text-xs font-bold text-parrilla-ivory hover:text-parrilla-gold transition flex items-center gap-1.5"
+          >
+            <i data-lucide="message-circle" class="w-4 h-4 text-emerald-600"></i>
+            <span>Borradores WhatsApp</span>
+            <span id="drafts-count-badge" class="hidden px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-600 text-white">0</span>
+          </button>
+        </div>
+
         <button 
           type="button" 
-          id="tab-btn-caja" 
-          class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold bg-parrilla-gold text-white shadow-sm transition"
+          id="btn-caja-print-agent" 
+          onclick="if(typeof window.openPrintAgentModal==='function') window.openPrintAgentModal();"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-sm transition cursor-pointer"
+          title="Instalar Agente de Impresión Automática SAT Q22 en este equipo"
         >
-          <span class="flex items-center gap-1.5">
-            <i data-lucide="vault" class="w-4 h-4"></i>
-            <span>Turno y Cierre</span>
-          </span>
-        </button>
-        <button 
-          type="button" 
-          id="tab-btn-borradores" 
-          class="tab-btn px-4 py-2 rounded-lg text-xs font-bold text-parrilla-ivory hover:text-parrilla-gold transition flex items-center gap-1.5"
-        >
-          <i data-lucide="message-circle" class="w-4 h-4 text-emerald-600"></i>
-          <span>Borradores WhatsApp</span>
-          <span id="drafts-count-badge" class="hidden px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-600 text-white">0</span>
+          <i data-lucide="printer" class="w-4 h-4 text-white"></i>
+          <span>🖨️ Instalar Impresor SAT Q22</span>
         </button>
       </div>
     </div>
