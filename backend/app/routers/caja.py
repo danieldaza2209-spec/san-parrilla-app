@@ -109,15 +109,25 @@ def pagar_pedido_en_caja(
     Registra el pago de un pedido directamente en la caja activa (CASH, NEQUI, DAVIPLATA, CARD o mixto),
     vincula el pedido al cash_closure_id abierto y cambia su estado a PAGADO.
     """
+    creado_por_val = None
+    cant_dom_val = None
     if isinstance(payload, schemas.PedidoPayRequest):
         pagos_lista = payload.payments
+        creado_por_val = payload.creado_por
+        cant_dom_val = payload.cantidad_domicilios
     elif isinstance(payload, list):
         pagos_lista = payload
     else:
         pagos_lista = [payload]
 
     try:
-        return crud.pagar_pedido(db, pedido_id, pagos_lista)
+        return crud.pagar_pedido(
+            db,
+            pedido_id,
+            pagos_lista,
+            creado_por=creado_por_val,
+            cantidad_domicilios=cant_dom_val,
+        )
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:

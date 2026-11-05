@@ -44,6 +44,7 @@ class TipoItemStock(str, enum.Enum):
 
 class RolUsuario(str, enum.Enum):
     ADMINISTRADOR = "ADMINISTRADOR"
+    CAJERO = "CAJERO"
     MESERO = "MESERO"
     COCINA = "COCINA"
 
@@ -69,7 +70,9 @@ class Cliente(Base):
     direccion = Column(String(255), nullable=True)
     barrio = Column(String(100), nullable=True)
     notas = Column(Text, nullable=True)
+    es_institucional = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
 
     pedidos = relationship("Pedido", back_populates="cliente")
 
@@ -187,6 +190,8 @@ class Pedido(Base):
     packaging_fee = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
     courier_name = Column(String(100), nullable=True)
+    creado_por = Column(String(100), nullable=True)
+    cantidad_domicilios = Column(Integer, default=0, nullable=True)
     notas = Column(Text, nullable=True)
 
     cliente = relationship("Cliente", back_populates="pedidos")

@@ -35,8 +35,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // 1) Sin sesión en cookie HttpOnly: verificar si existe cookie sp_role (establecida en frontend)
   if (!session) {
     const roleCookie = context.cookies.get('sp_role')?.value;
-    if (roleCookie === 'cajero' || roleCookie === 'admin') {
-      session = { role: roleCookie, name: roleCookie === 'admin' ? 'Administrador' : 'Cajero' };
+    const nameCookie = context.cookies.get('sp_staff_name')?.value;
+    if (roleCookie === 'mesero' || roleCookie === 'cajero' || roleCookie === 'admin') {
+      const defaultName =
+        roleCookie === 'admin'
+          ? 'Administrador'
+          : roleCookie === 'cajero'
+            ? 'Cajero'
+            : 'Mesero / Colaborador';
+      session = {
+        role: roleCookie,
+        name: nameCookie ? decodeURIComponent(nameCookie) : defaultName,
+      };
       try {
         context.cookies.set(SESSION_COOKIE, createSessionToken(session), {
           httpOnly: true,

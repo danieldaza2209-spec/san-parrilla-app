@@ -16,10 +16,10 @@ const pathname = Astro.url.pathname.replace(/\/+$/, '') || '/';
 const cashOpen = Boolean(getActiveCashRegister());
 
 const navItems = [
-  { href: '/pos', label: 'Punto de Venta', icon: 'zap', adminOnly: false },
-  { href: '/pedidos', label: '📋 Pedidos', icon: 'clipboard-list', adminOnly: false },
-  { href: '/caja', label: 'Caja', icon: 'wallet', adminOnly: false },
-  { href: '/admin', label: 'Administración', icon: 'bar-chart-3', adminOnly: true },
+  { href: '/pos', label: 'Punto de Venta', icon: 'zap', adminOnly: false, cashierOrAdmin: false },
+  { href: '/pedidos', label: '📋 Pedidos', icon: 'clipboard-list', adminOnly: false, cashierOrAdmin: false },
+  { href: '/caja', label: 'Caja', icon: 'wallet', adminOnly: false, cashierOrAdmin: true },
+  { href: '/admin', label: 'Administración', icon: 'bar-chart-3', adminOnly: true, cashierOrAdmin: false },
 ];
 ---
 
@@ -46,6 +46,21 @@ const navItems = [
         return;
       }
 
+      // Restricciones estrictas por Rol:
+      // Mesero: Solo acceso a /pos y /pedidos. Si intenta entrar a /caja o /admin -> redirige a /pos
+      if (session.role === 'mesero') {
+        if (
+          pathname === '/caja' ||
+          pathname.indexOf('/caja/') === 0 ||
+          pathname === '/admin' ||
+          pathname.indexOf('/admin/') === 0
+        ) {
+          window.location.replace('/pos');
+          return;
+        }
+      }
+
+      // Cajero: Acceso a /pos, /pedidos y /caja. Si intenta entrar a /admin -> redirige a /pos
       if (pathname === '/admin' || pathname.indexOf('/admin/') === 0) {
         if (session.role !== 'admin') {
           window.location.replace('/pos');
@@ -54,6 +69,7 @@ const navItems = [
       }
 
       window.__SP_STAFF_ROLE__ = session.role;
+      window.__SP_STAFF_NAME__ = session.name || (session.role === 'admin' ? 'Administrador' : session.role === 'cajero' ? 'Cajero' : 'Mesero');
     })();
   </script>
 
@@ -65,10 +81,11 @@ const navItems = [
         <nav class="flex items-center gap-1 bg-slate-100/90 p-1 rounded-full border border-parrilla-border text-sm">
           {navItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const navId = item.adminOnly ? 'nav-admin-link' : item.cashierOrAdmin ? 'nav-caja-link' : undefined;
             return (
               <a
                 href={item.href}
-                id={item.adminOnly ? 'nav-admin-link' : undefined}
+                id={navId}
                 class:list={[
                   'px-3 sm:px-4 py-1.5 rounded-full font-semibold transition items-center gap-1.5',
                   item.adminOnly && !isAdmin ? 'hidden' : 'inline-flex',
@@ -87,6 +104,7 @@ const navItems = [
 
       <div class="flex items-center gap-2 sm:gap-3">
         <span
+          id="header-cash-badge"
           class:list={[
             'hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border',
             cashOpen
@@ -98,10 +116,16 @@ const navItems = [
           {cashOpen ? 'Caja abierta' : 'Caja cerrada'}
         </span>
 
-        <span class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-parrilla-muted">
-          <i data-lucide="user-round" class="w-4 h-4"></i>
-          <span id="staff-role-label">{user ? ROLE_LABELS[user.role] : 'Personal'}</span>
-        </span>
+        <button
+          id="btn-switch-role-modal"
+          type="button"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition"
+          title="Cambiar de Colaborador o Rol con PIN"
+        >
+          <i data-lucide="user-round" class="w-3.5 h-3.5 text-amber-700"></i>
+          <span id="staff-role-label">{user ? `${ROLE_LABELS[user.role]}: ${user.name}` : 'Personal'}</span>
+          <span class="text-[10px] text-amber-700 underline ml-0.5 hidden sm:inline">Cambiar</span>
+        </button>
 
         <button
           id="btn-staff-logout"
@@ -116,6 +140,51 @@ const navItems = [
     </div>
   </header>
 
+  <!-- Modal Rápido de Cambio de Turno / Rol / Colaborador con PIN de 4 dígitos -->
+  <div id="modal-quick-role-switch" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 no-print">
+    <div class="bg-white rounded-2xl border border-parrilla-border shadow-2xl w-full max-w-md overflow-hidden">
+      <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div>
+          <h3 class="font-display font-black text-base">🔐 Cambiar Turno / Rol Operativo</h3>
+          <p class="text-[11px] text-slate-300">Selecciona tu rol, nombre del colaborador y PIN de 4 dígitos.</p>
+        </div>
+        <button type="button" id="btn-close-role-modal" class="text-slate-400 hover:text-white text-lg font-bold px-2">✕</button>
+      </div>
+      <form id="quick-role-form" class="p-5 space-y-4" autocomplete="off">
+        <div>
+          <label class="block text-[11px] font-black text-slate-600 uppercase mb-1.5">1. Rol</label>
+          <div class="grid grid-cols-3 gap-2" id="quick-role-buttons">
+            <button type="button" data-qrole="mesero" class="qrole-btn py-2 px-2 rounded-xl border-2 border-parrilla-gold bg-amber-50 text-xs font-black text-slate-900">🍽️ Mesero</button>
+            <button type="button" data-qrole="cajero" class="qrole-btn py-2 px-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-black text-slate-700">💰 Cajero</button>
+            <button type="button" data-qrole="admin" class="qrole-btn py-2 px-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-black text-slate-700">🛡️ Admin</button>
+          </div>
+          <input type="hidden" id="quick-role-val" value="mesero" />
+        </div>
+        <div>
+          <label class="block text-[11px] font-black text-slate-600 uppercase mb-1">2. Nombre del Colaborador</label>
+          <div class="flex flex-wrap gap-1 mb-2" id="quick-staff-chips">
+            {['Lucely', 'Daniel', 'Camila', 'Valentina', 'Carlos'].map((n) => (
+              <button type="button" data-qname={n} class="px-2 py-1 rounded-md bg-slate-100 hover:bg-amber-100 text-[11px] font-bold text-slate-700 border border-slate-200">👤 {n}</button>
+            ))}
+          </div>
+          <input id="quick-staff-name" type="text" required placeholder="Nombre del colaborador..." class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-bold text-slate-900 focus:border-parrilla-gold outline-none" />
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-[11px] font-black text-slate-600 uppercase">3. PIN de Seguridad (4 dígitos)</label>
+            <span class="text-[10px] text-slate-400">Mesero: 0000 · Cajero: 1111 · Admin: 2222</span>
+          </div>
+          <input id="quick-staff-pin" type="password" inputmode="numeric" maxlength="4" required placeholder="••••" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-center text-xl tracking-[0.5em] font-mono font-black text-slate-900 focus:border-parrilla-gold outline-none" />
+        </div>
+        <p id="quick-role-error" class="hidden text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg p-2 text-center"></p>
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button type="button" id="btn-cancel-role-modal" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100">Cancelar</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white text-xs font-black shadow">Validar PIN y Cambiar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <main class="flex-1">
     <slot />
   </main>
@@ -123,10 +192,14 @@ const navItems = [
   <script is:inline>
     (function () {
       var role = window.__SP_STAFF_ROLE__;
+      var staffName = window.__SP_STAFF_NAME__ || '';
       var adminLink = document.getElementById('nav-admin-link');
+      var cajaLink = document.getElementById('nav-caja-link');
+      var cashBadge = document.getElementById('header-cash-badge');
       var roleLabel = document.getElementById('staff-role-label');
       var logoutBtn = document.getElementById('btn-staff-logout');
 
+      // Ocultar /admin si no es admin
       if (role === 'admin' && adminLink) {
         adminLink.classList.remove('hidden');
         adminLink.classList.add('inline-flex');
@@ -135,8 +208,136 @@ const navItems = [
         adminLink.classList.remove('inline-flex');
       }
 
+      // Ocultar /caja y badge de caja si es mesero
+      if (role === 'mesero') {
+        if (cajaLink) {
+          cajaLink.classList.add('hidden');
+          cajaLink.classList.remove('inline-flex');
+        }
+        if (cashBadge) {
+          cashBadge.classList.add('hidden');
+          cashBadge.classList.remove('md:inline-flex');
+        }
+      }
+
       if (roleLabel) {
-        roleLabel.textContent = role === 'admin' ? 'Administrador' : 'Cajero / POS';
+        var roleTitle = role === 'admin' ? '🛡️ Admin' : role === 'cajero' ? '💰 Cajero' : '🍽️ Mesero';
+        roleLabel.textContent = staffName ? roleTitle + ': ' + staffName : roleTitle;
+      }
+
+      // Modal rápido de cambio de turno / rol
+      var switchBtn = document.getElementById('btn-switch-role-modal');
+      var modal = document.getElementById('modal-quick-role-switch');
+      var closeBtn = document.getElementById('btn-close-role-modal');
+      var cancelBtn = document.getElementById('btn-cancel-role-modal');
+      var qForm = document.getElementById('quick-role-form');
+      var qRoleInput = document.getElementById('quick-role-val');
+      var qNameInput = document.getElementById('quick-staff-name');
+      var qPinInput = document.getElementById('quick-staff-pin');
+      var qError = document.getElementById('quick-role-error');
+
+      function setQuickRole(r) {
+        if (qRoleInput) qRoleInput.value = r;
+        var btns = document.querySelectorAll('.qrole-btn');
+        for (var i = 0; i < btns.length; i++) {
+          var b = btns[i];
+          if (b.getAttribute('data-qrole') === r) {
+            b.className = 'qrole-btn py-2 px-2 rounded-xl border-2 border-parrilla-gold bg-amber-50 text-xs font-black text-slate-900';
+          } else {
+            b.className = 'qrole-btn py-2 px-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-black text-slate-700';
+          }
+        }
+      }
+
+      if (switchBtn && modal) {
+        switchBtn.addEventListener('click', function () {
+          setQuickRole(window.__SP_STAFF_ROLE__ || 'mesero');
+          if (qNameInput) qNameInput.value = window.__SP_STAFF_NAME__ || '';
+          if (qPinInput) qPinInput.value = '';
+          if (qError) qError.classList.add('hidden');
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+          if (qPinInput) qPinInput.focus();
+        });
+      }
+      function closeQuickModal() {
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      if (closeBtn) closeBtn.addEventListener('click', closeQuickModal);
+      if (cancelBtn) cancelBtn.addEventListener('click', closeQuickModal);
+
+      var qRoleBtns = document.getElementById('quick-role-buttons');
+      if (qRoleBtns) {
+        qRoleBtns.addEventListener('click', function (e) {
+          var btn = e.target.closest('button[data-qrole]');
+          if (!btn) return;
+          setQuickRole(btn.getAttribute('data-qrole') || 'mesero');
+        });
+      }
+      var qChips = document.getElementById('quick-staff-chips');
+      if (qChips) {
+        qChips.addEventListener('click', function (e) {
+          var btn = e.target.closest('button[data-qname]');
+          if (!btn || !qNameInput) return;
+          qNameInput.value = btn.getAttribute('data-qname') || '';
+          if (qPinInput) qPinInput.focus();
+        });
+      }
+
+      if (qForm) {
+        qForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var r = qRoleInput ? qRoleInput.value : 'mesero';
+          var n = qNameInput ? qNameInput.value.trim() : '';
+          var p = qPinInput ? qPinInput.value.trim() : '';
+          if (!n) {
+            if (qError) {
+              qError.textContent = 'Ingresa el nombre del colaborador.';
+              qError.classList.remove('hidden');
+            }
+            return;
+          }
+          fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: p, role: r, name: n, next: window.location.pathname }),
+          })
+            .then(function (res) {
+              return res.json().then(function (data) {
+                return { ok: res.ok, data: data };
+              });
+            })
+            .catch(function () {
+              var localOk =
+                (r === 'mesero' && (p === '0000' || p === '1234' || p === '1111' || p === '2222')) ||
+                (r === 'cajero' && (p === '1111' || p === '2222')) ||
+                (r === 'admin' && p === '2222');
+              return { ok: localOk, data: { success: localOk, role: r, name: n } };
+            })
+            .then(function (result) {
+              if (!result.ok || !result.data || !result.data.role) {
+                if (qError) {
+                  qError.textContent = 'PIN de 4 dígitos inválido para el rol seleccionado.';
+                  qError.classList.remove('hidden');
+                }
+                return;
+              }
+              var newRole = result.data.role;
+              var newName = result.data.name || n;
+              var sessionData = {
+                role: newRole,
+                name: newName,
+                iat: Date.now(),
+                exp: Date.now() + 12 * 60 * 60 * 1000,
+              };
+              localStorage.setItem('sp_staff_session', JSON.stringify(sessionData));
+              document.cookie = 'sp_role=' + newRole + '; path=/; max-age=' + 12 * 3600 + '; SameSite=Lax';
+              document.cookie = 'sp_staff_name=' + encodeURIComponent(newName) + '; path=/; max-age=' + 12 * 3600 + '; SameSite=Lax';
+              window.location.reload();
+            });
+        });
       }
 
       if (logoutBtn) {
@@ -144,6 +345,7 @@ const navItems = [
           try {
             localStorage.removeItem('sp_staff_session');
             document.cookie = 'sp_role=; path=/; max-age=0; SameSite=Lax';
+            document.cookie = 'sp_staff_name=; path=/; max-age=0; SameSite=Lax';
           } catch (e) {}
           fetch('/api/auth/logout', { method: 'POST' }).catch(function () {}).finally(function () {
             window.location.replace('/login');

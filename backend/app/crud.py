@@ -258,6 +258,24 @@ def upsert_cliente(
     return nuevo
 
 
+CORPORATE_CLIENT_NAMES_NORM = {
+    "clinica primero de mayo (pacientes)",
+    "clinica primero de mayo (personal)",
+    "terpel aeropuerto",
+    "vanti",
+    "tubodrilling",
+    "funeraria la fe",
+}
+
+
+def _is_corporate_client(c: models.Cliente) -> bool:
+    if getattr(c, "es_institucional", False):
+        return True
+    if str(c.telefono or "").upper().startswith("CONV-"):
+        return True
+    return _normalizar_texto(c.nombre) in CORPORATE_CLIENT_NAMES_NORM
+
+
 def _enrich_cliente_out(db: Session, c: models.Cliente, stats_map: Optional[dict] = None) -> schemas.ClienteOut:
     phone_key = _limpiar_telefono(c.telefono)
     st = (stats_map or {}).get(phone_key) or (stats_map or {}).get(c.id) or {}
@@ -274,6 +292,7 @@ def _enrich_cliente_out(db: Session, c: models.Cliente, stats_map: Optional[dict
         barrio=c.barrio,
         notas=c.notas,
         notes=c.notas,
+        es_institucional=_is_corporate_client(c),
         created_at=c.created_at,
         total_pedidos=order_count,
         order_count=order_count,
@@ -285,9 +304,11 @@ def search_clientes(
     db: Session,
     q: Optional[str] = None,
     telefono: Optional[str] = None,
-    limit: int = 50,
+    limit: int = 80,
 ) -> List[schemas.ClienteOut]:
-    all_clientes = db.query(models.Cliente).order_by(models.Cliente.updated_at.desc(), models.Cliente.id.desc()).all()
+    all_clientes = db.query(models.Cliente).order_by(models.Cliente.id.asc()).all()
+    # Ordenar clientes corporativos (institucionales) primero y luego los más recientes
+    all_clientes.sort(key=lambda c: (0 if _is_corporate_client(c) else 1, -int(c.id or 0)))
 
     # Estadísticas rápidas por teléfono / cliente_id
     pedidos_activos = (
@@ -670,6 +691,61 @@ def _resolver_o_crear_plato(
     return plato
 
 
+def _es_dieta_hipo(texto_plato: Optional[str], notas_item: Optional[str] = None) -> bool:
+    combined = f"{_normalizar_texto(texto_plato)} {_normalizar_texto(notas_item)}"
+    if "botella con agua" in combined or "agua (" in combined:
+        return False
+    return ("hiposodica" in combined) or ("hipoglucida" in combined)
+
+
+def _asegurar_botella_agua_hipo(
+    db: Session,
+    pedido_id: int,
+    detalles_creados: List[models.DetallePedido],
+) -> None:
+    """
+    Regla Automática Hospitalaria:
+    Si el pedido incluye cualquier dieta Hiposódica o Hipoglúcida, garantiza que
+    exista en el pedido la 'Botella con Agua (Dieta Hipo Clínica)' ($0, incluida en ración)
+    en cantidad al menos igual a la suma de raciones hipo.
+    """
+    total_hipo_qty = 0
+    agua_det: Optional[models.DetallePedido] = None
+
+    for det in detalles_creados:
+        p_name = det.plato.nombre if det.plato else ""
+        norm_p = _normalizar_texto(p_name)
+        if "botella con agua" in norm_p:
+            agua_det = det
+        elif _es_dieta_hipo(p_name, det.notas_item):
+            total_hipo_qty += int(det.cantidad or 1)
+
+    if total_hipo_qty <= 0:
+        return
+
+    if agua_det is not None:
+        if agua_det.cantidad < total_hipo_qty:
+            agua_det.cantidad = total_hipo_qty
+        return
+
+    plato_agua = _resolver_o_crear_plato(
+        db,
+        None,
+        "Botella con Agua (Dieta Hipo Clínica)",
+        0.0,
+    )
+    plato_agua.precio = 0.0
+    nuevo_det_agua = models.DetallePedido(
+        pedido_id=pedido_id,
+        plato_id=plato_agua.id,
+        cantidad=total_hipo_qty,
+        precio_unitario=0.0,
+        notas_item="Incluida automáticamente por dieta Hiposódica / Hipoglúcida",
+    )
+    db.add(nuevo_det_agua)
+    detalles_creados.append(nuevo_det_agua)
+
+
 def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
     hoy = date.today()
     menu_hoy = get_menu_dia_by_fecha(db, hoy)
@@ -684,6 +760,8 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
     delivery_fee = float(pedido_in.delivery_fee or 0.0)
     packaging_fee = float(pedido_in.packaging_fee or 0.0)
     courier_name = (pedido_in.courier_name or "").strip() or None
+    creado_por = (pedido_in.creado_por or "").strip() or None
+    cantidad_domicilios = int(pedido_in.cantidad_domicilios or 0)
 
     notas_pedido = pedido_in.notas or ""
     if pedido_in.direccion and pedido_in.direccion.strip():
@@ -694,7 +772,12 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         barrio_str = pedido_in.barrio.strip()
         if barrio_str not in notas_pedido:
             notas_pedido = f"{notas_pedido} | Barrio: {barrio_str}".strip(" |")
+    if cantidad_domicilios > 0 and "[DOMICILIOS_CLINICA:" not in notas_pedido:
+        notas_pedido = f"{notas_pedido} | [DOMICILIOS_CLINICA:{cantidad_domicilios}]".strip(" |")
+    if creado_por and "[CREADO_POR:" not in notas_pedido:
+        notas_pedido = f"{notas_pedido} | [CREADO_POR:{creado_por}]".strip(" |")
 
+    is_inst = _normalizar_texto(pedido_in.cliente_nombre) in CORPORATE_CLIENT_NAMES_NORM
     dir_extraida, barrio_extraido = _extraer_direccion_y_barrio_de_notas(notas_pedido)
     cliente_obj = upsert_cliente(
         db,
@@ -702,18 +785,20 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         telefono=pedido_in.cliente_telefono,
         direccion=pedido_in.direccion or dir_extraida,
         barrio=pedido_in.barrio or barrio_extraido,
-        allow_without_phone=False,
+        allow_without_phone=is_inst,
     )
 
     nuevo_pedido = models.Pedido(
         codigo_pedido=codigo,
         cliente_id=cliente_obj.id if cliente_obj else pedido_in.cliente_id,
         cliente_nombre=pedido_in.cliente_nombre,
-        cliente_telefono=pedido_in.cliente_telefono,
+        cliente_telefono=pedido_in.cliente_telefono or (cliente_obj.telefono if cliente_obj else None),
         mesa=pedido_in.mesa,
         tipo=pedido_in.tipo,
         estado=estado_inicial,
         courier_name=courier_name,
+        creado_por=creado_por,
+        cantidad_domicilios=cantidad_domicilios,
         notas=notas_pedido or None,
         subtotal=0.0,
         delivery_fee=delivery_fee,
@@ -731,11 +816,14 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         if not plato:
             continue
 
-        precio_item = (
-            float(det.precio_unitario)
-            if (det.precio_unitario is not None and det.precio_unitario > 0)
-            else float(plato.precio)
-        )
+        is_free_water = "botella con agua" in _normalizar_texto(plato.nombre)
+        if is_free_water:
+            precio_item = 0.0
+        elif det.precio_unitario is not None and det.precio_unitario >= 0:
+            precio_item = float(det.precio_unitario) if det.precio_unitario > 0 else float(plato.precio or 0.0)
+        else:
+            precio_item = float(plato.precio or 0.0)
+
         subtotal_item = precio_item * det.cantidad
         subtotal_calculado += subtotal_item
         notas_item = det.notas_item if det.notas_item is not None else det.notas
@@ -750,8 +838,12 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
             precio_unitario=precio_item,
             notas_item=notas_item
         )
+        detalle_db.plato = plato
         db.add(detalle_db)
         detalles_creados.append(detalle_db)
+
+    # Regla Automática Hospitalaria: agregar Botella con Agua ($0) para dietas Hiposódicas / Hipoglúcidas
+    _asegurar_botella_agua_hipo(db, nuevo_pedido.id, detalles_creados)
 
     # REGLA CRÍTICA DE STOCK:
     # Si es_borrador_web=True, queda en BORRADOR_WEB y NO descuenta stock todavía.
@@ -906,6 +998,10 @@ def actualizar_pedido(
         pedido.tipo = data.tipo
     if data.courier_name is not None:
         pedido.courier_name = data.courier_name.strip() or None
+    if data.creado_por is not None and data.creado_por.strip():
+        pedido.creado_por = data.creado_por.strip()
+    if data.cantidad_domicilios is not None:
+        pedido.cantidad_domicilios = int(data.cantidad_domicilios)
     if data.delivery_fee is not None:
         pedido.delivery_fee = float(data.delivery_fee)
     if data.packaging_fee is not None:
@@ -920,6 +1016,12 @@ def actualizar_pedido(
         if data.direccion.strip() not in cur_notas:
             pedido.notas = f"Dirección: {data.direccion.strip()}" + (f" | {cur_notas}" if cur_notas else "")
 
+    if pedido.cantidad_domicilios and pedido.cantidad_domicilios > 0:
+        import re
+        cur_n = pedido.notas or ""
+        cur_n = re.sub(r"\s*\|?\s*\[DOMICILIOS_CLINICA:\d+\]", "", cur_n).strip(" |")
+        pedido.notas = f"{cur_n} | [DOMICILIOS_CLINICA:{pedido.cantidad_domicilios}]".strip(" |")
+
     if data.detalles is not None and len(data.detalles) > 0:
         db.query(models.DetallePedido).filter(
             models.DetallePedido.pedido_id == pedido.id
@@ -927,15 +1029,19 @@ def actualizar_pedido(
         db.flush()
 
         nuevo_subtotal = 0.0
+        nuevos_detalles_list: List[models.DetallePedido] = []
         for det in data.detalles:
             plato = _resolver_o_crear_plato(db, det.plato_id, det.nombre_plato, det.precio_unitario)
             if not plato:
                 continue
-            precio_item = (
-                float(det.precio_unitario)
-                if (det.precio_unitario is not None and det.precio_unitario > 0)
-                else float(plato.precio)
-            )
+            is_free_water = "botella con agua" in _normalizar_texto(plato.nombre)
+            if is_free_water:
+                precio_item = 0.0
+            elif det.precio_unitario is not None and det.precio_unitario >= 0:
+                precio_item = float(det.precio_unitario) if det.precio_unitario > 0 else float(plato.precio or 0.0)
+            else:
+                precio_item = float(plato.precio or 0.0)
+
             nuevo_subtotal += precio_item * det.cantidad
             notas_item = det.notas_item if det.notas_item is not None else det.notas
             detalle_db = models.DetallePedido(
@@ -948,7 +1054,10 @@ def actualizar_pedido(
                 precio_unitario=precio_item,
                 notas_item=notas_item,
             )
+            detalle_db.plato = plato
             db.add(detalle_db)
+            nuevos_detalles_list.append(detalle_db)
+        _asegurar_botella_agua_hipo(db, pedido.id, nuevos_detalles_list)
         db.flush()
         pedido.subtotal = nuevo_subtotal
 
@@ -1332,7 +1441,9 @@ def list_cash_closures_history(db: Session, limit: int = 50) -> List[schemas.Cas
 def pagar_pedido(
     db: Session,
     pedido_id: int,
-    pagos_in: List[schemas.PaymentCreate]
+    pagos_in: List[schemas.PaymentCreate],
+    creado_por: Optional[str] = None,
+    cantidad_domicilios: Optional[int] = None,
 ) -> models.Pedido:
     pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
     if not pedido:
@@ -1348,9 +1459,30 @@ def pagar_pedido(
     if not pagos_in:
         raise ValueError("Debe proporcionar al menos un pago.")
 
+    if creado_por and creado_por.strip():
+        pedido.creado_por = creado_por.strip()
+    if cantidad_domicilios is not None:
+        pedido.cantidad_domicilios = int(cantidad_domicilios)
+
+    has_fiado = any(p_in.method == models.PaymentMethod.FIADO for p_in in pagos_in)
     caja_activa = get_active_cash_closure(db)
     if not caja_activa:
-        raise ValueError("No hay una caja abierta (OPEN) en este momento. Abra caja antes de cobrar.")
+        if has_fiado:
+            caja_activa = (
+                db.query(models.CashClosure)
+                .order_by(models.CashClosure.opened_at.desc(), models.CashClosure.id.desc())
+                .first()
+            )
+            if not caja_activa:
+                caja_activa = models.CashClosure(
+                    status=models.CashClosureStatus.OPEN,
+                    initial_cash=0.0,
+                    notes="Apertura automática para registro de cartera Fiado",
+                )
+                db.add(caja_activa)
+                db.flush()
+        else:
+            raise ValueError("No hay una caja abierta (OPEN) en este momento. Abra caja antes de cobrar.")
 
     total_pagado = sum(float(p.amount) for p in pagos_in)
     if round(total_pagado, 2) < round(float(pedido.total or 0.0), 2):
@@ -1358,7 +1490,7 @@ def pagar_pedido(
             f"El total de los pagos (${total_pagado:,.2f}) es menor al total del pedido (${pedido.total:,.2f})."
         )
 
-    has_fiado = any(p_in.method == models.PaymentMethod.FIADO for p_in in pagos_in)
+    is_inst = _normalizar_texto(pedido.cliente_nombre) in CORPORATE_CLIENT_NAMES_NORM
     dir_extraida, barrio_extraido = _extraer_direccion_y_barrio_de_notas(pedido.notas)
     cliente_obj = upsert_cliente(
         db,
@@ -1366,7 +1498,7 @@ def pagar_pedido(
         telefono=pedido.cliente_telefono,
         direccion=dir_extraida,
         barrio=barrio_extraido,
-        allow_without_phone=has_fiado,
+        allow_without_phone=(has_fiado or is_inst),
     )
     if cliente_obj:
         pedido.cliente_id = cliente_obj.id

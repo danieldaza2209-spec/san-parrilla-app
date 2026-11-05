@@ -147,14 +147,24 @@ def pagar_pedido(
     verifica que exista una caja OPEN en cash_closures, vincula los pagos a dicha caja
     y cambia el estado del pedido a PAGADO.
     """
+    creado_por_val = None
+    cant_dom_val = None
     if isinstance(payload, schemas.PedidoPayRequest):
         pagos_lista = payload.payments
+        creado_por_val = payload.creado_por
+        cant_dom_val = payload.cantidad_domicilios
     elif isinstance(payload, list):
         pagos_lista = payload
     else:
         pagos_lista = [payload]
     try:
-        pedido = crud.pagar_pedido(db, pedido_id, pagos_lista)
+        pedido = crud.pagar_pedido(
+            db,
+            pedido_id,
+            pagos_lista,
+            creado_por=creado_por_val,
+            cantidad_domicilios=cant_dom_val,
+        )
         return pedido
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))

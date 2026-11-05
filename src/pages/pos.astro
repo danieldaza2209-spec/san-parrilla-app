@@ -13,6 +13,8 @@ import {
   initialProductList,
   rapidasCategories,
   rapidasProductList,
+  conveniosProductList,
+  CORPORATE_CUSTOMERS,
 } from '../lib/db.js';
 
 const rawCategories = getCategories();
@@ -47,13 +49,14 @@ const formatPrice = (val) => {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
 };
 
-// Serialize catalog for instant client-side universal search
-const searchableCatalog = publicProducts.map((p) => ({
+// Serialize catalog for instant client-side universal search (including Convenios & Clínica)
+const allPosProducts = [...publicProducts, ...conveniosProductList];
+const searchableCatalog = allPosProducts.map((p) => ({
   id: p.id,
   name: p.name,
   price: p.price,
   category_id: p.category_id,
-  menu_type: p.menu_type || (p.id.startsWith('rap-') ? 'rapidas' : 'almuerzo'),
+  menu_type: p.menu_type || (p.id.startsWith('rap-') ? 'rapidas' : p.id.startsWith('conv-') ? 'convenios' : 'almuerzo'),
   description: p.description || '',
   special_badge: p.special_badge || '',
   customizable: customizableCategories.has(p.category_id),
@@ -100,21 +103,28 @@ const searchableCatalog = publicProducts.map((p) => ({
         data-catalog={JSON.stringify(searchableCatalog)}
         data-specials={JSON.stringify(dailySpecials)}
       >
-        <!-- SELECTOR PRINCIPAL DE MENÚ: ALMUERZOS VS COMIDAS RÁPIDAS -->
-        <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl border border-parrilla-border shadow-xs">
+        <!-- SELECTOR PRINCIPAL DE MENÚ: ALMUERZOS VS COMIDAS RÁPIDAS VS CONVENIOS & CLÍNICA -->
+        <div class="grid grid-cols-3 gap-1.5 sm:gap-2 bg-slate-100 p-1.5 rounded-2xl border border-parrilla-border shadow-xs">
           <button
             type="button"
             id="tab-menu-almuerzos"
-            class="menu-mode-tab active py-3 px-3 sm:px-4 rounded-xl text-xs sm:text-base font-display font-black flex items-center justify-center gap-1.5 bg-parrilla-gold text-white shadow-sm transition-all cursor-pointer"
+            class="menu-mode-tab active py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-display font-black flex items-center justify-center gap-1 bg-parrilla-gold text-white shadow-sm transition-all cursor-pointer"
           >
-            <span>☀️ Menú Almuerzos</span>
+            <span>☀️ Almuerzos</span>
           </button>
           <button
             type="button"
             id="tab-menu-rapidas"
-            class="menu-mode-tab py-3 px-3 sm:px-4 rounded-xl text-xs sm:text-base font-display font-black flex items-center justify-center gap-1.5 text-parrilla-ivory hover:text-parrilla-gold transition-all cursor-pointer"
+            class="menu-mode-tab py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-display font-black flex items-center justify-center gap-1 text-parrilla-ivory hover:text-parrilla-gold transition-all cursor-pointer"
           >
-            <span>🍔 Comidas Rápidas</span>
+            <span>🍔 Rápidas</span>
+          </button>
+          <button
+            type="button"
+            id="tab-menu-convenios"
+            class="menu-mode-tab py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-display font-black flex items-center justify-center gap-1 text-parrilla-ivory hover:text-parrilla-gold transition-all cursor-pointer"
+          >
+            <span>🏥 Convenios & Clínica</span>
           </button>
         </div>
 
@@ -281,6 +291,135 @@ const searchableCatalog = publicProducts.map((p) => ({
           })}
         </div>
 
+        <!-- 5. CUERPO DEL CATÁLOGO CONVENIOS INSTITUCIONALES Y DIETAS HOSPITALARIAS (CLÍNICA Y EMPRESAS) -->
+        <div id="pos-convenios-menu-wrapper" class="hidden space-y-4">
+          <!-- A. Acceso Rápido a los 6 Clientes Corporativos / Institucionales Fijos -->
+          <div class="bg-white rounded-2xl border-2 border-indigo-300 p-4 shadow-sm space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-indigo-600 block">Convenios a Crédito (Fiado Institucional)</span>
+                <h3 class="font-display font-black text-base sm:text-lg text-parrilla-ivory">1. Selecciona la Empresa o Clínica del Servicio</h3>
+              </div>
+              <span class="text-[11px] font-bold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-200">6 Empresas Activas</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {CORPORATE_CUSTOMERS.map((corp) => (
+                <button
+                  type="button"
+                  data-corp-name={corp.name}
+                  data-corp-phone={corp.phone}
+                  data-corp-address={corp.address}
+                  data-corp-barrio={corp.neighborhood}
+                  class="btn-select-corporate-client text-left p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 hover:border-indigo-400 transition flex flex-col justify-between gap-1 cursor-pointer"
+                >
+                  <span class="font-display font-black text-xs text-slate-900 leading-snug">🏢 {corp.name}</span>
+                  <span class="text-[10px] font-mono font-bold text-indigo-700">{corp.phone} · 📝 Fiado</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <!-- B. Menú Hospitalario: Clínica Primero de Mayo (Pacientes) con Regla Automática de Agua en Dietas Hipo -->
+          <div class="bg-white rounded-2xl border-2 border-emerald-400 p-4 shadow-sm space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+              <div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-emerald-700 block">🏥 Menú Hospitalario · Clínica Primero de Mayo (Pacientes)</span>
+                <h3 class="font-display font-black text-base sm:text-lg text-parrilla-ivory">2. Raciones y Dietas Clínicas (Desayuno, Almuerzo y Cena)</h3>
+              </div>
+              <span class="text-[11px] font-extrabold bg-sky-50 text-sky-800 border border-sky-200 px-2.5 py-1 rounded-lg">
+                💧 Regla Hipo Activa: Dietas Hiposódicas/Hipoglúcidas incluyen Botella con Agua ($0)
+              </span>
+            </div>
+
+            {['Desayuno Clínica', 'Almuerzo Clínica', 'Cena Clínica'].map((servicio) => {
+              const serviceItems = conveniosProductList.filter((p) => p.name.startsWith(`${servicio} -`));
+              const icon = servicio.startsWith('Desayuno') ? '🌅' : servicio.startsWith('Almuerzo') ? '☀️' : '🌙';
+              return (
+                <div class="bg-slate-50/80 rounded-xl p-3 border border-slate-200 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="font-display font-black text-xs sm:text-sm text-slate-900 uppercase flex items-center gap-1.5">
+                      <span>{icon}</span>
+                      <span>{servicio}</span>
+                    </span>
+                    <span class="text-xs font-mono font-black text-emerald-700">
+                      {serviceItems[0] ? formatPrice(serviceItems[0].price) : ''}
+                    </span>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {serviceItems.map((item) => {
+                      const isHipo = item.name.toLowerCase().includes('hiposódica') || item.name.toLowerCase().includes('hipoglúcida');
+                      const shortDiet = item.name.replace(`${servicio} - `, '');
+                      return (
+                        <div class="flex items-center justify-between gap-2 bg-white p-2.5 rounded-xl border border-slate-200 hover:border-emerald-400 transition">
+                          <div class="min-w-0 flex-1">
+                            <div class="font-bold text-xs text-slate-900 leading-tight">{shortDiet}</div>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                              <span class="font-mono font-black text-[11px] text-emerald-700" data-conv-price-id={item.id}>{formatPrice(item.price)}</span>
+                              {isHipo && (
+                                <span class="text-[9px] font-extrabold bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded border border-sky-200">
+                                  💧 +Agua $0 Auto
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            data-id={item.id}
+                            data-name={item.name}
+                            data-price={item.price}
+                            data-cat="convenios_clinica"
+                            data-menu="convenios"
+                            data-customizable="false"
+                            class="btn-add-cart w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center justify-center shadow-xs transition active:scale-90 cursor-pointer"
+                            title={`Agregar ${item.name}`}
+                          >
+                            +
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <!-- C. Platos Especiales Corporativos (TuboDrilling & Terpel Aeropuerto) -->
+          <div class="bg-white rounded-2xl border-2 border-amber-400 p-4 shadow-sm space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-amber-700 block">Tarifas Exclusivas de Convenio</span>
+                <h3 class="font-display font-black text-base sm:text-lg text-parrilla-ivory">3. Platos Especiales Corporativos (TuboDrilling / Terpel)</h3>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {conveniosProductList
+                .filter((p) => !p.name.startsWith('Desayuno Clínica') && !p.name.startsWith('Almuerzo Clínica') && !p.name.startsWith('Cena Clínica'))
+                .map((item) => (
+                  <div class="flex items-center justify-between gap-2 bg-amber-50/60 p-3 rounded-xl border border-amber-200 hover:border-amber-400 transition">
+                    <div class="min-w-0 flex-1">
+                      <div class="font-display font-black text-xs sm:text-sm text-slate-900 leading-tight">{item.name}</div>
+                      <div class="text-[10px] text-slate-600 mt-0.5">{item.description}</div>
+                      <div class="font-mono font-black text-xs text-amber-800 mt-1" data-conv-price-id={item.id}>{formatPrice(item.price)}</div>
+                    </div>
+                    <button
+                      type="button"
+                      data-id={item.id}
+                      data-name={item.name}
+                      data-price={item.price}
+                      data-cat="convenios_clinica"
+                      data-menu="convenios"
+                      data-customizable="false"
+                      class="btn-add-cart w-8 h-8 rounded-full bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-black text-sm flex items-center justify-center shadow-xs transition active:scale-90 cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- RIGHT SECTION: ORDER BUILDER & TICKET SUMMARY (5 cols) -->
@@ -357,6 +496,28 @@ const searchableCatalog = publicProducts.map((p) => ({
             <span id="form-customer-badge" class="text-[10px] text-parrilla-muted">Autocompletado Neon en vivo</span>
           </div>
 
+          <!-- Acceso Rápido a las 6 Empresas de Convenio (Visible al elegir Fiado o Convenios) -->
+          <div id="corp-clients-quick-bar" class="bg-indigo-50/90 border border-indigo-200 rounded-xl p-2 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-black uppercase text-indigo-800">🏢 Acceso Rápido Empresas / Convenios a Crédito:</span>
+              <span class="text-[9px] font-bold text-indigo-600">1 clic para vincular</span>
+            </div>
+            <div class="flex flex-wrap gap-1">
+              {CORPORATE_CUSTOMERS.map((corp) => (
+                <button
+                  type="button"
+                  data-corp-name={corp.name}
+                  data-corp-phone={corp.phone}
+                  data-corp-address={corp.address}
+                  data-corp-barrio={corp.neighborhood}
+                  class="btn-select-corporate-client px-2 py-1 rounded-lg bg-white hover:bg-indigo-600 hover:text-white text-indigo-950 border border-indigo-200 text-[10px] font-extrabold transition cursor-pointer shadow-2xs"
+                >
+                  {corp.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <!-- Teléfono y Nombre con autocompletado instantáneo desde Neon -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 relative">
             <div class="relative">
@@ -422,6 +583,40 @@ const searchableCatalog = publicProducts.map((p) => ({
                   step="500" 
                   class="w-full px-3 py-1.5 bg-parrilla-surface rounded-lg border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
                 />
+              </div>
+            </div>
+
+            <!-- Campo Especial Clínica / Convenios: Cantidad de Domicilios / Envíos Realizados en el Turno -->
+            <div id="clinica-domicilios-box" class="bg-emerald-50/90 border border-emerald-300 rounded-xl p-2.5 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label for="clinica-domicilios-count" class="text-[11px] font-black text-emerald-900 uppercase flex items-center gap-1">
+                  <span>🛵 Cantidad de Domicilios / Envíos Realizados (Turno Clínica / Convenio)</span>
+                </label>
+                <span id="clinica-domicilios-badge" class="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-200/70 px-1.5 py-0.5 rounded">0 envíos</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 items-center">
+                <div>
+                  <span class="block text-[10px] text-emerald-800 font-semibold mb-0.5">N° de Envíos / Domicilios:</span>
+                  <input
+                    type="number"
+                    id="clinica-domicilios-count"
+                    min="0"
+                    step="1"
+                    value="0"
+                    class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-emerald-300 text-xs font-mono font-black text-slate-900 focus:border-emerald-600 outline-none"
+                  />
+                </div>
+                <div>
+                  <span class="block text-[10px] text-emerald-800 font-semibold mb-0.5">Tarifa por Envío ($):</span>
+                  <input
+                    type="number"
+                    id="clinica-domicilio-unit-fee"
+                    min="0"
+                    step="500"
+                    value="3000"
+                    class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-emerald-300 text-xs font-mono font-bold text-slate-900 focus:border-emerald-600 outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -577,6 +772,17 @@ const searchableCatalog = publicProducts.map((p) => ({
           >
             <i data-lucide="clipboard-check" class="w-4 h-4"></i>
             <span id="btn-save-open-order-label">Guardar / Enviar a Cocina (Dejar Abierto)</span>
+          </button>
+
+          <!-- BOTÓN DIRECTO: CERRAR A FIADO (CUANDO MÉTODO DE PAGO ES FIADO) -->
+          <button
+            type="button"
+            id="btn-close-fiado-direct"
+            class="hidden w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-display font-black text-xs sm:text-sm shadow-md items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
+            title="Cierra definitivamente el pedido a Fiado en Neon DB (suma a cartera de crédito sin sumar al efectivo de caja)"
+          >
+            <i data-lucide="book-open-check" class="w-4 h-4"></i>
+            <span>📝 Cerrar a Fiado (Guardar en Cartera)</span>
           </button>
 
           <div class="flex items-center gap-2">
@@ -959,6 +1165,24 @@ const searchableCatalog = publicProducts.map((p) => ({
             </span>
             <span class="text-[10px] font-bold text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded">Cuenta por Cobrar</span>
           </div>
+          <!-- Acceso rápido a las 6 Empresas Institucionales -->
+          <div class="bg-white/90 border border-amber-300 rounded-lg p-2 space-y-1">
+            <span class="block text-[10px] font-black uppercase text-indigo-900">🏢 Empresas / Convenios Institucionales:</span>
+            <div class="flex flex-wrap gap-1">
+              {CORPORATE_CUSTOMERS.map((corp) => (
+                <button
+                  type="button"
+                  data-corp-name={corp.name}
+                  data-corp-phone={corp.phone}
+                  data-corp-address={corp.address}
+                  data-corp-barrio={corp.neighborhood}
+                  class="btn-select-corporate-client px-2 py-1 rounded-md bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-950 border border-indigo-200 text-[10px] font-extrabold transition cursor-pointer"
+                >
+                  {corp.name}
+                </button>
+              ))}
+            </div>
+          </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 relative">
             <div>
               <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">Teléfono del Cliente *</label>
@@ -1126,10 +1350,26 @@ const searchableCatalog = publicProducts.map((p) => ({
     // Menu Mode Tabs & Wrappers
     const tabMenuAlmuerzos = document.getElementById('tab-menu-almuerzos');
     const tabMenuRapidas = document.getElementById('tab-menu-rapidas');
+    const tabMenuConvenios = document.getElementById('tab-menu-convenios');
     const posFiltersAlmuerzo = document.getElementById('pos-filters-almuerzo');
     const posFiltersRapidas = document.getElementById('pos-filters-rapidas');
     const quickMenuWrapper = document.getElementById('pos-quick-menu-wrapper');
     const rapidasMenuWrapper = document.getElementById('pos-rapidas-menu-wrapper');
+    const conveniosMenuWrapper = document.getElementById('pos-convenios-menu-wrapper');
+    const clinicaDomiciliosCountInput = document.getElementById('clinica-domicilios-count');
+    const clinicaDomicilioUnitFeeInput = document.getElementById('clinica-domicilio-unit-fee');
+    const clinicaDomiciliosBadge = document.getElementById('clinica-domicilios-badge');
+    const btnCloseFiadoDirect = document.getElementById('btn-close-fiado-direct');
+
+    // Si el rol es mesero, ocultar botón de gasto de caja y alertas de caja
+    if (window.__SP_STAFF_ROLE__ === 'mesero') {
+      const expBtn = document.getElementById('btn-quick-expense-pos');
+      if (expBtn) expBtn.style.display = 'none';
+      document.querySelectorAll('a[href="/caja"]').forEach((a) => {
+        // @ts-ignore
+        a.style.display = 'none';
+      });
+    }
 
     const searchInput = document.getElementById('product-search');
     const btnClearSearch = document.getElementById('btn-clear-search');
@@ -1204,59 +1444,41 @@ const searchableCatalog = publicProducts.map((p) => ({
       return !isJuiceProduct(item.name, item.category_id) && !isDrinkProduct(item.name, item.category_id);
     }
 
-    // MENU MODE SWITCHER (ALMUERZOS VS COMIDAS RÁPIDAS)
+    // MENU MODE SWITCHER (ALMUERZOS VS COMIDAS RÁPIDAS VS CONVENIOS & CLÍNICA)
     function setMenuMode(mode) {
       activeMenuMode = mode;
 
-      if (mode === 'rapidas') {
-        tabMenuRapidas?.classList.add('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
-        tabMenuRapidas?.classList.remove('text-parrilla-ivory', 'hover:text-parrilla-gold');
-        tabMenuAlmuerzos?.classList.remove('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
-        tabMenuAlmuerzos?.classList.add('text-parrilla-ivory', 'hover:text-parrilla-gold');
+      [tabMenuAlmuerzos, tabMenuRapidas, tabMenuConvenios].forEach((tab) => {
+        if (!tab) return;
+        tab.classList.remove('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
+        tab.classList.add('text-parrilla-ivory', 'hover:text-parrilla-gold');
+      });
 
+      const activeTab = mode === 'rapidas' ? tabMenuRapidas : mode === 'convenios' ? tabMenuConvenios : tabMenuAlmuerzos;
+      activeTab?.classList.add('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
+      activeTab?.classList.remove('text-parrilla-ivory', 'hover:text-parrilla-gold');
+
+      if (mode === 'rapidas') {
         posFiltersAlmuerzo?.classList.add('hidden');
         posFiltersRapidas?.classList.remove('hidden');
-
         if (searchInput) {
           // @ts-ignore
           searchInput.placeholder = '🔍 Buscar comida rápida... (ej: hamburguesa, perro, salchipapa, jugo)';
         }
-
-        const rapidasBtns = posFiltersRapidas?.querySelectorAll('.pos-cat-btn') || [];
-        rapidasBtns.forEach((b, idx) => {
-          const isAll = idx === 0;
-          b.classList.toggle('bg-parrilla-gold', isAll);
-          b.classList.toggle('text-white', isAll);
-          b.classList.toggle('shadow-xs', isAll);
-          b.classList.toggle('active', isAll);
-          b.classList.toggle('bg-slate-100', !isAll);
-          b.classList.toggle('text-parrilla-ivory', !isAll);
-        });
-
+      } else if (mode === 'convenios') {
+        posFiltersAlmuerzo?.classList.add('hidden');
+        posFiltersRapidas?.classList.add('hidden');
+        if (searchInput) {
+          // @ts-ignore
+          searchInput.placeholder = '🔍 Buscar dieta clínica o plato de convenio... (ej: hiposódica, líquida, terpel, tubo)';
+        }
       } else {
-        tabMenuAlmuerzos?.classList.add('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
-        tabMenuAlmuerzos?.classList.remove('text-parrilla-ivory', 'hover:text-parrilla-gold');
-        tabMenuRapidas?.classList.remove('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
-        tabMenuRapidas?.classList.add('text-parrilla-ivory', 'hover:text-parrilla-gold');
-
         posFiltersRapidas?.classList.add('hidden');
         posFiltersAlmuerzo?.classList.remove('hidden');
-
         if (searchInput) {
           // @ts-ignore
           searchInput.placeholder = '🔍 Buscar plato rápido... (ej: pechuga, bistec, mojarra, 16500)';
         }
-
-        const almuerzoBtns = posFiltersAlmuerzo?.querySelectorAll('.pos-cat-btn') || [];
-        almuerzoBtns.forEach((b, idx) => {
-          const isAll = idx === 0;
-          b.classList.toggle('bg-parrilla-gold', isAll);
-          b.classList.toggle('text-white', isAll);
-          b.classList.toggle('shadow-xs', isAll);
-          b.classList.toggle('active', isAll);
-          b.classList.toggle('bg-slate-100', !isAll);
-          b.classList.toggle('text-parrilla-ivory', !isAll);
-        });
       }
 
       resetUniversalSearch();
@@ -1264,6 +1486,7 @@ const searchableCatalog = publicProducts.map((p) => ({
 
     tabMenuAlmuerzos?.addEventListener('click', () => setMenuMode('almuerzos'));
     tabMenuRapidas?.addEventListener('click', () => setMenuMode('rapidas'));
+    tabMenuConvenios?.addEventListener('click', () => setMenuMode('convenios'));
 
     // 1. UNIVERSAL SEARCH ENGINE & QUICK FILTERS
     function runUniversalSearch(rawQuery) {
@@ -1275,9 +1498,15 @@ const searchableCatalog = publicProducts.map((p) => ({
         if (activeMenuMode === 'rapidas') {
           quickMenuWrapper?.classList.add('hidden');
           rapidasMenuWrapper?.classList.remove('hidden');
+          conveniosMenuWrapper?.classList.add('hidden');
+        } else if (activeMenuMode === 'convenios') {
+          quickMenuWrapper?.classList.add('hidden');
+          rapidasMenuWrapper?.classList.add('hidden');
+          conveniosMenuWrapper?.classList.remove('hidden');
         } else {
           quickMenuWrapper?.classList.remove('hidden');
           rapidasMenuWrapper?.classList.add('hidden');
+          conveniosMenuWrapper?.classList.add('hidden');
         }
         return;
       }
@@ -1285,15 +1514,17 @@ const searchableCatalog = publicProducts.map((p) => ({
       btnClearSearch?.classList.remove('hidden');
       quickMenuWrapper?.classList.add('hidden');
       rapidasMenuWrapper?.classList.add('hidden');
+      conveniosMenuWrapper?.classList.add('hidden');
       searchResultsPanel?.classList.remove('hidden');
 
       const subQueries = q.split('|').map((s) => normalizeStr(s)).filter(Boolean);
 
       // Match by name, price, category, or family aliases respecting active menu tab
       const matches = catalogData.filter((item) => {
-        const itemMenu = item.menu_type || (String(item.id).startsWith('rap-') ? 'rapidas' : 'almuerzos');
+        const itemMenu = item.menu_type || (String(item.id).startsWith('rap-') ? 'rapidas' : String(item.id).startsWith('conv-') ? 'convenios' : 'almuerzos');
         if (activeMenuMode === 'rapidas' && itemMenu !== 'rapidas') return false;
-        if (activeMenuMode === 'almuerzos' && itemMenu === 'rapidas') return false;
+        if (activeMenuMode === 'convenios' && itemMenu !== 'convenios') return false;
+        if (activeMenuMode === 'almuerzos' && (itemMenu === 'rapidas' || itemMenu === 'convenios')) return false;
 
         const nameNorm = normalizeStr(item.name);
         const descNorm = normalizeStr(item.description);
@@ -1579,10 +1810,17 @@ const searchableCatalog = publicProducts.map((p) => ({
 
       const packagingFee = isDeliveryOrTakeout ? (packagingQty * packagingFeePerUnit) : 0;
       // @ts-ignore
-      const deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput?.value || 0) : 0;
+      const cantDomClinica = Math.max(0, parseInt(clinicaDomiciliosCountInput?.value || '0', 10) || 0);
+      // @ts-ignore
+      const unitDomClinica = Math.max(0, Number(clinicaDomicilioUnitFeeInput?.value || 3000) || 0);
+      // @ts-ignore
+      let deliveryFee = currentOrderType === 'domicilio' ? Number(deliveryFeeInput?.value || 0) : 0;
+      if (cantDomClinica > 0) {
+        deliveryFee = cantDomClinica * unitDomClinica;
+      }
       const total = subtotal + packagingFee + deliveryFee;
 
-      return { subtotal, packagingFee, deliveryFee, total, isDeliveryOrTakeout };
+      return { subtotal, packagingFee, deliveryFee, total, isDeliveryOrTakeout, cantDomClinica };
     }
 
     // Arma el string de notas y guarniciones de un plato
@@ -1838,10 +2076,53 @@ const searchableCatalog = publicProducts.map((p) => ({
         }
       }
 
+      // REGLA AUTOMÁTICA HOSPITALARIA:
+      // Si se seleccionó una dieta que contenga "Hiposódica" o "Hipoglúcida", asegurar automáticamente "Botella con Agua (Dieta Hipo Clínica)" a $0
+      syncHospitalHipoWaterInCart();
+
       if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
         packagingQty = countFoodPlates();
       }
       renderCart();
+    }
+
+    function isHipoDietName(dishName) {
+      const n = normalizeStr(dishName);
+      if (n.includes('botella con agua')) return false;
+      return n.includes('hiposodica') || n.includes('hipoglucida') || n.includes('hiposodico') || n.includes('hipoglucido');
+    }
+
+    function syncHospitalHipoWaterInCart() {
+      const totalHipoQty = cart.reduce((acc, it) => {
+        return isHipoDietName(it.name) ? acc + Number(it.quantity || 1) : acc;
+      }, 0);
+      if (totalHipoQty <= 0) return;
+
+      const waterName = 'Botella con Agua (Dieta Hipo Clínica)';
+      const existingWater = cart.find(
+        (it) => normalizeStr(it.name).includes('botella con agua') && Number(it.price || 0) === 0
+      );
+      if (existingWater) {
+        if (existingWater.quantity < totalHipoQty) {
+          existingWater.quantity = totalHipoQty;
+        }
+      } else {
+        cart.push({
+          uid: 'c_agua_' + Date.now(),
+          id: 'conv-agua-hipo',
+          name: waterName,
+          price: 0,
+          quantity: totalHipoQty,
+          category_id: 'convenios_clinica',
+          isCustomizable: false,
+          isRapidasFood: false,
+          isJuice: false,
+          isDrink: true,
+          packaging: null,
+          extraNotes: 'Incluida en Dieta Hipo ($0)',
+          notes: 'Regla Hospitalaria: Incluida en Dieta Hipo ($0)'
+        });
+      }
     }
 
     // Delegación global para botones '+' (.btn-add-cart) tanto del Menú Rápido como del Buscador (1-CLIC directo)
@@ -2148,6 +2429,7 @@ const searchableCatalog = publicProducts.map((p) => ({
           if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
             packagingQty = countFoodPlates();
           }
+          syncHospitalHipoWaterInCart();
           renderCart();
         });
       });
@@ -2175,6 +2457,7 @@ const searchableCatalog = publicProducts.map((p) => ({
           if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
             packagingQty = countFoodPlates();
           }
+          syncHospitalHipoWaterInCart();
           renderCart();
         });
       });
@@ -2248,7 +2531,7 @@ const searchableCatalog = publicProducts.map((p) => ({
       }
 
       // Actualizar Domicilio
-      if (currentOrderType === 'domicilio') {
+      if (currentOrderType === 'domicilio' || deliveryFee > 0) {
         deliveryRow.style.display = 'flex';
         deliveryEl.textContent = fmt(deliveryFee);
       } else {
@@ -2286,6 +2569,51 @@ const searchableCatalog = publicProducts.map((p) => ({
         renderCart();
       });
     }
+
+    function syncClinicaDomiciliosBadge() {
+      // @ts-ignore
+      const count = Math.max(0, parseInt(clinicaDomiciliosCountInput?.value || '0', 10) || 0);
+      // @ts-ignore
+      const unit = Math.max(0, Number(clinicaDomicilioUnitFeeInput?.value || 3000) || 0);
+      if (clinicaDomiciliosBadge) {
+        clinicaDomiciliosBadge.textContent = count > 0 ? `${count} envío(s) · ${fmt(count * unit)}` : '0 envíos';
+      }
+      renderCart();
+    }
+    clinicaDomiciliosCountInput?.addEventListener('input', syncClinicaDomiciliosBadge);
+    clinicaDomicilioUnitFeeInput?.addEventListener('input', syncClinicaDomiciliosBadge);
+
+    // Botones de selección rápida de los 6 Clientes Institucionales / Convenios
+    document.querySelectorAll('.btn-select-corporate-client').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const cName = btn.getAttribute('data-corp-name') || '';
+        const cPhone = btn.getAttribute('data-corp-phone') || '';
+        const cAddress = btn.getAttribute('data-corp-address') || '';
+        const cBarrio = btn.getAttribute('data-corp-barrio') || '';
+
+        // Activar automáticamente método de pago FIADO
+        const fiadoBtn = document.querySelector('.pay-btn[data-method="fiado"]');
+        // @ts-ignore
+        if (fiadoBtn) fiadoBtn.click();
+
+        applySelectedCustomer({
+          nombre: cName,
+          telefono: cPhone,
+          direccion: cAddress,
+          barrio: cBarrio,
+        });
+
+        // Si es Clínica Primero de Mayo (Pacientes) y cantidad de domicilios está en 0, sugerir 1 domicilio por defecto
+        if (normalizeStr(cName).includes('pacientes') && clinicaDomiciliosCountInput) {
+          // @ts-ignore
+          if (Number(clinicaDomiciliosCountInput.value || 0) === 0) {
+            // @ts-ignore
+            clinicaDomiciliosCountInput.value = '1';
+          }
+          syncClinicaDomiciliosBadge();
+        }
+      });
+    });
 
     // 4. ORDER TYPE SWITCHER
     const formLlevar = document.getElementById('form-llevar');
@@ -2338,6 +2666,16 @@ const searchableCatalog = publicProducts.map((p) => ({
     function updateCustomerFormVisibility() {
       const isDom = currentOrderType === 'domicilio';
       const isFiado = currentPaymentMethod === 'fiado' || selectedSingleMethod === 'FIADO';
+
+      if (btnCloseFiadoDirect) {
+        if (currentPaymentMethod === 'fiado') {
+          btnCloseFiadoDirect.classList.remove('hidden');
+          btnCloseFiadoDirect.classList.add('flex');
+        } else {
+          btnCloseFiadoDirect.classList.add('hidden');
+          btnCloseFiadoDirect.classList.remove('flex');
+        }
+      }
 
       if (isDom || isFiado) {
         formDomicilio.style.display = 'flex';
@@ -3040,7 +3378,7 @@ const searchableCatalog = publicProducts.map((p) => ({
 
     // Helper: construir payload de pedido para FastAPI
     function buildFastapiPedidoPayload(estadoOverride = null) {
-      const { subtotal, packagingFee, deliveryFee, total } = calculateTotals();
+      const { subtotal, packagingFee, deliveryFee, total, cantDomClinica } = calculateTotals();
       const tipoMap = {
         mesa: 'EN_MESA',
         domicilio: 'DOMICILIO',
@@ -3068,12 +3406,20 @@ const searchableCatalog = publicProducts.map((p) => ({
       const custAddress = (custAddressInput?.value || '').trim();
       // @ts-ignore
       const custNeighborhood = (custNeighborhoodInput?.value || '').trim();
+      // @ts-ignore
+      const staffCreator = String(window.__SP_STAFF_NAME__ || 'Colaborador').trim();
 
       const notasPartes = [];
       if (custAddress) notasPartes.push(`Dirección: ${custAddress}`);
       if (custNeighborhood) notasPartes.push(`Barrio: ${custNeighborhood}`);
       if (packagingFee > 0 && packagingQty > 0) {
         notasPartes.push(`Empaques: ${packagingQty}x ${globalPackagingType} (+$${packagingFee})`);
+      }
+      if (cantDomClinica > 0) {
+        notasPartes.push(`[DOMICILIOS_CLINICA:${cantDomClinica}]`);
+      }
+      if (staffCreator) {
+        notasPartes.push(`[CREADO_POR:${staffCreator}]`);
       }
       const notasPedido = notasPartes.join(' | ');
 
@@ -3097,6 +3443,8 @@ const searchableCatalog = publicProducts.map((p) => ({
         direccion: custAddress || null,
         barrio: custNeighborhood || null,
         notas: notasPedido || null,
+        creado_por: staffCreator,
+        cantidad_domicilios: cantDomClinica,
         subtotal: subtotal,
         packaging_fee: packagingFee,
         delivery_fee: deliveryFee,
@@ -3108,9 +3456,37 @@ const searchableCatalog = publicProducts.map((p) => ({
       }
       return {
         payload,
-        meta: { tipoBackend, mesaStr, custPhone, custName, custAddress, custNeighborhood, subtotal, packagingFee, deliveryFee, total, detallesPayload }
+        meta: { tipoBackend, mesaStr, custPhone, custName, custAddress, custNeighborhood, subtotal, packagingFee, deliveryFee, total, detallesPayload, staffCreator, cantDomClinica }
       };
     }
+
+    // Botón directo: "📝 Cerrar a Fiado (Guardar en Cartera)"
+    btnCloseFiadoDirect?.addEventListener('click', () => {
+      if (cart.length === 0) {
+        alert('Por favor agrega al menos un plato a la comanda.');
+        return;
+      }
+      // @ts-ignore
+      const fName = (custNameInput?.value || modalFiadoName?.value || '').trim();
+      // @ts-ignore
+      const fPhone = (custPhoneInput?.value || modalFiadoPhone?.value || '').trim();
+      if (!fName) {
+        updateCustomerFormVisibility();
+        alert('⚠️ Para cerrar un pedido a FIADO debes seleccionar una de las 6 Empresas de Convenio o ingresar el Nombre y Teléfono del Cliente.');
+        // @ts-ignore
+        custNameInput?.focus();
+        return;
+      }
+      // @ts-ignore
+      if (custPhoneInput && !fPhone) {
+        // Si es convenio corporativo sin teléfono digitado, asignar código convenio
+        // @ts-ignore
+        custPhoneInput.value = 'CONV-' + normalizeStr(fName).slice(0, 12).toUpperCase();
+      }
+      cobroPaymentMode = 'single';
+      selectedSingleMethod = 'FIADO';
+      checkoutPrintBtn?.click();
+    });
 
     // 8.0 GUARDAR / ENVIAR A COCINA (DEJAR ABIERTO EN /pedidos)
     btnSaveOpenOrder?.addEventListener('click', async () => {
@@ -3338,7 +3714,11 @@ const searchableCatalog = publicProducts.map((p) => ({
         const payRes = await fetch(`/api/caja/pay/${savedOrder.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payments: paymentsPayload })
+          body: JSON.stringify({
+            payments: paymentsPayload,
+            creado_por: meta.staffCreator,
+            cantidad_domicilios: meta.cantDomClinica,
+          })
         });
 
         const payData = await payRes.json().catch(() => ({}));
@@ -3410,6 +3790,9 @@ const searchableCatalog = publicProducts.map((p) => ({
         cart = [];
         manualPackagingOverride = false;
         packagingQty = 0;
+        // @ts-ignore
+        if (clinicaDomiciliosCountInput) clinicaDomiciliosCountInput.value = '0';
+        if (clinicaDomiciliosBadge) clinicaDomiciliosBadge.textContent = '0 envíos';
         // @ts-ignore
         cashReceivedInput.value = '';
         renderCart();

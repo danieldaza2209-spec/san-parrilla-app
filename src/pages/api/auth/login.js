@@ -59,11 +59,15 @@ export async function POST({ request, cookies }) {
     return json(400, { error: 'Solicitud inválida.' });
   }
 
-  const user = authenticatePin(String(body.pin ?? '').trim());
+  const user = authenticatePin(
+    String(body.pin ?? '').trim(),
+    String(body.role ?? '').trim(),
+    String(body.name ?? '').trim()
+  );
   if (!user) {
     registerFail(key);
     await new Promise((resolve) => setTimeout(resolve, 400)); // enlentece adivinar PINs
-    return json(401, { error: 'PIN o contraseña incorrectos.' });
+    return json(401, { error: 'PIN de seguridad incorrecto para el rol seleccionado.' });
   }
 
   attempts.delete(key);
@@ -78,6 +82,7 @@ export async function POST({ request, cookies }) {
   return json(200, {
     success: true,
     role: user.role,
+    name: user.name,
     redirect: safeNextPath(body.next, user.role),
   });
 }

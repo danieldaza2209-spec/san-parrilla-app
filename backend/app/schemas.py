@@ -69,6 +69,7 @@ class ClienteBase(BaseModel):
     direccion: Optional[str] = None
     barrio: Optional[str] = None
     notas: Optional[str] = None
+    es_institucional: Optional[bool] = False
     # Aliases de compatibilidad en inglés
     name: Optional[str] = None
     phone: Optional[str] = None
@@ -89,6 +90,7 @@ class ClienteOut(BaseModel):
     direccion: Optional[str] = None
     barrio: Optional[str] = None
     notas: Optional[str] = None
+    es_institucional: Optional[bool] = False
     created_at: Optional[datetime] = None
     # Aliases para frontend legacy / nuevo
     name: Optional[str] = None
@@ -209,7 +211,7 @@ def _normalize_payment_method(v):
 
 class PaymentCreate(BaseModel):
     method: PaymentMethod
-    amount: float = Field(gt=0, description="Monto recibido en este método de pago")
+    amount: float = Field(ge=0, description="Monto recibido en este método de pago")
     change_given: float = Field(default=0.0, ge=0, description="Vueltos entregados al cliente")
 
     @field_validator("method", mode="before")
@@ -230,6 +232,8 @@ class PaymentOut(BaseModel):
 
 class PedidoPayRequest(BaseModel):
     payments: List[PaymentCreate]
+    creado_por: Optional[str] = None
+    cantidad_domicilios: Optional[int] = None
 
 
 # --- PEDIDOS & DETALLES ---
@@ -272,6 +276,8 @@ class PedidoCreate(BaseModel):
     tipo: TipoPedido = TipoPedido.EN_MESA
     estado: Optional[EstadoPedido] = None
     courier_name: Optional[str] = None
+    creado_por: Optional[str] = None
+    cantidad_domicilios: Optional[int] = 0
     subtotal: Optional[float] = None
     delivery_fee: float = 0.0
     packaging_fee: float = 0.0
@@ -300,6 +306,8 @@ class PedidoApprove(BaseModel):
     mesa: Optional[str] = None
     tipo: Optional[TipoPedido] = None
     courier_name: Optional[str] = None
+    creado_por: Optional[str] = None
+    cantidad_domicilios: Optional[int] = None
     delivery_fee: Optional[float] = None
     packaging_fee: Optional[float] = None
     notas: Optional[str] = None
@@ -319,6 +327,8 @@ class PedidoUpdatePaymentMethod(BaseModel):
     cliente_telefono: Optional[str] = None
     mesa: Optional[str] = None
     courier_name: Optional[str] = None
+    creado_por: Optional[str] = None
+    cantidad_domicilios: Optional[int] = None
     delivery_fee: Optional[float] = None
     packaging_fee: Optional[float] = None
     notas: Optional[str] = None
@@ -342,6 +352,8 @@ class PedidoUpdate(BaseModel):
     tipo: Optional[TipoPedido] = None
     estado: Optional[EstadoPedido] = None
     courier_name: Optional[str] = None
+    creado_por: Optional[str] = None
+    cantidad_domicilios: Optional[int] = None
     subtotal: Optional[float] = None
     delivery_fee: Optional[float] = None
     packaging_fee: Optional[float] = None
@@ -362,6 +374,8 @@ class PedidoOut(BaseModel):
     tipo: TipoPedido
     estado: EstadoPedido
     courier_name: Optional[str] = None
+    creado_por: Optional[str] = None
+    cantidad_domicilios: Optional[int] = 0
     subtotal: float = 0.0
     delivery_fee: float = 0.0
     packaging_fee: float = 0.0

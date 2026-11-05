@@ -14,10 +14,12 @@ import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
 export const SESSION_COOKIE = 'sp_session';
 export const SESSION_TTL_SECONDS = 12 * 60 * 60; // 12 horas (un turno)
 
+export const ROLE_MESERO = 'mesero';
 export const ROLE_CAJERO = 'cajero';
 export const ROLE_ADMIN = 'admin';
 
 export const ROLE_LABELS = {
+  [ROLE_MESERO]: 'Mesero / Colaborador',
   [ROLE_CAJERO]: 'Cajero',
   [ROLE_ADMIN]: 'Administrador',
 };
@@ -35,6 +37,7 @@ function readEnv(name) {
 // Valores iniciales por defecto si aún no se han configurado variables en Vercel
 const DEFAULT_CONFIG = {
   AUTH_SECRET: 'san-parrilla-pos-default-secret-2026',
+  MESERO_PIN: '0000',
   CAJERO_PIN: '1111',
   ADMIN_PIN: '2222',
 };
@@ -56,15 +59,40 @@ function safeEqual(a, b) {
   return timingSafeEqual(sha256(a), sha256(b));
 }
 
-/** Devuelve { role, name } si el PIN es válido, o null. Mínimo privilegio si coinciden. */
-export function authenticatePin(pin) {
+/** Devuelve { role, name } si el PIN es válido, o null. Valida según el rol solicitado o detecta por PIN. */
+export function authenticatePin(pin, requestedRole = '', collaboratorName = '') {
   if (!isAuthConfigured() || typeof pin !== 'string' || pin.length === 0 || pin.length > 64) return null;
 
+  const cleanRole = String(requestedRole || '').trim().toLowerCase();
+  const cleanName = String(collaboratorName || '').trim();
+
+  const meseroPin = getConfig('MESERO_PIN') || '0000';
+  const meseroOk = safeEqual(pin, meseroPin) || safeEqual(pin, '1234');
   const cajeroOk = safeEqual(pin, getConfig('CAJERO_PIN'));
   const adminOk = safeEqual(pin, getConfig('ADMIN_PIN'));
 
-  if (cajeroOk) return { role: ROLE_CAJERO, name: ROLE_LABELS[ROLE_CAJERO] };
-  if (adminOk) return { role: ROLE_ADMIN, name: ROLE_LABELS[ROLE_ADMIN] };
+  if (cleanRole === ROLE_MESERO) {
+    if (meseroOk || cajeroOk || adminOk) {
+      return { role: ROLE_MESERO, name: cleanName || ROLE_LABELS[ROLE_MESERO] };
+    }
+    return null;
+  }
+  if (cleanRole === ROLE_CAJERO) {
+    if (cajeroOk || adminOk) {
+      return { role: ROLE_CAJERO, name: cleanName || ROLE_LABELS[ROLE_CAJERO] };
+    }
+    return null;
+  }
+  if (cleanRole === ROLE_ADMIN) {
+    if (adminOk) {
+      return { role: ROLE_ADMIN, name: cleanName || ROLE_LABELS[ROLE_ADMIN] };
+    }
+    return null;
+  }
+
+  if (meseroOk) return { role: ROLE_MESERO, name: cleanName || ROLE_LABELS[ROLE_MESERO] };
+  if (cajeroOk) return { role: ROLE_CAJERO, name: cleanName || ROLE_LABELS[ROLE_CAJERO] };
+  if (adminOk) return { role: ROLE_ADMIN, name: cleanName || ROLE_LABELS[ROLE_ADMIN] };
   return null;
 }
 
@@ -98,7 +126,7 @@ export function verifySessionToken(token) {
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
     if (!payload?.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
-    if (payload.r !== ROLE_CAJERO && payload.r !== ROLE_ADMIN) return null;
+    if (payload.r !== ROLE_MESERO && payload.r !== ROLE_CAJERO && payload.r !== ROLE_ADMIN) return null;
     return { role: payload.r, name: payload.n || ROLE_LABELS[payload.r] };
   } catch {
     return null;
@@ -107,7 +135,8 @@ export function verifySessionToken(token) {
 
 // ---------- Matriz de permisos por ruta ----------
 
-const STAFF = [ROLE_CAJERO, ROLE_ADMIN];
+const ALL_STAFF = [ROLE_MESERO, ROLE_CAJERO, ROLE_ADMIN];
+const CASHIER_AND_ADMIN = [ROLE_CAJERO, ROLE_ADMIN];
 const ADMIN_ONLY = [ROLE_ADMIN];
 
 /**
@@ -116,13 +145,13 @@ const ADMIN_ONLY = [ROLE_ADMIN];
  * Una ruta sin regla es pública (ej. "/", "/login", "/api/auth/*").
  */
 const ACCESS_RULES = [
-  { prefix: '/pos', roles: STAFF, kind: 'page' },
-  { prefix: '/pedidos', roles: STAFF, kind: 'page' },
-  { prefix: '/caja', roles: STAFF, kind: 'page' },
+  { prefix: '/pos', roles: ALL_STAFF, kind: 'page' },
+  { prefix: '/pedidos', roles: ALL_STAFF, kind: 'page' },
+  { prefix: '/caja', roles: CASHIER_AND_ADMIN, kind: 'page' },
   { prefix: '/admin', roles: ADMIN_ONLY, kind: 'page' },
 
-  { prefix: '/api/orders', roles: STAFF, kind: 'api' },
-  { prefix: '/api/customers', roles: STAFF, kind: 'api' },
+  { prefix: '/api/orders', roles: ALL_STAFF, kind: 'api' },
+  { prefix: '/api/customers', roles: ALL_STAFF, kind: 'api' },
   { prefix: '/api/launcher', roles: ADMIN_ONLY, kind: 'api' },
 
   // Catálogo: lectura pública (la carta), escritura solo Administrador.

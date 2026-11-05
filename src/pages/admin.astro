@@ -748,10 +748,73 @@ const formatPrice = (val) => {
             <input
               type="text"
               id="fiado-search-input"
-              placeholder="Ej. Juan Pérez o 318..."
+              placeholder="Ej. Clínica, Terpel o 318..."
               class="w-full pl-8 pr-3 py-1.5 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold outline-none"
             />
           </div>
+        </div>
+      </div>
+
+      <!-- Filtro Rápido por Cliente Institucional / Convenio Corporativo -->
+      <div class="mb-5 bg-cyan-50/70 border border-cyan-200 rounded-xl p-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-cyan-950">
+            🏥 Selector Rápido de Cuentas Institucionales y Convenios:
+          </span>
+          <span class="text-[10px] text-cyan-800 font-semibold">
+            Filtra en 1 clic por empresa para auditar raciones, dietas y domicilios o descargar su Cuenta de Cobro Mensual
+          </span>
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5" id="fiado-corporate-chips">
+          <button
+            type="button"
+            data-corp-filter=""
+            class="fiado-corp-chip active px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold bg-cyan-800 text-white shadow-xs transition cursor-pointer"
+          >
+            📋 Todos los Clientes
+          </button>
+          <button
+            type="button"
+            data-corp-filter="Clínica Primero de Mayo (Pacientes)"
+            class="fiado-corp-chip px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white text-cyan-950 border border-cyan-300 hover:bg-cyan-100 transition cursor-pointer"
+          >
+            🏥 Clínica Primero de Mayo (Pacientes)
+          </button>
+          <button
+            type="button"
+            data-corp-filter="Clínica Primero de Mayo (Personal)"
+            class="fiado-corp-chip px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white text-cyan-950 border border-cyan-300 hover:bg-cyan-100 transition cursor-pointer"
+          >
+            👩‍⚕️ Clínica Primero de Mayo (Personal)
+          </button>
+          <button
+            type="button"
+            data-corp-filter="Terpel Aeropuerto"
+            class="fiado-corp-chip px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white text-cyan-950 border border-cyan-300 hover:bg-cyan-100 transition cursor-pointer"
+          >
+            ⛽ Terpel Aeropuerto
+          </button>
+          <button
+            type="button"
+            data-corp-filter="Vanti"
+            class="fiado-corp-chip px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white text-cyan-950 border border-cyan-300 hover:bg-cyan-100 transition cursor-pointer"
+          >
+            🔥 Vanti
+          </button>
+          <button
+            type="button"
+            data-corp-filter="TuboDrilling"
+            class="fiado-corp-chip px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white text-cyan-950 border border-cyan-300 hover:bg-cyan-100 transition cursor-pointer"
+          >
+            🛠️ TuboDrilling
+          </button>
+          <button
+            type="button"
+            data-corp-filter="Funeraria La Fe"
+            class="fiado-corp-chip px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white text-cyan-950 border border-cyan-300 hover:bg-cyan-100 transition cursor-pointer"
+          >
+            🕊️ Funeraria La Fe
+          </button>
         </div>
       </div>
 
@@ -922,6 +985,9 @@ const formatPrice = (val) => {
         </button>
         <button type="button" data-platos-tab="OTROS" class="platos-family-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-parrilla-dark text-parrilla-ivory border border-parrilla-border hover:border-parrilla-gold transition cursor-pointer">
           🥩 Picadas y 🥤 Bebidas
+        </button>
+        <button type="button" data-platos-tab="CONVENIOS" class="platos-family-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-cyan-50 text-cyan-950 border border-cyan-300 hover:bg-cyan-100 transition cursor-pointer">
+          🏥 Convenios y Dietas Clínica
         </button>
         <span id="platos-sync-badge" class="ml-auto text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg hidden">
           ✓ Sincronizado con Neon DB
@@ -1307,6 +1373,48 @@ const formatPrice = (val) => {
           'Gaseosa 400ml', 'Gaseosa 1.5L', 'Jugo Natural en Agua',
           'Jugo Natural en Leche', 'Cerveza Club Colombia / Águila',
           'Porción de Papas a la Francesa', 'Porción de Patacón con Hogao'
+        ]
+      },
+      {
+        key: 'CONV_CLINICA_DIETAS',
+        family: 'CONVENIOS',
+        title: '🏥 Dietas Hospitalarias - Clínica Primero de Mayo (Pacientes)',
+        subtitle: 'Desayuno, Almuerzo y Cena Clínica (Normal, Hiposódica, Hipoglúcida, Mixta y Líquidas) + Botella con Agua',
+        badgeColor: 'bg-cyan-800 text-white',
+        names: [
+          'Desayuno Clínica - Dieta Normal',
+          'Desayuno Clínica - Dieta Hiposódica',
+          'Desayuno Clínica - Dieta Hipoglúcida',
+          'Desayuno Clínica - Dieta Hiposódica e Hipoglúcida',
+          'Desayuno Clínica - Dieta Líquida',
+          'Desayuno Clínica - Dieta Líquida Hiposódica',
+          'Desayuno Clínica - Dieta Líquida Hipoglúcida',
+          'Almuerzo Clínica - Dieta Normal',
+          'Almuerzo Clínica - Dieta Hiposódica',
+          'Almuerzo Clínica - Dieta Hipoglúcida',
+          'Almuerzo Clínica - Dieta Hiposódica e Hipoglúcida',
+          'Almuerzo Clínica - Dieta Líquida',
+          'Almuerzo Clínica - Dieta Líquida Hiposódica',
+          'Almuerzo Clínica - Dieta Líquida Hipoglúcida',
+          'Cena Clínica - Dieta Normal',
+          'Cena Clínica - Dieta Hiposódica',
+          'Cena Clínica - Dieta Hipoglúcida',
+          'Cena Clínica - Dieta Hiposódica e Hipoglúcida',
+          'Cena Clínica - Dieta Líquida',
+          'Cena Clínica - Dieta Líquida Hiposódica',
+          'Cena Clínica - Dieta Líquida Hipoglúcida',
+          'Botella con Agua (Dieta Hipo Clínica)'
+        ]
+      },
+      {
+        key: 'CONV_CORPORATIVOS',
+        family: 'CONVENIOS',
+        title: '🏢 Platos Especiales Corporativos (TuboDrilling y Terpel Aeropuerto)',
+        subtitle: 'Desayuno Tubo y Almuerzo Especial Terpel con tarifa de convenio',
+        badgeColor: 'bg-sky-800 text-white',
+        names: [
+          'Desayuno Tubo',
+          'Almuerzo Especial Terpel'
         ]
       }
     ];
@@ -2379,6 +2487,11 @@ const formatPrice = (val) => {
         const custName = linkedCliente?.nombre || rawName || 'Cliente Fiado (Sin Nombre)';
         const custAddress = linkedCliente?.direccion || order.direccion || '';
         const custBarrio = linkedCliente?.barrio || order.barrio || '';
+        const isInstitucional = Boolean(
+          linkedCliente?.es_institucional ||
+          /clinica|terpel|vanti|tubodrilling|funeraria/i.test(custName) ||
+          /^CONV-/i.test(custPhone)
+        );
 
         const key = custId ? `ID_${custId}` : (custPhone !== 'S/N' ? `TEL_${custPhone}` : `NAME_${normDishText(custName)}`);
 
@@ -2391,7 +2504,13 @@ const formatPrice = (val) => {
             telefono: custPhone,
             direccion: custAddress,
             barrio: custBarrio,
+            es_institucional: isInstitucional,
             orders: [],
+            rationsMap: new Map(),
+            rationsBreakdown: [],
+            totalDomiciliosCount: 0,
+            totalDomiciliosFee: 0,
+            totalRacionesAmount: 0,
             totalAmount: 0,
             pendingAmount: 0,
             paidAmount: 0
@@ -2400,13 +2519,59 @@ const formatPrice = (val) => {
         }
 
         const orderTotal = Number(order.total || 0);
+        const orderDeliveryFee = Number(order.delivery_fee || 0);
+        const orderSubtotal = Number(order.subtotal || Math.max(0, orderTotal - orderDeliveryFee));
+        const rawNotas = String(order.notas || '');
+        const creadoPor = order.creado_por || (rawNotas.match(/\[CREADO_POR:([^\]]+)\]/i)?.[1] || 'Cajero POS');
+        const cantDomicilios = Number(
+          order.cantidad_domicilios !== undefined && order.cantidad_domicilios !== null
+            ? order.cantidad_domicilios
+            : (rawNotas.match(/\[DOMICILIOS_CLINICA:(\d+)\]/i)?.[1] || (orderDeliveryFee > 0 ? Math.max(1, Math.round(orderDeliveryFee / 3000)) : 0))
+        );
+
         const dishInfo = buildOrderDishesSummary(order);
+
+        // Consolidar raciones / dietas / platos entregados en el periodo
+        const detalles = Array.isArray(order.detalles) ? order.detalles : [];
+        if (detalles.length > 0) {
+          for (const det of detalles) {
+            const qty = Number(det.cantidad || 1);
+            const dishName = det.plato?.nombre || det.nombre_plato || `Plato #${det.plato_id || ''}`;
+            const unitPrice = Number(det.precio_unitario !== undefined ? det.precio_unitario : (det.plato?.precio || 0));
+            const lineSub = Number(det.subtotal !== undefined ? det.subtotal : unitPrice * qty);
+            const rKey = `${normDishText(dishName)}__${Math.round(unitPrice)}`;
+            const prevR = acc.rationsMap.get(rKey) || {
+              name: dishName,
+              unitPrice: Math.round(unitPrice),
+              quantity: 0,
+              subtotal: 0
+            };
+            prevR.quantity += qty;
+            prevR.subtotal += lineSub;
+            acc.rationsMap.set(rKey, prevR);
+          }
+        } else {
+          const rKey = `consumo_pos__${Math.round(orderSubtotal)}`;
+          const prevR = acc.rationsMap.get(rKey) || {
+            name: 'Consumo registrado en POS',
+            unitPrice: Math.round(orderSubtotal),
+            quantity: 0,
+            subtotal: 0
+          };
+          prevR.quantity += 1;
+          prevR.subtotal += orderSubtotal;
+          acc.rationsMap.set(rKey, prevR);
+        }
 
         acc.orders.push({
           id: order.id,
           codigo: order.codigo_factura || `#${order.id}`,
           fechaDisplay: dateInfo.display,
           ymd: dateInfo.ymd,
+          creado_por: creadoPor,
+          cantidad_domicilios: cantDomicilios,
+          delivery_fee: orderDeliveryFee,
+          subtotal_raciones: orderSubtotal,
           description: dishInfo.description,
           totalItems: dishInfo.totalItems,
           amount: orderTotal,
@@ -2415,9 +2580,19 @@ const formatPrice = (val) => {
           paidAtStr: fiadoMeta.paidAtStr
         });
 
+        acc.totalDomiciliosCount += cantDomicilios;
+        acc.totalDomiciliosFee += orderDeliveryFee;
+        acc.totalRacionesAmount += orderSubtotal;
         acc.totalAmount += orderTotal;
         if (fiadoMeta.isPendingFiado) acc.pendingAmount += orderTotal;
         else acc.paidAmount += orderTotal;
+      }
+
+      // Convertir rationsMap a arreglo ordenado por mayor cantidad
+      for (const acc of accountsMap.values()) {
+        acc.rationsBreakdown = Array.from(acc.rationsMap.values()).sort(
+          (a, b) => b.quantity - a.quantity || b.subtotal - a.subtotal
+        );
       }
 
       // Filtrar por buscador de nombre o teléfono
@@ -2448,13 +2623,25 @@ const formatPrice = (val) => {
       const totalAPagar = fiadoStatusFilter === 'PAGADO' ? account.paidAmount : (account.pendingAmount || account.totalAmount);
       const safeName = String(account.nombre || 'Cliente').replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ _-]/g, '').trim().replace(/\s+/g, '_');
 
-      // Generar tabla HTML con codificación UTF-8 BOM compatible nativamente con Microsoft Excel (.xls)
+      // 1. Tabla Consolidada de Raciones / Dietas / Platos Entregados
+      const rationsRowsHtml = (account.rationsBreakdown || []).map(r => `
+        <tr>
+          <td colspan="2" style="border:1px solid #cbd5e1; padding:6px 10px; font-weight:bold;">${r.name}</td>
+          <td style="border:1px solid #cbd5e1; padding:6px 10px; text-align:right;">${Math.round(r.unitPrice)}</td>
+          <td style="border:1px solid #cbd5e1; padding:6px 10px; text-align:center; font-weight:bold;">${r.quantity}</td>
+          <td colspan="2" style="border:1px solid #cbd5e1; padding:6px 10px; text-align:right; font-weight:bold;">${Math.round(r.subtotal)}</td>
+        </tr>
+      `).join('');
+
+      // 2. Tabla Cronológica de Servicios y Domicilios
       const rowsHtml = account.orders.map(o => `
         <tr>
           <td style="border:1px solid #cbd5e1; padding:6px 10px;">${o.fechaDisplay}</td>
           <td style="border:1px solid #cbd5e1; padding:6px 10px; font-weight:bold;">${o.codigo}</td>
+          <td style="border:1px solid #cbd5e1; padding:6px 10px;">${o.creado_por || 'POS'}</td>
           <td style="border:1px solid #cbd5e1; padding:6px 10px;">${o.description}</td>
           <td style="border:1px solid #cbd5e1; padding:6px 10px; text-align:center;">${o.totalItems}</td>
+          <td style="border:1px solid #cbd5e1; padding:6px 10px; text-align:center;">${o.cantidad_domicilios || 0} (${fmtCOP(o.delivery_fee || 0)})</td>
           <td style="border:1px solid #cbd5e1; padding:6px 10px; text-align:right; font-weight:bold;">${Math.round(o.amount)}</td>
         </tr>
       `).join('');
@@ -2468,34 +2655,64 @@ const formatPrice = (val) => {
         <body style="font-family: Calibri, Arial, sans-serif; font-size: 11pt;">
           <table style="border-collapse: collapse; width: 100%;">
             <tr>
-              <td colspan="5" style="background-color:#92400e; color:#ffffff; font-size:15pt; font-weight:bold; text-align:center; padding:12px;">
-                RESTAURANTE SAN PARRILLA - CUENTA DE COBRO
+              <td colspan="7" style="background-color:#92400e; color:#ffffff; font-size:15pt; font-weight:bold; text-align:center; padding:12px;">
+                RESTAURANTE SAN PARRILLA - CUENTA DE COBRO INSTITUCIONAL / MENSUAL
               </td>
             </tr>
             <tr>
-              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Cliente:</td>
-              <td colspan="3" style="padding:6px 10px; font-weight:bold;">${account.nombre}</td>
+              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Cliente / Entidad:</td>
+              <td colspan="5" style="padding:6px 10px; font-weight:bold;">${account.nombre}</td>
             </tr>
             <tr>
-              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Teléfono:</td>
-              <td colspan="3" style="padding:6px 10px;">${account.telefono}</td>
+              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Teléfono / Código Convenio:</td>
+              <td colspan="5" style="padding:6px 10px;">${account.telefono}</td>
             </tr>
             <tr>
-              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Dirección / Barrio:</td>
-              <td colspan="3" style="padding:6px 10px;">${[account.direccion, account.barrio].filter(Boolean).join(' - ') || 'Registrado en restaurante'}</td>
+              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Dirección / Sede:</td>
+              <td colspan="5" style="padding:6px 10px;">${[account.direccion, account.barrio].filter(Boolean).join(' - ') || 'Registrado en restaurante'}</td>
             </tr>
             <tr>
-              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Periodo / Fechas:</td>
-              <td colspan="3" style="padding:6px 10px;">${periodLabel} (Generado: ${new Date().toLocaleDateString('es-CO')})</td>
+              <td colspan="2" style="padding:6px 10px; font-weight:bold; background:#fef3c7;">Periodo Facturado:</td>
+              <td colspan="5" style="padding:6px 10px;">${periodLabel} (Fecha de emisión: ${new Date().toLocaleDateString('es-CO')})</td>
             </tr>
-            <tr><td colspan="5"></td></tr>
+            <tr><td colspan="7"></td></tr>
+            <tr>
+              <td colspan="7" style="background-color:#0e7490; color:#ffffff; font-weight:bold; padding:8px 10px;">
+                1. RESUMEN CONSOLIDADO DE RACIONES, DIETAS Y PLATOS ENTREGADOS
+              </td>
+            </tr>
+            <tr style="background-color:#ecfeff; color:#0f172a; font-weight:bold;">
+              <th colspan="2" style="border:1px solid #94a3b8; padding:7px 10px; text-align:left;">Plato / Ración / Tipo de Dieta</th>
+              <th style="border:1px solid #94a3b8; padding:7px 10px; text-align:right;">Valor Unitario ($)</th>
+              <th style="border:1px solid #94a3b8; padding:7px 10px; text-align:center;">Cantidad Entregada</th>
+              <th colspan="2" style="border:1px solid #94a3b8; padding:7px 10px; text-align:right;">Subtotal Raciones ($)</th>
+            </tr>
+            ${rationsRowsHtml}
+            <tr style="background-color:#f0fdfa; font-weight:bold;">
+              <td colspan="3" style="border:1px solid #94a3b8; padding:7px 10px; text-align:right;">SUBTOTAL RACIONES / PLATOS ENTREGADOS:</td>
+              <td style="border:1px solid #94a3b8; padding:7px 10px; text-align:center;">${account.orders.reduce((s, o) => s + o.totalItems, 0)} raciones</td>
+              <td colspan="2" style="border:1px solid #94a3b8; padding:7px 10px; text-align:right;">${fmtCOP(account.totalRacionesAmount || 0)}</td>
+            </tr>
+            <tr style="background-color:#fef3c7; font-weight:bold;">
+              <td colspan="3" style="border:1px solid #94a3b8; padding:7px 10px; text-align:right;">TOTAL DOMICILIOS / ENVÍOS REALIZADOS:</td>
+              <td style="border:1px solid #94a3b8; padding:7px 10px; text-align:center;">${account.totalDomiciliosCount || 0} envío(s)</td>
+              <td colspan="2" style="border:1px solid #94a3b8; padding:7px 10px; text-align:right;">${fmtCOP(account.totalDomiciliosFee || 0)}</td>
+            </tr>
+            <tr><td colspan="7"></td></tr>
+            <tr>
+              <td colspan="7" style="background-color:#1e293b; color:#ffffff; font-weight:bold; padding:8px 10px;">
+                2. DETALLE CRONOLÓGICO DE COMANDAS Y ENTREGAS DEL PERIODO
+              </td>
+            </tr>
             <thead>
-              <tr style="background-color:#1e293b; color:#ffffff; font-weight:bold;">
-                <th style="border:1px solid #334155; padding:8px 10px; text-align:left;">Fecha</th>
+              <tr style="background-color:#334155; color:#ffffff; font-weight:bold;">
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:left;">Fecha y Hora</th>
                 <th style="border:1px solid #334155; padding:8px 10px; text-align:left;">Pedido</th>
-                <th style="border:1px solid #334155; padding:8px 10px; text-align:left;">Descripción / Platos</th>
-                <th style="border:1px solid #334155; padding:8px 10px; text-align:center;">Cantidad</th>
-                <th style="border:1px solid #334155; padding:8px 10px; text-align:right;">Valor ($)</th>
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:left;">Atendido por</th>
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:left;">Descripción / Platos y Dietas</th>
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:center;">Cant. Raciones</th>
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:center;">Domicilios</th>
+                <th style="border:1px solid #334155; padding:8px 10px; text-align:right;">Valor Total ($)</th>
               </tr>
             </thead>
             <tbody>
@@ -2503,8 +2720,9 @@ const formatPrice = (val) => {
             </tbody>
             <tfoot>
               <tr style="background-color:#fde68a; font-weight:bold; font-size:12pt;">
-                <td colspan="3" style="border:2px solid #92400e; padding:10px; text-align:right;">TOTAL A PAGAR:</td>
-                <td style="border:2px solid #92400e; padding:10px; text-align:center;">${account.orders.reduce((s, o) => s + o.totalItems, 0)} ítems</td>
+                <td colspan="4" style="border:2px solid #92400e; padding:10px; text-align:right;">VALOR TOTAL CONSOLIDADO A COBRAR:</td>
+                <td style="border:2px solid #92400e; padding:10px; text-align:center;">${account.orders.reduce((s, o) => s + o.totalItems, 0)} raciones</td>
+                <td style="border:2px solid #92400e; padding:10px; text-align:center;">${account.totalDomiciliosCount || 0} domicilios</td>
                 <td style="border:2px solid #92400e; padding:10px; text-align:right;">${fmtCOP(totalAPagar)}</td>
               </tr>
             </tfoot>
@@ -2603,12 +2821,22 @@ const formatPrice = (val) => {
                 <div class="min-w-0 flex-1">
                   <div class="flex flex-wrap items-center gap-2">
                     <h3 class="font-display font-black text-base text-parrilla-ivory">${acc.nombre}</h3>
+                    ${acc.es_institucional ? `
+                      <span class="px-2 py-0.5 rounded-md bg-cyan-100 border border-cyan-300 text-cyan-950 font-extrabold text-[10px] uppercase">
+                        🏥 CONVENIO / INSTITUCIONAL
+                      </span>
+                    ` : ''}
                     <span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-300 font-mono font-bold text-xs text-parrilla-ivory">
                       📞 ${acc.telefono}
                     </span>
                     <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${acc.pendingAmount > 0 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'}">
                       ${acc.orders.length} pedido(s) en el periodo
                     </span>
+                    ${acc.totalDomiciliosCount > 0 ? `
+                      <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-sky-100 text-sky-900 border border-sky-300">
+                        🛵 ${acc.totalDomiciliosCount} domicilio(s) (${fmtCOP(acc.totalDomiciliosFee)})
+                      </span>
+                    ` : ''}
                   </div>
                   <p class="text-xs text-parrilla-muted mt-0.5">
                     ${[acc.direccion, acc.barrio].filter(Boolean).join(' • ') || 'Cliente registrado en directorio San Parrilla'}
@@ -2657,16 +2885,61 @@ const formatPrice = (val) => {
             </div>
 
             <!-- Tabla Detallada de Consumo del Cliente -->
-            <div class="${isExpanded ? 'block' : 'hidden'} border-t border-parrilla-border bg-slate-50/60 p-4" data-fiado-detail-box="${acc.key}">
+            <div class="${isExpanded ? 'block' : 'hidden'} border-t border-parrilla-border bg-slate-50/60 p-4 space-y-4" data-fiado-detail-box="${acc.key}">
+              <!-- 1. Resumen Consolidado de Raciones / Dietas y Domicilios -->
+              <div class="rounded-xl border border-cyan-300 bg-white overflow-hidden shadow-2xs">
+                <div class="bg-cyan-900 text-white px-3.5 py-2 flex flex-wrap items-center justify-between gap-2">
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider">
+                    📊 1. Resumen Consolidado de Raciones, Dietas y Domicilios Entregados (Periodo)
+                  </span>
+                  <div class="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                    <span class="px-2 py-0.5 rounded bg-cyan-800 border border-cyan-600">
+                      🍽️ Raciones: ${acc.orders.reduce((s, o) => s + o.totalItems, 0)} (${fmtCOP(acc.totalRacionesAmount || 0)})
+                    </span>
+                    <span class="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-extrabold">
+                      🛵 Domicilios: ${acc.totalDomiciliosCount || 0} (${fmtCOP(acc.totalDomiciliosFee || 0)})
+                    </span>
+                  </div>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr class="bg-cyan-50 text-cyan-950 uppercase text-[10px] font-extrabold border-b border-cyan-200">
+                        <th class="py-2 px-3">Plato / Ración / Tipo de Dieta Entregada</th>
+                        <th class="py-2 px-3 text-right">Valor Unitario ($)</th>
+                        <th class="py-2 px-3 text-center">Cant. Raciones</th>
+                        <th class="py-2 px-3 text-right">Subtotal Raciones ($)</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-cyan-100">
+                      ${(acc.rationsBreakdown || []).map(r => `
+                        <tr class="hover:bg-cyan-50/40">
+                          <td class="py-2 px-3 font-bold text-parrilla-ivory">${r.name}</td>
+                          <td class="py-2 px-3 text-right font-mono text-parrilla-muted">${fmtCOP(r.unitPrice)}</td>
+                          <td class="py-2 px-3 text-center font-mono font-extrabold text-cyan-900">${r.quantity}</td>
+                          <td class="py-2 px-3 text-right font-mono font-extrabold text-parrilla-ivory">${fmtCOP(r.subtotal)}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 2. Detalle Cronológico de Pedidos y Comandas -->
               <div class="overflow-x-auto rounded-xl border border-parrilla-border bg-white">
+                <div class="bg-slate-800 text-white px-3.5 py-2 text-[11px] font-extrabold uppercase tracking-wider">
+                  📋 2. Detalle Cronológico de Servicios, Dietas y Domicilios por Comanda
+                </div>
                 <table class="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr class="bg-slate-100 text-parrilla-muted uppercase text-[10px] font-extrabold border-b border-parrilla-border">
                       <th class="py-2.5 px-3">Fecha y Hora</th>
                       <th class="py-2.5 px-3">Código Pedido</th>
-                      <th class="py-2.5 px-3">Detalle de Platos / Productos</th>
-                      <th class="py-2.5 px-3 text-center">Cantidad Total de Ítems</th>
-                      <th class="py-2.5 px-3 text-right">Monto del Pedido ($)</th>
+                      <th class="py-2.5 px-3">Atendido por</th>
+                      <th class="py-2.5 px-3">Detalle de Platos / Dietas</th>
+                      <th class="py-2.5 px-3 text-center">Cant. Raciones</th>
+                      <th class="py-2.5 px-3 text-center">Domicilios</th>
+                      <th class="py-2.5 px-3 text-right">Monto Total ($)</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-parrilla-border/60">
@@ -2680,17 +2953,24 @@ const formatPrice = (val) => {
                             : `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold">PAGADO (${ord.paidViaMethod || 'CAJA'})</span>`
                           }
                         </td>
+                        <td class="py-2.5 px-3 text-[11px] font-bold text-slate-700 whitespace-nowrap">👤 ${ord.creado_por || 'POS'}</td>
                         <td class="py-2.5 px-3 text-parrilla-ivory font-medium">${ord.description}</td>
                         <td class="py-2.5 px-3 text-center font-mono font-bold text-parrilla-ivory">${ord.totalItems}</td>
+                        <td class="py-2.5 px-3 text-center font-mono text-[11px] text-sky-900 font-bold whitespace-nowrap">
+                          ${ord.cantidad_domicilios > 0 ? `${ord.cantidad_domicilios} (${fmtCOP(ord.delivery_fee || 0)})` : '0'}
+                        </td>
                         <td class="py-2.5 px-3 text-right font-mono font-extrabold text-parrilla-ivory whitespace-nowrap">${fmtCOP(ord.amount)}</td>
                       </tr>
                     `).join('')}
                   </tbody>
                   <tfoot>
                     <tr class="bg-amber-100/90 border-t-2 border-amber-400 font-display font-black text-sm">
-                      <td colspan="3" class="py-3 px-3 text-right text-amber-950 uppercase">TOTAL A PAGAR ($):</td>
+                      <td colspan="4" class="py-3 px-3 text-right text-amber-950 uppercase">VALOR TOTAL CONSOLIDADO A PAGAR ($):</td>
                       <td class="py-3 px-3 text-center font-mono text-amber-950">
-                        ${acc.orders.reduce((s, o) => s + o.totalItems, 0)} ítems
+                        ${acc.orders.reduce((s, o) => s + o.totalItems, 0)} raciones
+                      </td>
+                      <td class="py-3 px-3 text-center font-mono text-sky-950">
+                        ${acc.totalDomiciliosCount || 0} domicilios
                       </td>
                       <td class="py-3 px-3 text-right font-mono text-base text-red-700">
                         ${fmtCOP(displayBalance)}
@@ -2744,6 +3024,23 @@ const formatPrice = (val) => {
           b.className = 'fiado-status-btn py-1.5 px-2 rounded-lg text-[11px] font-bold text-parrilla-ivory hover:text-parrilla-gold transition cursor-pointer';
         });
         btn.className = 'fiado-status-btn active py-1.5 px-2 rounded-lg text-[11px] font-extrabold bg-amber-500 text-white shadow-xs transition cursor-pointer';
+        renderFiadoAccountsModule();
+      });
+    });
+
+    // Selector rápido de clientes institucionales / convenios
+    document.querySelectorAll('.fiado-corp-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const corpVal = chip.getAttribute('data-corp-filter') || '';
+        fiadoSearchQuery = corpVal;
+        const searchInput = document.getElementById('fiado-search-input');
+        // @ts-ignore
+        if (searchInput) searchInput.value = corpVal;
+
+        document.querySelectorAll('.fiado-corp-chip').forEach(c => {
+          c.className = 'fiado-corp-chip px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white text-cyan-950 border border-cyan-300 hover:bg-cyan-100 transition cursor-pointer';
+        });
+        chip.className = 'fiado-corp-chip active px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold bg-cyan-800 text-white shadow-xs transition cursor-pointer';
         renderFiadoAccountsModule();
       });
     });

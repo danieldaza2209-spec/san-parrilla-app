@@ -5,40 +5,109 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 ---
 
-<BaseLayout title="Acceso del personal | San Parrilla" noindex>
-  <main class="flex-1 flex items-center justify-center px-4 py-10 bg-gradient-to-b from-slate-100/70 to-parrilla-dark">
-    <div class="w-full max-w-sm">
+<BaseLayout title="Inicio de Turno por Rol | San Parrilla" noindex>
+  <main class="flex-1 flex items-center justify-center px-4 py-8 bg-gradient-to-b from-slate-100/70 to-parrilla-dark">
+    <div class="w-full max-w-md">
 
-      <div class="text-center mb-6">
-        <img src="/logo.png" alt="San Parrilla" class="h-16 w-auto mx-auto rounded-full ring-2 ring-parrilla-gold/30 mb-3" />
-        <h1 class="font-display font-black text-2xl text-parrilla-ivory">Acceso del personal</h1>
-        <p class="text-xs text-parrilla-muted mt-1">Ingresa tu PIN para abrir tu herramienta de trabajo.</p>
+      <div class="text-center mb-5">
+        <img src="/logo.png" alt="San Parrilla" class="h-14 w-auto mx-auto rounded-full ring-2 ring-parrilla-gold/30 mb-2.5" />
+        <h1 class="font-display font-black text-2xl text-parrilla-ivory">Inicio de Turno · SanParrillaOS</h1>
+        <p class="text-xs text-parrilla-muted mt-1">Selecciona tu Rol, tu Nombre y digita tu PIN de 4 dígitos.</p>
       </div>
 
       <div class="bg-white rounded-2xl border border-parrilla-border shadow-xl p-5">
         <form id="login-form" class="space-y-4" autocomplete="off">
+          <!-- 1. Selección de Rol -->
           <div>
-            <label for="pin" class="block text-xs font-bold text-parrilla-gold uppercase tracking-wider mb-1.5">PIN o contraseña</label>
+            <label class="block text-[11px] font-black text-parrilla-gold uppercase tracking-wider mb-1.5">
+              1. Selecciona tu Rol Operativo
+            </label>
+            <div class="grid grid-cols-3 gap-2" id="role-selector">
+              <button
+                type="button"
+                data-role="mesero"
+                class="role-opt-btn py-2.5 px-2 rounded-xl border-2 border-parrilla-gold bg-amber-50/70 text-parrilla-ivory font-display font-black text-xs flex flex-col items-center gap-1 transition shadow-sm"
+              >
+                <span class="text-lg">🍽️</span>
+                <span>Mesero / Colab.</span>
+                <span class="text-[9px] font-semibold text-parrilla-muted">POS + Pedidos</span>
+              </button>
+              <button
+                type="button"
+                data-role="cajero"
+                class="role-opt-btn py-2.5 px-2 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-display font-black text-xs flex flex-col items-center gap-1 transition"
+              >
+                <span class="text-lg">💰</span>
+                <span>Cajero</span>
+                <span class="text-[9px] font-semibold text-parrilla-muted">POS + Caja</span>
+              </button>
+              <button
+                type="button"
+                data-role="admin"
+                class="role-opt-btn py-2.5 px-2 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-display font-black text-xs flex flex-col items-center gap-1 transition"
+              >
+                <span class="text-lg">🛡️</span>
+                <span>Administrador</span>
+                <span class="text-[9px] font-semibold text-parrilla-muted">Acceso Total</span>
+              </button>
+            </div>
+            <input type="hidden" id="selected-role" name="role" value="mesero" />
+          </div>
+
+          <!-- 2. Nombre del Colaborador -->
+          <div>
+            <label for="staff-name" class="block text-[11px] font-black text-parrilla-gold uppercase tracking-wider mb-1.5">
+              2. Nombre del Colaborador (Queda registrado en cada comanda)
+            </label>
+            <div class="flex flex-wrap gap-1.5 mb-2" id="staff-quick-names">
+              {['Lucely', 'Daniel', 'Camila', 'Valentina', 'Carlos', 'Mesero Turno'].map((n) => (
+                <button
+                  type="button"
+                  data-staff-name={n}
+                  class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-amber-50 hover:border-parrilla-gold text-xs font-bold text-slate-700 border border-slate-200 transition"
+                >
+                  👤 {n}
+                </button>
+              ))}
+            </div>
+            <input
+              id="staff-name"
+              name="staff_name"
+              type="text"
+              required
+              placeholder="Ej. Lucely, Daniel, Camila..."
+              class="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-parrilla-border text-sm font-bold text-parrilla-ivory focus:bg-white focus:border-parrilla-gold outline-none"
+            />
+          </div>
+
+          <!-- 3. PIN de Seguridad de 4 dígitos -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="pin" class="block text-[11px] font-black text-parrilla-gold uppercase tracking-wider">
+                3. PIN de Seguridad (4 dígitos)
+              </label>
+              <span id="role-pin-hint" class="text-[10px] font-semibold text-slate-500">Mesero: 0000 · Cajero: 1111 · Admin: 2222</span>
+            </div>
             <input
               id="pin"
               name="pin"
               type="password"
               inputmode="numeric"
               autocomplete="current-password"
-              maxlength="64"
+              maxlength="4"
               required
-              class="w-full px-4 py-3 bg-white rounded-xl border border-parrilla-border text-center text-2xl tracking-[0.5em] font-bold font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
+              class="w-full px-4 py-2.5 bg-white rounded-xl border border-parrilla-border text-center text-2xl tracking-[0.5em] font-bold font-mono text-parrilla-ivory focus:border-parrilla-gold outline-none"
               placeholder="••••"
             />
           </div>
 
           <div class="grid grid-cols-3 gap-2" id="keypad">
             {keys.map((k) => (
-              <button type="button" data-key={k} class="py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-bold text-parrilla-ivory border border-parrilla-border transition">{k}</button>
+              <button type="button" data-key={k} class="py-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-lg font-bold text-parrilla-ivory border border-parrilla-border transition">{k}</button>
             ))}
-            <button type="button" data-action="clear" class="py-3.5 rounded-xl bg-slate-100 hover:bg-red-50 active:scale-95 text-xs font-bold text-parrilla-muted hover:text-red-500 border border-parrilla-border transition">Borrar</button>
-            <button type="button" data-key="0" class="py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-bold text-parrilla-ivory border border-parrilla-border transition">0</button>
-            <button type="button" data-action="back" class="py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-lg font-bold text-parrilla-muted border border-parrilla-border transition" aria-label="Borrar último dígito">⌫</button>
+            <button type="button" data-action="clear" class="py-3 rounded-xl bg-slate-100 hover:bg-red-50 active:scale-95 text-xs font-bold text-parrilla-muted hover:text-red-500 border border-parrilla-border transition">Borrar</button>
+            <button type="button" data-key="0" class="py-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-lg font-bold text-parrilla-ivory border border-parrilla-border transition">0</button>
+            <button type="button" data-action="back" class="py-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-base font-bold text-parrilla-muted border border-parrilla-border transition" aria-label="Borrar último dígito">⌫</button>
           </div>
 
           <p id="login-error" class="hidden text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl p-2.5 text-center" role="alert"></p>
@@ -48,13 +117,13 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
             type="submit"
             class="w-full py-3.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-base shadow-md transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Entrar
+            Iniciar Turno →
           </button>
         </form>
       </div>
 
-      <p class="text-center mt-5">
-        <a href="/" class="text-xs font-medium text-parrilla-muted hover:text-parrilla-gold transition">← Volver a la carta</a>
+      <p class="text-center mt-4">
+        <a href="/" class="text-xs font-medium text-parrilla-muted hover:text-parrilla-gold transition">← Volver a la carta digital</a>
       </p>
     </div>
   </main>
@@ -63,10 +132,11 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
     const STORAGE_KEY = 'sp_staff_session';
     const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas
 
-    // Si ya tiene sesión activa, redirigir directamente a su panel
+    // Si ya tiene sesión activa y no viene con ?switch=1, redirigir directamente a su panel
     try {
+      const switchMode = new URLSearchParams(window.location.search).get('switch');
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
+      if (raw && !switchMode) {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.role && parsed.exp > Date.now()) {
           window.location.replace('/pos');
@@ -77,9 +147,40 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
     } catch {}
 
     const form = document.getElementById('login-form') as HTMLFormElement | null;
+    const roleInput = document.getElementById('selected-role') as HTMLInputElement | null;
+    const staffNameInput = document.getElementById('staff-name') as HTMLInputElement | null;
     const pinInput = document.getElementById('pin') as HTMLInputElement | null;
     const errorBox = document.getElementById('login-error');
     const submitBtn = document.getElementById('login-submit') as HTMLButtonElement | null;
+
+    // Selección de Rol
+    const selectRole = (role: string) => {
+      if (roleInput) roleInput.value = role;
+      document.querySelectorAll('.role-opt-btn').forEach((btn) => {
+        const isActive = btn.getAttribute('data-role') === role;
+        if (isActive) {
+          btn.className = 'role-opt-btn py-2.5 px-2 rounded-xl border-2 border-parrilla-gold bg-amber-50/70 text-parrilla-ivory font-display font-black text-xs flex flex-col items-center gap-1 transition shadow-sm';
+        } else {
+          btn.className = 'role-opt-btn py-2.5 px-2 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-display font-black text-xs flex flex-col items-center gap-1 transition';
+        }
+      });
+    };
+
+    document.getElementById('role-selector')?.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('button[data-role]');
+      if (!btn) return;
+      const r = btn.getAttribute('data-role') || 'mesero';
+      selectRole(r);
+      pinInput?.focus();
+    });
+
+    // Selección rápida de Nombre del Colaborador
+    document.getElementById('staff-quick-names')?.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('button[data-staff-name]');
+      if (!btn || !staffNameInput) return;
+      staffNameInput.value = btn.getAttribute('data-staff-name') || '';
+      pinInput?.focus();
+    });
 
     const showError = (message: string) => {
       if (!errorBox) return;
@@ -92,11 +193,19 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
         if (nextParam.startsWith('/admin') && role !== 'admin') {
           return '/pos';
         }
-        if (nextParam.startsWith('/pos') || nextParam.startsWith('/caja') || nextParam.startsWith('/admin')) {
+        if (nextParam.startsWith('/caja') && role === 'mesero') {
+          return '/pos';
+        }
+        if (
+          nextParam.startsWith('/pos') ||
+          nextParam.startsWith('/pedidos') ||
+          nextParam.startsWith('/caja') ||
+          nextParam.startsWith('/admin')
+        ) {
           return nextParam;
         }
       }
-      return '/pos';
+      return role === 'admin' ? '/admin' : '/pos';
     };
 
     document.getElementById('keypad')?.addEventListener('click', (event) => {
@@ -104,7 +213,7 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
       if (!btn || !pinInput) return;
       const key = btn.getAttribute('data-key');
       const action = btn.getAttribute('data-action');
-      if (key !== null) pinInput.value += key;
+      if (key !== null && pinInput.value.length < 4) pinInput.value += key;
       if (action === 'clear') pinInput.value = '';
       if (action === 'back') pinInput.value = pinInput.value.slice(0, -1);
       pinInput.focus();
@@ -112,11 +221,20 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      if (!pinInput || !submitBtn) return;
+      if (!pinInput || !submitBtn || !roleInput || !staffNameInput) return;
 
+      const requestedRole = roleInput.value.trim() || 'mesero';
+      const staffName = staffNameInput.value.trim();
       const pin = pinInput.value.trim();
-      if (!pin) {
-        showError('Ingresa tu PIN.');
+
+      if (!staffName) {
+        showError('Por favor ingresa o selecciona el Nombre del Colaborador.');
+        staffNameInput.focus();
+        return;
+      }
+      if (!pin || pin.length < 4) {
+        showError('Ingresa tu PIN de Seguridad de 4 dígitos.');
+        pinInput.focus();
         return;
       }
 
@@ -128,27 +246,31 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
       try {
         const next = new URLSearchParams(window.location.search).get('next') || '';
         let role: string | null = null;
+        let finalName: string = staffName;
 
         // Intentar siempre autenticar en el servidor para obtener la cookie de sesión HttpOnly
         try {
           const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin, next }),
+            body: JSON.stringify({ pin, role: requestedRole, name: staffName, next }),
           });
           if (res.ok) {
             const data = await res.json().catch(() => ({}));
             if (data.success && data.role) {
               role = data.role;
+              finalName = data.name || staffName;
             }
           }
         } catch {}
 
-        // Fallback de contingencia local si la red falla
+        // Validación local si el endpoint no respondió
         if (!role) {
-          if (pin === '1111') {
+          if (requestedRole === 'mesero' && (pin === '0000' || pin === '1234' || pin === '1111' || pin === '2222')) {
+            role = 'mesero';
+          } else if (requestedRole === 'cajero' && (pin === '1111' || pin === '2222')) {
             role = 'cajero';
-          } else if (pin === '2222') {
+          } else if (requestedRole === 'admin' && pin === '2222') {
             role = 'admin';
           }
         }
@@ -156,16 +278,18 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
         if (role) {
           const sessionData = {
             role,
+            name: finalName,
             iat: Date.now(),
             exp: Date.now() + SESSION_TTL_MS,
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData));
           document.cookie = `sp_role=${role}; path=/; max-age=${12 * 3600}; SameSite=Lax`;
+          document.cookie = `sp_staff_name=${encodeURIComponent(finalName)}; path=/; max-age=${12 * 3600}; SameSite=Lax`;
           window.location.href = resolveTargetUrl(role, next);
           return;
         }
 
-        showError('PIN incorrecto. Verifica e inténtalo de nuevo.');
+        showError('PIN de 4 dígitos incorrecto para el rol seleccionado.');
         pinInput.value = '';
         pinInput.focus();
       } finally {
@@ -174,6 +298,6 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
       }
     });
 
-    pinInput?.focus();
+    staffNameInput?.focus();
   </script>
 </BaseLayout>

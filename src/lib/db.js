@@ -30,7 +30,21 @@ export const rapidasCategories = [
   { id: 'bebidas_rapidas', name: 'Bebidas', icon: '🧊', sort_order: 28 },
 ];
 
-export const fallbackCategories = [...lunchCategories, ...rapidasCategories];
+// Categorías de Convenios Institucionales y Dietas Hospitalarias (Clínica Primero de Mayo y Empresas)
+export const conveniosCategories = [
+  { id: 'convenios_clinica', name: 'CONVENIOS_CLINICA', icon: '🏥', sort_order: 30 },
+];
+
+export const fallbackCategories = [...lunchCategories, ...rapidasCategories, ...conveniosCategories];
+
+export const CORPORATE_CUSTOMERS = [
+  { id: 9001, name: 'Clínica Primero de Mayo (Pacientes)', phone: 'CONV-CLINICA-PAC', address: 'Clínica Primero de Mayo - Área Hospitalización', neighborhood: 'Convenio Institucional Pacientes', notes: 'Dietas hospitalarias + Domicilios por turno', es_institucional: true },
+  { id: 9002, name: 'Clínica Primero de Mayo (Personal)', phone: 'CONV-CLINICA-PER', address: 'Clínica Primero de Mayo - Personal Médico/Admin', neighborhood: 'Convenio Institucional Personal', notes: 'Cuenta corporativa personal Clínica Primero de Mayo', es_institucional: true },
+  { id: 9003, name: 'Terpel Aeropuerto', phone: 'CONV-TERPEL', address: 'Estación Terpel Aeropuerto', neighborhood: 'Convenio Corporativo', notes: 'Tarifa exclusiva Almuerzo Especial Terpel', es_institucional: true },
+  { id: 9004, name: 'Vanti', phone: 'CONV-VANTI', address: 'Sede Corporativa Vanti', neighborhood: 'Convenio Corporativo', notes: 'Cuenta corporativa Vanti', es_institucional: true },
+  { id: 9005, name: 'TuboDrilling', phone: 'CONV-TUBODRILLING', address: 'Base Operativa TuboDrilling', neighborhood: 'Convenio Corporativo', notes: 'Incluye Desayuno Tubo y almuerzos corporativos', es_institucional: true },
+  { id: 9006, name: 'Funeraria La Fe', phone: 'CONV-FUNERARIA-FE', address: 'Funeraria La Fe', neighborhood: 'Convenio Corporativo', notes: 'Cuenta corporativa Funeraria La Fe', es_institucional: true },
+];
 
 export const fallbackDailySpecials = {
   sopa: 'Campesina',
@@ -211,7 +225,41 @@ export const rapidasProductList = [
   { id: 'rap-beb-6', name: 'Cerveza', price: 4500, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 52 },
 ];
 
-export const initialProductList = [...lunchProductList, ...rapidasProductList];
+export const conveniosProductList = [
+  // Clínica Primero de Mayo (Pacientes) - Desayuno (7 dietas)
+  { id: 'conv-des-normal', name: 'Desayuno Clínica - Dieta Normal', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 100, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Normal' },
+  { id: 'conv-des-hiposodica', name: 'Desayuno Clínica - Dieta Hiposódica', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 101, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-des-hipoglucida', name: 'Desayuno Clínica - Dieta Hipoglúcida', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 102, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-des-hipo-ambas', name: 'Desayuno Clínica - Dieta Hiposódica e Hipoglúcida', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 103, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-des-liquida', name: 'Desayuno Clínica - Dieta Líquida', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 104, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Líquida' },
+  { id: 'conv-des-liq-hiposodica', name: 'Desayuno Clínica - Dieta Líquida Hiposódica', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 105, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-des-liq-hipoglucida', name: 'Desayuno Clínica - Dieta Líquida Hipoglúcida', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 106, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+
+  // Clínica Primero de Mayo (Pacientes) - Almuerzo (7 dietas)
+  { id: 'conv-alm-normal', name: 'Almuerzo Clínica - Dieta Normal', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 110, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Normal' },
+  { id: 'conv-alm-hiposodica', name: 'Almuerzo Clínica - Dieta Hiposódica', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 111, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-alm-hipoglucida', name: 'Almuerzo Clínica - Dieta Hipoglúcida', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 112, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-alm-hipo-ambas', name: 'Almuerzo Clínica - Dieta Hiposódica e Hipoglúcida', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 113, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-alm-liquida', name: 'Almuerzo Clínica - Dieta Líquida', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 114, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Líquida' },
+  { id: 'conv-alm-liq-hiposodica', name: 'Almuerzo Clínica - Dieta Líquida Hiposódica', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 115, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-alm-liq-hipoglucida', name: 'Almuerzo Clínica - Dieta Líquida Hipoglúcida', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 116, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+
+  // Clínica Primero de Mayo (Pacientes) - Cena (7 dietas)
+  { id: 'conv-cen-normal', name: 'Cena Clínica - Dieta Normal', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 120, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Normal' },
+  { id: 'conv-cen-hiposodica', name: 'Cena Clínica - Dieta Hiposódica', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 121, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-cen-hipoglucida', name: 'Cena Clínica - Dieta Hipoglúcida', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 122, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-cen-hipo-ambas', name: 'Cena Clínica - Dieta Hiposódica e Hipoglúcida', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 123, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-cen-liquida', name: 'Cena Clínica - Dieta Líquida', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 124, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Líquida' },
+  { id: 'conv-cen-liq-hiposodica', name: 'Cena Clínica - Dieta Líquida Hiposódica', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 125, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-cen-liq-hipoglucida', name: 'Cena Clínica - Dieta Líquida Hipoglúcida', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 126, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+
+  // Botella con Agua ($0) automática para dietas Hipo + Convenios Corporativos
+  { id: 'conv-agua-hipo', name: 'Botella con Agua (Dieta Hipo Clínica)', price: 0, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 130, description: 'Incluida automáticamente en dietas Hiposódicas e Hipoglúcidas ($0)' },
+  { id: 'conv-desayuno-tubo', name: 'Desayuno Tubo', price: 14000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 131, description: 'Convenio Corporativo TuboDrilling' },
+  { id: 'conv-almuerzo-terpel', name: 'Almuerzo Especial Terpel', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 132, description: 'Tarifa exclusiva pactada Convenio Terpel Aeropuerto' },
+];
+
+export const initialProductList = [...lunchProductList, ...rapidasProductList, ...conveniosProductList];
 
 let db = null;
 
@@ -276,7 +324,7 @@ if (!isVercel) {
 // In-memory runtime state (used if DB is unavailable, in Vercel or as high-speed cache)
 let memProducts = [...initialProductList];
 let memSpecials = { ...fallbackDailySpecials };
-let memCustomers = [];
+let memCustomers = [...CORPORATE_CUSTOMERS];
 let memOrders = [];
 let memCash = {
   id: 1,
@@ -324,7 +372,10 @@ export function getProducts(onlyActive = true) {
 }
 
 // Productos de uso interno (solo visibles para el personal en el POS, nunca en la carta pública).
-export const INTERNAL_PRODUCT_IDS = new Set(['test-print-sat']);
+export const INTERNAL_PRODUCT_IDS = new Set([
+  'test-print-sat',
+  ...conveniosProductList.map((p) => p.id),
+]);
 
 const badgeById = new Map(
   initialProductList.filter((p) => p.special_badge).map((p) => [p.id, p.special_badge])

@@ -18,6 +18,7 @@ def fix():
             "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'ENTREGADO';",
             "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'BANCOLOMBIA';",
             "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'FIADO';",
+            "ALTER TYPE rolusuario ADD VALUE IF NOT EXISTS 'CAJERO';",
             """
             CREATE TABLE IF NOT EXISTS clientes (
                 id SERIAL PRIMARY KEY,
@@ -26,16 +27,25 @@ def fix():
                 direccion VARCHAR(255),
                 barrio VARCHAR(150),
                 notas TEXT,
+                es_institucional BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             );
             """,
+            "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS direccion VARCHAR(255);",
+            "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS barrio VARCHAR(150);",
+            "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS notas TEXT;",
+            "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS es_institucional BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();",
+            "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();",
             "CREATE INDEX IF NOT EXISTS ix_clientes_id ON clientes (id);",
             "CREATE INDEX IF NOT EXISTS ix_clientes_nombre ON clientes (nombre);",
             "CREATE UNIQUE INDEX IF NOT EXISTS ix_clientes_telefono ON clientes (telefono);",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cliente_id INTEGER REFERENCES clientes(id) ON DELETE SET NULL;",
             "CREATE INDEX IF NOT EXISTS ix_pedidos_cliente_id ON pedidos (cliente_id);",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cliente_telefono VARCHAR(20);",
+            "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS creado_por VARCHAR(100);",
+            "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cantidad_domicilios INTEGER DEFAULT 0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS subtotal DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS delivery_fee DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS packaging_fee DOUBLE PRECISION DEFAULT 0.0;",
@@ -195,6 +205,153 @@ def fix():
                 creados += 1
         db.commit()
         print(f"[+] Catálogo POS sincronizado en Neon DB ({creados} platos nuevos agregados, respetando precios editados).")
+
+        # Asegurar Categoría CONVENIOS_CLINICA y Platos de Dietas Hospitalarias + Convenios Corporativos
+        cat_convenios = (
+            db.query(app.models.Categoria)
+            .filter(func.upper(app.models.Categoria.nombre) == "CONVENIOS_CLINICA")
+            .first()
+        )
+        if not cat_convenios:
+            cat_convenios = app.models.Categoria(
+                nombre="CONVENIOS_CLINICA",
+                descripcion="Menú Hospitalario Clínica Primero de Mayo y Convenios Corporativos",
+                orden=30,
+            )
+            db.add(cat_convenios)
+            db.commit()
+            db.refresh(cat_convenios)
+
+        dietas_clinica = [
+            "Normal",
+            "Hiposódica",
+            "Hipoglúcida",
+            "Hiposódica e Hipoglúcida",
+            "Líquida",
+            "Líquida Hiposódica",
+            "Líquida Hipoglúcida",
+        ]
+        servicios_clinica = [
+            ("Desayuno Clínica", 12000.0),
+            ("Almuerzo Clínica", 16500.0),
+            ("Cena Clínica", 15000.0),
+        ]
+        platos_convenios = []
+        for serv_nombre, serv_precio in servicios_clinica:
+            for dieta in dietas_clinica:
+                es_hipo = ("hiposódica" in dieta.lower()) or ("hipoglúcida" in dieta.lower())
+                desc = (
+                    "Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)"
+                    if es_hipo
+                    else "Clínica Primero de Mayo (Pacientes) — Dieta Hospitalaria"
+                )
+                platos_convenios.append((f"{serv_nombre} - Dieta {dieta}", serv_precio, desc))
+
+        platos_convenios.extend([
+            ("Botella con Agua (Dieta Hipo Clínica)", 0.0, "Incluida automáticamente en dietas Hiposódicas e Hipoglúcidas ($0)"),
+            ("Desayuno Tubo", 14000.0, "Convenio Corporativo TuboDrilling"),
+            ("Almuerzo Especial Terpel", 16500.0, "Tarifa exclusiva pactada Convenio Terpel Aeropuerto"),
+        ])
+
+        creados_conv = 0
+        for nombre_p, precio_p, desc_p in platos_convenios:
+            existente_p = (
+                db.query(app.models.Plato)
+                .filter(func.lower(app.models.Plato.nombre) == nombre_p.lower())
+                .first()
+            )
+            if not existente_p:
+                db.add(app.models.Plato(
+                    nombre=nombre_p,
+                    descripcion=desc_p,
+                    precio=precio_p,
+                    activo=True,
+                    disponible=True,
+                    categoria_id=cat_convenios.id,
+                ))
+                creados_conv += 1
+            else:
+                existente_p.categoria_id = cat_convenios.id
+        db.commit()
+        print(f"[+] Platos CONVENIOS_CLINICA sincronizados en Neon DB ({creados_conv} nuevos creados).")
+
+        # Asegurar los 6 Clientes Institucionales / Corporativos Fijos en la tabla `clientes`
+        clientes_corporativos_fijos = [
+            (
+                "Clínica Primero de Mayo (Pacientes)",
+                "CONV-CLINICA-PAC",
+                "Clínica Primero de Mayo - Área Hospitalización",
+                "Convenio Institucional Pacientes",
+                "Dietas hospitalarias (Desayuno, Almuerzo, Cena) + Domicilios por turno",
+            ),
+            (
+                "Clínica Primero de Mayo (Personal)",
+                "CONV-CLINICA-PER",
+                "Clínica Primero de Mayo - Personal Médico y Administrativo",
+                "Convenio Institucional Personal",
+                "Cuenta corporativa personal Clínica Primero de Mayo",
+            ),
+            (
+                "Terpel Aeropuerto",
+                "CONV-TERPEL",
+                "Estación de Servicio Terpel Aeropuerto",
+                "Convenio Corporativo",
+                "Tarifa exclusiva Almuerzo Especial Terpel",
+            ),
+            (
+                "Vanti",
+                "CONV-VANTI",
+                "Sede Corporativa Vanti",
+                "Convenio Corporativo",
+                "Cuenta corporativa Vanti",
+            ),
+            (
+                "TuboDrilling",
+                "CONV-TUBODRILLING",
+                "Base Operativa TuboDrilling",
+                "Convenio Corporativo",
+                "Incluye Desayuno Tubo y almuerzos corporativos",
+            ),
+            (
+                "Funeraria La Fe",
+                "CONV-FUNERARIA-FE",
+                "Funeraria La Fe",
+                "Convenio Corporativo",
+                "Cuenta corporativa Funeraria La Fe",
+            ),
+        ]
+        corp_creados = 0
+        for c_nombre, c_tel, c_dir, c_barrio, c_notas in clientes_corporativos_fijos:
+            cli_corp = (
+                db.query(app.models.Cliente)
+                .filter(
+                    (func.lower(app.models.Cliente.nombre) == c_nombre.lower())
+                    | (app.models.Cliente.telefono == c_tel)
+                )
+                .first()
+            )
+            if not cli_corp:
+                cli_corp = app.models.Cliente(
+                    nombre=c_nombre,
+                    telefono=c_tel,
+                    direccion=c_dir,
+                    barrio=c_barrio,
+                    notas=c_notas,
+                    es_institucional=True,
+                )
+                db.add(cli_corp)
+                corp_creados += 1
+            else:
+                cli_corp.nombre = c_nombre
+                cli_corp.es_institucional = True
+                if not cli_corp.direccion:
+                    cli_corp.direccion = c_dir
+                if not cli_corp.barrio:
+                    cli_corp.barrio = c_barrio
+                if not cli_corp.notas:
+                    cli_corp.notas = c_notas
+        db.commit()
+        print(f"[+] 6 Clientes Institucionales asegurados en Neon DB ({corp_creados} nuevos creados).")
 
         # Backfill de clientes existentes desde el historial de pedidos en Neon
         pedidos_con_cliente = (
