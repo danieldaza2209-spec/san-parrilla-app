@@ -4,6 +4,9 @@ import vercel from '@astrojs/vercel';
 
 export default defineConfig({
   output: 'server',
+  build: {
+    inlineStylesheets: 'always',
+  },
   adapter: vercel({
     webAnalytics: {
       enabled: true,
