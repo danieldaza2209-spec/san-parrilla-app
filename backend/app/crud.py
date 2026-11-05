@@ -1383,6 +1383,23 @@ def open_cash_closure(db: Session, open_in: schemas.CashClosureOpen) -> models.C
     return nueva_caja
 
 
+def update_active_cash_closure_initial_cash(db: Session, new_initial_cash: float) -> schemas.CashClosureOut:
+    """
+    Actualiza la base inicial (initial_cash) de la caja activa (OPEN)
+    y recalcula inmediatamente el expected_cash oficial:
+    expected_cash = initial_cash + total_cash_sales - total_delivery_payouts - total_expenses
+    """
+    activa = get_active_cash_closure(db)
+    if not activa:
+        raise LookupError("No hay ninguna sesión de caja abierta (OPEN) para corregir la base inicial.")
+
+    activa.initial_cash = max(0.0, float(new_initial_cash))
+    resumen = calcular_resumen_caja(db, activa)
+    db.commit()
+    db.refresh(activa)
+    return resumen
+
+
 def create_cash_expense(db: Session, closure_id: int, expense_in: schemas.CashExpenseCreate) -> models.CashExpense:
     gasto = models.CashExpense(
         cash_closure_id=closure_id,

@@ -393,6 +393,9 @@ class CashClosureOpen(BaseModel):
     initial_cash: float = Field(default=0.0, ge=0, description="Base de efectivo inicial al abrir caja")
     notes: Optional[str] = None
 
+class CashClosureInitialCashUpdate(BaseModel):
+    initial_cash: float = Field(ge=0, description="Nueva base de efectivo inicial corregida por administrador")
+
 class CashExpenseCreate(BaseModel):
     description: str = Field(min_length=1, max_length=255, description="Concepto del gasto menor")
     amount: float = Field(gt=0, description="Monto en efectivo sacado de la caja")

@@ -40,6 +40,25 @@ def obtener_caja_activa(db: Session = Depends(get_db)):
     return resumen
 
 
+@router.patch("/active/initial-cash", response_model=schemas.CashClosureOut)
+@router.post("/active/initial-cash", response_model=schemas.CashClosureOut)
+def corregir_base_inicial(
+    payload: schemas.CashClosureInitialCashUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Corrige administrativamente la base inicial (initial_cash) de la caja activa (OPEN)
+    y recalcula inmediatamente el expected_cash oficial:
+    expected_cash = initial_cash + total_cash_sales - total_delivery_payouts - total_expenses
+    """
+    try:
+        return crud.update_active_cash_closure_initial_cash(db, payload.initial_cash)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.post("/close", response_model=schemas.CashClosureOut)
 def cerrar_caja(
     close_in: schemas.CashClosureClose,

@@ -107,7 +107,17 @@ import StaffLayout from '../layouts/StaffLayout.astro';
           
           <!-- Base Inicial -->
           <div class="bg-white rounded-2xl p-5 border border-parrilla-border shadow-sm">
-            <span class="text-[11px] text-parrilla-muted font-bold uppercase tracking-wider block">Base Inicial</span>
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[11px] text-parrilla-muted font-bold uppercase tracking-wider block">Base Inicial</span>
+              <button
+                type="button"
+                id="btn-open-edit-initial-cash"
+                class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                title="Corregir Base Inicial (Solo Administrador)"
+              >
+                <span>✏️</span> Corregir Base
+              </button>
+            </div>
             <span id="metric-initial-cash" class="font-display font-black text-2xl text-parrilla-ivory mt-1 block">$0</span>
             <span id="metric-opened-at" class="text-[11px] text-parrilla-muted mt-2 block">Apertura: --:--</span>
           </div>
@@ -363,6 +373,93 @@ import StaffLayout from '../layouts/StaffLayout.astro';
 
     </div>
 
+  </div>
+
+  <!-- ==============================================================
+       MODAL: CORREGIR BASE INICIAL (ADMINISTRATIVO)
+       ============================================================== -->
+  <div id="modal-edit-initial-cash" class="no-print fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-parrilla-border max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-parrilla-border pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            <span>✏️</span>
+          </div>
+          <div>
+            <h3 class="font-display font-black text-lg text-parrilla-ivory">Corregir Base Inicial</h3>
+            <span class="text-[11px] text-parrilla-muted">Ajuste administrativo de apertura de caja</span>
+          </div>
+        </div>
+        <button type="button" id="btn-edit-initial-cash-close" class="text-parrilla-muted hover:text-parrilla-ivory p-1 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-parrilla-muted leading-relaxed">
+        Usa esta herramienta si se digitó una base errónea en la apertura del turno. El sistema recalculará de inmediato el <strong>Efectivo Físico Esperado en Cajón</strong>.
+      </p>
+
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-parrilla-border space-y-1.5 text-xs">
+        <div class="flex justify-between items-center">
+          <span class="text-parrilla-muted font-medium">Valor actual erróneo en sistema:</span>
+          <span id="edit-initial-cash-current" class="font-black text-parrilla-ivory text-sm font-mono">$0</span>
+        </div>
+      </div>
+
+      <form id="form-edit-initial-cash" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-parrilla-gold uppercase mb-1">
+            Nuevo Valor Real de la Base ($) *
+          </label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-parrilla-muted text-sm">$</span>
+            <input
+              type="text"
+              id="edit-initial-cash-input"
+              inputmode="numeric"
+              required
+              placeholder="100.000"
+              class="w-full pl-8 pr-4 py-2.5 bg-slate-50 border border-parrilla-border rounded-xl text-base font-black text-parrilla-ivory focus:bg-white focus:border-parrilla-gold outline-none transition"
+            />
+          </div>
+          <span id="edit-initial-cash-preview" class="text-[11px] text-emerald-600 font-bold mt-1 block"></span>
+        </div>
+
+        <div id="edit-initial-cash-pin-container" class="hidden">
+          <label class="block text-xs font-bold text-parrilla-accent uppercase mb-1">
+            PIN de Administrador Requerido *
+          </label>
+          <input
+            type="password"
+            id="edit-initial-cash-pin"
+            maxlength="4"
+            placeholder="••••"
+            class="w-full px-4 py-2 bg-slate-50 border border-parrilla-border rounded-xl text-center text-lg font-black tracking-widest text-parrilla-ivory focus:bg-white focus:border-parrilla-accent outline-none transition"
+          />
+          <span class="text-[10px] text-parrilla-muted mt-1 block">Ingresa el PIN de Administrador (8989) para autorizar este ajuste.</span>
+        </div>
+
+        <div id="edit-initial-cash-error" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-600"></div>
+
+        <div class="flex justify-end gap-2.5 pt-2">
+          <button
+            type="button"
+            id="btn-edit-initial-cash-cancel"
+            class="px-4 py-2.5 rounded-xl border border-parrilla-border text-xs font-bold text-parrilla-muted hover:bg-slate-50 transition cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            id="btn-edit-initial-cash-submit"
+            class="px-5 py-2.5 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Guardar Corrección</span>
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- ==============================================================
@@ -934,6 +1031,171 @@ import StaffLayout from '../layouts/StaffLayout.astro';
         btn.disabled = false;
         btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Registrar Salida</span>';
         if (window.lucide) window.lucide.createIcons();
+      }
+    });
+
+    // ==============================================================
+    // 1.8 CORREGIR BASE INICIAL ADMINISTRATIVAMENTE (PATCH /api/caja/active/initial-cash)
+    // ==============================================================
+    const modalEditInitialCash = document.getElementById('modal-edit-initial-cash');
+    const inputEditInitialCash = document.getElementById('edit-initial-cash-input');
+    const previewEditInitialCash = document.getElementById('edit-initial-cash-preview');
+    const pinContainerEditInitialCash = document.getElementById('edit-initial-cash-pin-container');
+    const pinInputEditInitialCash = document.getElementById('edit-initial-cash-pin');
+    const errorEditInitialCash = document.getElementById('edit-initial-cash-error');
+    const currentEditInitialCash = document.getElementById('edit-initial-cash-current');
+
+    function getStaffRole() {
+      try {
+        const raw = localStorage.getItem('sp_staff_session');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.role) return String(parsed.role).toLowerCase();
+        }
+      } catch (e) {}
+      const m = document.cookie.match(/sp_role=([^;]+)/);
+      if (m) return decodeURIComponent(m[1]).toLowerCase();
+      return (window.__SP_STAFF_ROLE__ || '').toLowerCase();
+    }
+
+    function parseCOPValue(str) {
+      return parseInt(String(str || '').replace(/\D/g, ''), 10) || 0;
+    }
+
+    inputEditInitialCash?.addEventListener('input', (e) => {
+      const num = parseCOPValue(e.target.value);
+      e.target.value = num > 0 ? num.toLocaleString('es-CO') : (e.target.value === '0' ? '0' : '');
+      if (previewEditInitialCash) {
+        previewEditInitialCash.textContent = num >= 0 ? fmt(num) : '';
+      }
+    });
+
+    const openEditInitialCashModal = () => {
+      if (!activeClosure || activeClosure.status !== 'OPEN') {
+        alert('Debes tener una sesión de caja abierta para corregir la base inicial.');
+        return;
+      }
+
+      const role = getStaffRole();
+      const isAdmin = (role === 'admin');
+
+      if (pinContainerEditInitialCash) {
+        if (isAdmin) {
+          pinContainerEditInitialCash.classList.add('hidden');
+        } else {
+          pinContainerEditInitialCash.classList.remove('hidden');
+        }
+      }
+
+      if (pinInputEditInitialCash) pinInputEditInitialCash.value = '';
+      if (errorEditInitialCash) {
+        errorEditInitialCash.textContent = '';
+        errorEditInitialCash.classList.add('hidden');
+      }
+
+      const currentVal = Number(activeClosure.initial_cash || 0);
+      if (currentEditInitialCash) {
+        currentEditInitialCash.textContent = fmt(currentVal);
+      }
+
+      if (inputEditInitialCash) {
+        inputEditInitialCash.value = currentVal > 0 ? currentVal.toLocaleString('es-CO') : (currentVal === 0 ? '0' : '');
+      }
+      if (previewEditInitialCash) {
+        previewEditInitialCash.textContent = fmt(currentVal);
+      }
+
+      modalEditInitialCash?.classList.remove('hidden');
+      modalEditInitialCash?.classList.add('flex');
+      if (window.lucide) window.lucide.createIcons();
+
+      setTimeout(() => {
+        if (inputEditInitialCash) {
+          inputEditInitialCash.focus();
+          inputEditInitialCash.select();
+        }
+      }, 50);
+    };
+
+    const closeEditInitialCashModal = () => {
+      modalEditInitialCash?.classList.add('hidden');
+      modalEditInitialCash?.classList.remove('flex');
+    };
+
+    document.getElementById('btn-open-edit-initial-cash')?.addEventListener('click', openEditInitialCashModal);
+    document.getElementById('btn-edit-initial-cash-close')?.addEventListener('click', closeEditInitialCashModal);
+    document.getElementById('btn-edit-initial-cash-cancel')?.addEventListener('click', closeEditInitialCashModal);
+
+    document.getElementById('form-edit-initial-cash')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (errorEditInitialCash) {
+        errorEditInitialCash.textContent = '';
+        errorEditInitialCash.classList.add('hidden');
+      }
+
+      const role = getStaffRole();
+      const isAdmin = (role === 'admin');
+
+      if (!isAdmin) {
+        const pin = (pinInputEditInitialCash?.value || '').trim();
+        const validPin = localStorage.getItem('sp_admin_pin') || '8989';
+        if (!pin || (pin !== validPin && pin !== '8989')) {
+          if (errorEditInitialCash) {
+            errorEditInitialCash.textContent = 'PIN de Administrador incorrecto para autorizar esta corrección.';
+            errorEditInitialCash.classList.remove('hidden');
+          }
+          pinInputEditInitialCash?.focus();
+          return;
+        }
+      }
+
+      const newInitialCash = parseCOPValue(inputEditInitialCash?.value || 0);
+      if (newInitialCash < 0) {
+        if (errorEditInitialCash) {
+          errorEditInitialCash.textContent = 'La base inicial debe ser un monto mayor o igual a $0.';
+          errorEditInitialCash.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const submitBtn = document.getElementById('btn-edit-initial-cash-submit');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>Guardando corrección...</span>';
+      }
+
+      try {
+        const res = await fetch('/api/caja/active/initial-cash', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ initial_cash: newInitialCash })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || data.error || 'Error al actualizar base inicial');
+        }
+
+        activeClosure = data;
+        renderOpenCaja(data);
+
+        closeEditInitialCashModal();
+        alert(`✓ Base inicial corregida con éxito a ${fmt(data.initial_cash)}. Efectivo físico esperado recalculado a ${fmt(data.expected_cash)}.`);
+      } catch (err) {
+        console.error('Error al corregir base inicial:', err);
+        if (errorEditInitialCash) {
+          errorEditInitialCash.textContent = err.message || 'Error de conexión con el servidor.';
+          errorEditInitialCash.classList.remove('hidden');
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Guardar Corrección</span>';
+          if (window.lucide) window.lucide.createIcons();
+        }
       }
     });
 
