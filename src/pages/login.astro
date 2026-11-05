@@ -59,23 +59,13 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
             <label for="staff-name" class="block text-[11px] font-black text-parrilla-gold uppercase tracking-wider mb-1.5">
               2. Nombre del Colaborador (Queda registrado en cada comanda)
             </label>
-            <div class="flex flex-wrap gap-1.5 mb-2" id="staff-quick-names">
-              {['Lucely', 'Daniel', 'Camila', 'Valentina', 'Carlos', 'Mesero Turno'].map((n) => (
-                <button
-                  type="button"
-                  data-staff-name={n}
-                  class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-amber-50 hover:border-parrilla-gold text-xs font-bold text-slate-700 border border-slate-200 transition"
-                >
-                  👤 {n}
-                </button>
-              ))}
-            </div>
             <input
               id="staff-name"
               name="staff_name"
               type="text"
               required
-              placeholder="Ej. Lucely, Daniel, Camila..."
+              autocomplete="name"
+              placeholder="Escribe tu nombre..."
               class="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-parrilla-border text-sm font-bold text-parrilla-ivory focus:bg-white focus:border-parrilla-gold outline-none"
             />
           </div>
@@ -153,9 +143,12 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
     const errorBox = document.getElementById('login-error');
     const submitBtn = document.getElementById('login-submit') as HTMLButtonElement | null;
 
-    // Selección de Rol
+    // Selección de Rol con persistencia inmediata en localStorage
     const selectRole = (role: string) => {
       if (roleInput) roleInput.value = role;
+      try {
+        localStorage.setItem('sanparrilla_last_role', role);
+      } catch {}
       document.querySelectorAll('.role-opt-btn').forEach((btn) => {
         const isActive = btn.getAttribute('data-role') === role;
         if (isActive) {
@@ -171,16 +164,35 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
       if (!btn) return;
       const r = btn.getAttribute('data-role') || 'mesero';
       selectRole(r);
-      pinInput?.focus();
+      if (staffNameInput?.value.trim()) {
+        pinInput?.focus();
+      } else {
+        staffNameInput?.focus();
+      }
     });
 
-    // Selección rápida de Nombre del Colaborador
-    document.getElementById('staff-quick-names')?.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement).closest('button[data-staff-name]');
-      if (!btn || !staffNameInput) return;
-      staffNameInput.value = btn.getAttribute('data-staff-name') || '';
-      pinInput?.focus();
+    // Guardar nombre en localStorage al escribir
+    staffNameInput?.addEventListener('input', () => {
+      try {
+        const val = staffNameInput.value.trim();
+        if (val) localStorage.setItem('sanparrilla_last_name', val);
+      } catch {}
     });
+
+    // Precarga desde localStorage
+    let hasPreloadedName = false;
+    try {
+      const savedRole = localStorage.getItem('sanparrilla_last_role') || 'mesero';
+      selectRole(savedRole);
+
+      const savedName = localStorage.getItem('sanparrilla_last_name') || '';
+      if (staffNameInput && savedName) {
+        staffNameInput.value = savedName;
+        hasPreloadedName = true;
+      }
+    } catch {
+      selectRole('mesero');
+    }
 
     const showError = (message: string) => {
       if (!errorBox) return;
@@ -228,7 +240,7 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
       const pin = pinInput.value.trim();
 
       if (!staffName) {
-        showError('Por favor ingresa o selecciona el Nombre del Colaborador.');
+        showError('Por favor escribe tu nombre en el campo de texto.');
         staffNameInput.focus();
         return;
       }
@@ -237,6 +249,12 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
         pinInput.focus();
         return;
       }
+
+      // Persistir nombre y rol en localStorage
+      try {
+        localStorage.setItem('sanparrilla_last_name', staffName);
+        localStorage.setItem('sanparrilla_last_role', requestedRole);
+      } catch {}
 
       errorBox?.classList.add('hidden');
       submitBtn.disabled = true;
@@ -298,6 +316,11 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
       }
     });
 
-    staffNameInput?.focus();
+    // Flujo Rápido de PIN: si el rol y nombre ya están cargados, foco inmediato en el PIN
+    if (hasPreloadedName && pinInput) {
+      setTimeout(() => pinInput.focus(), 60);
+    } else {
+      setTimeout(() => staffNameInput?.focus(), 60);
+    }
   </script>
 </BaseLayout>

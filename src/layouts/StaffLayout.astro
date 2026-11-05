@@ -162,12 +162,7 @@ const navItems = [
         </div>
         <div>
           <label class="block text-[11px] font-black text-slate-600 uppercase mb-1">2. Nombre del Colaborador</label>
-          <div class="flex flex-wrap gap-1 mb-2" id="quick-staff-chips">
-            {['Lucely', 'Daniel', 'Camila', 'Valentina', 'Carlos'].map((n) => (
-              <button type="button" data-qname={n} class="px-2 py-1 rounded-md bg-slate-100 hover:bg-amber-100 text-[11px] font-bold text-slate-700 border border-slate-200">👤 {n}</button>
-            ))}
-          </div>
-          <input id="quick-staff-name" type="text" required placeholder="Nombre del colaborador..." class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-bold text-slate-900 focus:border-parrilla-gold outline-none" />
+          <input id="quick-staff-name" type="text" required autocomplete="name" placeholder="Escribe tu nombre..." class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-bold text-slate-900 focus:border-parrilla-gold outline-none" />
         </div>
         <div>
           <div class="flex items-center justify-between mb-1">
@@ -238,6 +233,7 @@ const navItems = [
 
       function setQuickRole(r) {
         if (qRoleInput) qRoleInput.value = r;
+        try { localStorage.setItem('sanparrilla_last_role', r); } catch (e) {}
         var btns = document.querySelectorAll('.qrole-btn');
         for (var i = 0; i < btns.length; i++) {
           var b = btns[i];
@@ -251,13 +247,19 @@ const navItems = [
 
       if (switchBtn && modal) {
         switchBtn.addEventListener('click', function () {
-          setQuickRole(window.__SP_STAFF_ROLE__ || 'mesero');
-          if (qNameInput) qNameInput.value = window.__SP_STAFF_NAME__ || '';
+          var lastR = localStorage.getItem('sanparrilla_last_role') || window.__SP_STAFF_ROLE__ || 'mesero';
+          var lastN = localStorage.getItem('sanparrilla_last_name') || window.__SP_STAFF_NAME__ || '';
+          setQuickRole(lastR);
+          if (qNameInput) qNameInput.value = lastN;
           if (qPinInput) qPinInput.value = '';
           if (qError) qError.classList.add('hidden');
           modal.classList.remove('hidden');
           modal.classList.add('flex');
-          if (qPinInput) qPinInput.focus();
+          if (lastN && qPinInput) {
+            setTimeout(function() { qPinInput.focus(); }, 80);
+          } else if (qNameInput) {
+            setTimeout(function() { qNameInput.focus(); }, 80);
+          }
         });
       }
       function closeQuickModal() {
@@ -274,15 +276,20 @@ const navItems = [
           var btn = e.target.closest('button[data-qrole]');
           if (!btn) return;
           setQuickRole(btn.getAttribute('data-qrole') || 'mesero');
+          if (qNameInput && qNameInput.value.trim() && qPinInput) {
+            qPinInput.focus();
+          } else if (qNameInput) {
+            qNameInput.focus();
+          }
         });
       }
-      var qChips = document.getElementById('quick-staff-chips');
-      if (qChips) {
-        qChips.addEventListener('click', function (e) {
-          var btn = e.target.closest('button[data-qname]');
-          if (!btn || !qNameInput) return;
-          qNameInput.value = btn.getAttribute('data-qname') || '';
-          if (qPinInput) qPinInput.focus();
+
+      if (qNameInput) {
+        qNameInput.addEventListener('input', function () {
+          try {
+            var val = qNameInput.value.trim();
+            if (val) localStorage.setItem('sanparrilla_last_name', val);
+          } catch (e) {}
         });
       }
 
@@ -294,11 +301,16 @@ const navItems = [
           var p = qPinInput ? qPinInput.value.trim() : '';
           if (!n) {
             if (qError) {
-              qError.textContent = 'Ingresa el nombre del colaborador.';
+              qError.textContent = 'Escribe tu nombre.';
               qError.classList.remove('hidden');
             }
+            if (qNameInput) qNameInput.focus();
             return;
           }
+          try {
+            localStorage.setItem('sanparrilla_last_role', r);
+            localStorage.setItem('sanparrilla_last_name', n);
+          } catch (e) {}
           fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
