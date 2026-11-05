@@ -1242,6 +1242,28 @@ const formatPrice = (val) => {
 
     const normDishText = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
+    const FIXED_PRICE_OPTIONS = [
+      // Precios estándar de Almuerzos y Platos Fuertes
+      16500, 17500, 18000, 18500, 21000, 22000, 23000, 27500, 33000,
+      // Bebidas, adiciones y convenios
+      0, 3000, 4000, 4500, 5500, 6000, 6500, 7500, 8000, 9500, 10000,
+      12000, 13500, 14000, 15000,
+      // Comidas rápidas y noche
+      15500, 16000, 17000, 19500, 20000, 20500, 22500, 23500, 24000, 26000, 28000, 30000,
+      // Picadas grandes noche
+      50000, 55000, 66000
+    ];
+
+    function buildPriceOptionsHtml(currentPrice) {
+      const prNum = Math.round(Number(currentPrice || 0));
+      const prices = Array.from(new Set([...FIXED_PRICE_OPTIONS, prNum])).sort((a, b) => a - b);
+      return prices.map(p => {
+        const isSel = p === prNum;
+        const label = p === 0 ? '$0 (Incluido)' : fmtCOP(p);
+        return `<option value="${p}" ${isSel ? 'selected' : ''}>${label}</option>`;
+      }).join('');
+    }
+
     function broadcastPlatosUpdate(platosList) {
       try {
         const list = Array.isArray(platosList) ? platosList : allLivePlatos;
@@ -1254,127 +1276,8 @@ const formatPrice = (val) => {
       } catch (_) {}
     }
 
-    // Bloques estructurales de Almuerzos y Comidas Rápidas (idénticos a index.astro y pos.astro)
-    const ADMIN_PRICE_GROUP_DEFS = [
-      {
-        key: 'ALM_16500',
-        family: 'ALMUERZOS',
-        title: '🍛 Almuerzos de $16.500 (Ejecutivos y Especiales del Día)',
-        subtitle: 'Milanesa, Nuggets, Pernil, Lomo de Cerdo, Hígado, Chuleta y Especiales de Hoy',
-        badgeColor: 'bg-amber-600 text-white',
-        names: [
-          'Milanesa de pollo', 'Nuggets de pollo', 'Pernil frito', 'Pernil bbq',
-          'Lomo de cerdo a la plancha', 'Hígado en bistec', 'Chuleta de cerdo',
-          'Hígado al ajillo', 'Desgranado de carne', 'Albóndigas napolitanas',
-          'Llanerita (lomo de cerdo y sobrebarriga)', 'Lomo de cerdo apanado',
-          'Lomo en salsa a la mostaza'
-        ]
-      },
-      {
-        key: 'ALM_17500',
-        family: 'ALMUERZOS',
-        title: '🥩 Almuerzos de $17.500 (Res, Pechuga y Cerdo Especial)',
-        subtitle: 'Carne a la plancha/bistec/bbq, Pechugas, Pernil Hawaiano, Lomo y Chuleta al ajillo/bbq',
-        badgeColor: 'bg-orange-600 text-white',
-        names: [
-          'Carne a la plancha', 'Carne en bistec', 'Carne bbq',
-          'Pechuga a la plancha', 'Pechuga en salsa criolla', 'Pechuga apanada',
-          'Pechuga bbq', 'Pechuga al ajillo', 'Pernil hawaiano',
-          'Lomo de cerdo a la bbq', 'Lomo de cerdo al ajillo',
-          'Chuleta de cerdo al ajillo', 'Chuleta de cerdo a la bbq'
-        ]
-      },
-      {
-        key: 'ALM_18000',
-        family: 'ALMUERZOS',
-        title: '🍲 Almuerzos de $18.000 (Bandeja Paisa, Arroces y Especiales)',
-        subtitle: 'Bandeja Paisa, Alitas BBQ, Creps, Bistec a Caballo, Pechuga Hawaiana/Bechamel y Arroces',
-        badgeColor: 'bg-red-600 text-white',
-        names: [
-          'Bandeja paisa', 'Alitas bbq', 'Creps de pollo', 'Bistec a caballo',
-          'Pechuga hawaiana', 'Pechuga en salsa bechamel', 'Combo Personal',
-          'Arroz ranchero', 'Arroz mixto', 'Espagueti con pollo',
-          'Arroz con pollo', 'Arroz paisa'
-        ]
-      },
-      {
-        key: 'ALM_21000',
-        family: 'ALMUERZOS',
-        title: '🐟 Almuerzos de $21.000 (Sobrebarriga, Bagre y Róbalo)',
-        subtitle: 'Sobrebarriga dorada, Bagre frito / al ajillo y Róbalo apanado / al ajillo',
-        badgeColor: 'bg-rose-700 text-white',
-        names: [
-          'Sobrebarriga dorada', 'Bagre frito', 'Bagre al ajillo',
-          'Róbalo apanado', 'Róbalo al ajillo'
-        ]
-      },
-      {
-        key: 'ALM_22000',
-        family: 'ALMUERZOS',
-        title: '🍲 Almuerzos de $22.000 (Sudados, Mojarra y Mini Cazuela)',
-        subtitle: 'Bagre sudado, Mojarra frita / sudada y Mini cazuela de mariscos',
-        badgeColor: 'bg-purple-700 text-white',
-        names: [
-          'Bagre sudado', 'Bagre frito sudado', 'Mojarra frita',
-          'Mojarra sudada', 'Mojarra frita sudada', 'Mini cazuela de mariscos'
-        ]
-      },
-      {
-        key: 'ALM_23000',
-        family: 'ALMUERZOS',
-        title: '🍖 Almuerzos de $23.000 (Costillas BBQ y Pechugas Gratinadas)',
-        subtitle: 'Costillas BBQ, Pechuga con maíz gratinada y Pechuga en champiñones',
-        badgeColor: 'bg-indigo-700 text-white',
-        names: [
-          'Costillas bbq', 'Pechuga con maíz gratinada', 'Pechuga en champiñones'
-        ]
-      },
-      {
-        key: 'ALM_27500',
-        family: 'ALMUERZOS',
-        title: '🔥 Almuerzos de $27.500 (Churrasco, Parrilladas y Cazuelas)',
-        subtitle: 'Churrasco, Parrillada, Llanera mixta, Parrilla mixta, Carne/Pechuga grande y Mini cazuelas',
-        badgeColor: 'bg-amber-800 text-white',
-        names: [
-          'Churrasco', 'Parrillada', 'Pechuga con tocineta y champ.',
-          'Pollo Santo domingo', 'Llanera mixta', 'Parrilla mixta',
-          'Carne grande', 'Pechuga grande', 'Mini cazuela de camarones',
-          'Mini cazuela de bagre'
-        ]
-      },
-      {
-        key: 'ALM_33000',
-        family: 'ALMUERZOS',
-        title: '🦞 Almuerzos de $33.000 (Cazuela de Mariscos y Marineras)',
-        subtitle: 'Cazuela de mariscos, Róbalo a la marinera, Bagre a la marinera y Róbalo con camarones',
-        badgeColor: 'bg-cyan-800 text-white',
-        names: [
-          'Cazuela de mariscos', 'Róbalo a la marinera',
-          'Bagre a la marinera', 'Róbalo con camarones'
-        ]
-      },
-      {
-        key: 'OTROS_PICADAS',
-        family: 'OTROS',
-        title: '🥩 Picadas Especiales (Almuerzo / Compartir)',
-        subtitle: 'Picada x 1, Picada x 2, Picada x 3 y Picada Berraca',
-        badgeColor: 'bg-emerald-700 text-white',
-        names: [
-          'Picada x 1', 'Picada x 2', 'Picada x 3', 'Picada Berraca'
-        ]
-      },
-      {
-        key: 'OTROS_BEBIDAS',
-        family: 'OTROS',
-        title: '🥤 Bebidas, Jugos y Porciones Adicionales',
-        subtitle: 'Gaseosas, Jugos Naturales, Cerveza y Porciones de Papa / Patacón',
-        badgeColor: 'bg-teal-700 text-white',
-        names: [
-          'Gaseosa 400ml', 'Gaseosa 1.5L', 'Jugo Natural en Agua',
-          'Jugo Natural en Leche', 'Cerveza Club Colombia / Águila',
-          'Porción de Papas a la Francesa', 'Porción de Patacón con Hogao'
-        ]
-      },
+    // Definición de grupos especiales de Convenios y Otros
+    const ADMIN_SPECIAL_GROUP_DEFS = [
       {
         key: 'CONV_CLINICA_DIETAS',
         family: 'CONVENIOS',
@@ -1416,28 +1319,62 @@ const formatPrice = (val) => {
           'Desayuno Tubo',
           'Almuerzo Especial Terpel'
         ]
+      },
+      {
+        key: 'OTROS_PICADAS',
+        family: 'OTROS',
+        title: '🥩 Picadas Especiales (Almuerzo / Compartir)',
+        subtitle: 'Picada x 1, Picada x 2, Picada x 3 y Picada Berraca',
+        badgeColor: 'bg-emerald-700 text-white',
+        names: [
+          'Picada x 1', 'Picada x 2', 'Picada x 3', 'Picada Berraca'
+        ]
+      },
+      {
+        key: 'OTROS_BEBIDAS',
+        family: 'OTROS',
+        title: '🥤 Bebidas, Jugos y Porciones Adicionales',
+        subtitle: 'Gaseosas, Jugos Naturales, Cerveza y Porciones de Papa / Patacón',
+        badgeColor: 'bg-teal-700 text-white',
+        names: [
+          'Gaseosa 400ml', 'Gaseosa 1.5L', 'Jugo Natural en Agua',
+          'Jugo Natural en Leche', 'Cerveza Club Colombia / Águila',
+          'Porción de Papas a la Francesa', 'Porción de Patacón con Hogao'
+        ]
       }
     ];
+
+    const LUNCH_PRICE_METADATA = {
+      16500: { title: '🍛 Almuerzos de $16.500 (Ejecutivos y Especiales del Día)', subtitle: 'Milanesa, Nuggets, Pernil, Lomo, Hígado, Chuleta y Especiales de Hoy', badgeColor: 'bg-amber-600 text-white' },
+      17500: { title: '🥩 Almuerzos de $17.500 (Res, Pechuga y Cerdo Especial)', subtitle: 'Carne a la plancha/bistec/bbq, Pechugas, Pernil Hawaiano, Lomo y Chuleta al ajillo/bbq', badgeColor: 'bg-orange-600 text-white' },
+      18000: { title: '🍲 Almuerzos de $18.000 (Bandeja Paisa, Arroces y Especiales)', subtitle: 'Bandeja Paisa, Alitas BBQ, Creps, Bistec a Caballo, Pechuga Hawaiana/Bechamel y Arroces', badgeColor: 'bg-red-600 text-white' },
+      18500: { title: '🍛 Almuerzos de $18.500 (Arroces Especiales y Pastas)', subtitle: 'Arroz con Pollo Especial, Arroz Paisa, Espaguetis y Especiales', badgeColor: 'bg-rose-600 text-white' },
+      21000: { title: '🐟 Almuerzos de $21.000 (Sobrebarriga, Bagre y Róbalo)', subtitle: 'Sobrebarriga dorada, Bagre frito / al ajillo y Róbalo apanado / al ajillo', badgeColor: 'bg-rose-700 text-white' },
+      22000: { title: '🍲 Almuerzos de $22.000 (Sudados, Mojarra y Mini Cazuela)', subtitle: 'Bagre sudado, Mojarra frita / sudada y Mini cazuela de mariscos', badgeColor: 'bg-purple-700 text-white' },
+      23000: { title: '🍖 Almuerzos de $23.000 (Costillas BBQ y Pechugas Gratinadas)', subtitle: 'Costillas BBQ, Pechuga con maíz gratinada y Pechuga en champiñones', badgeColor: 'bg-indigo-700 text-white' },
+      27500: { title: '🔥 Almuerzos de $27.500 (Churrasco, Parrilladas y Cazuelas)', subtitle: 'Churrasco, Parrillada, Llanera mixta, Parrilla mixta, Carne/Pechuga grande y Mini cazuelas', badgeColor: 'bg-amber-800 text-white' },
+      33000: { title: '🦞 Almuerzos de $33.000 (Cazuela de Mariscos y Marineras)', subtitle: 'Cazuela de mariscos, Róbalo a la marinera, Bagre a la marinera y Róbalo con camarones', badgeColor: 'bg-cyan-800 text-white' },
+    };
 
     function categorizeDishesIntoBlocks(platos) {
       const assignedIds = new Set();
       const blocks = [];
 
-      // 1. Asignar bloques definidos por lista de nombres o categoría
-      for (const def of ADMIN_PRICE_GROUP_DEFS) {
+      // 1. Asignar bloques especiales fijos (Convenios y Picadas/Bebidas Almuerzo)
+      for (const def of ADMIN_SPECIAL_GROUP_DEFS) {
         const normTargets = new Set(def.names.map(normDishText));
         const items = platos.filter(p => {
           if (assignedIds.has(p.id)) return false;
           const n = normDishText(p.nombre);
           if (normTargets.has(n)) return true;
-          if (def.key === 'OTROS_PICADAS_BEBIDAS' && Number(p.categoria_id) === 3) return true;
+          if (def.key === 'CONV_CLINICA_DIETAS' && (n.includes('clinica') || n.includes('hipo'))) return true;
           return false;
         });
 
         if (items.length > 0) {
           items.forEach(i => assignedIds.add(i.id));
           items.sort((a, b) => Number(a.precio || 0) - Number(b.precio || 0) || String(a.nombre).localeCompare(String(b.nombre)));
-          const repPrice = items[0]?.precio || 16500;
+          const repPrice = items[0]?.precio || (def.family === 'CONVENIOS' ? 16500 : 6000);
           blocks.push({
             key: def.key,
             family: def.family,
@@ -1450,7 +1387,7 @@ const formatPrice = (val) => {
         }
       }
 
-      // 2. Platos de Comidas Rápidas (por descripción de seed_rapidas o categoría/nombre)
+      // 2. Platos de Comidas Rápidas (por descripción o palabras clave)
       const rapidasItems = platos.filter(p => {
         if (assignedIds.has(p.id)) return false;
         const d = normDishText(p.descripcion);
@@ -1495,30 +1432,35 @@ const formatPrice = (val) => {
         }
       }
 
-      // 3. Cualquier plato restante en Neon DB (agrupado por su precio actual)
-      const remaining = platos.filter(p => !assignedIds.has(p.id));
-      if (remaining.length > 0) {
-        const byPriceMap = new Map();
-        for (const p of remaining) {
-          const pr = Math.round(Number(p.precio || 0));
-          const list = byPriceMap.get(pr) || [];
-          list.push(p);
-          byPriceMap.set(pr, list);
-        }
-        const sortedPrices = Array.from(byPriceMap.keys()).sort((a, b) => a - b);
-        for (const pr of sortedPrices) {
-          const items = byPriceMap.get(pr) || [];
-          const fmtPr = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(pr);
-          blocks.push({
-            key: `EXTRA_${pr}`,
-            family: 'ALMUERZOS',
-            title: `🍽️ Otros Platos de ${fmtPr}`,
-            subtitle: `${items.length} plato(s) con tarifa de ${fmtPr}`,
-            badgeColor: 'bg-parrilla-gold text-white',
-            representativePrice: pr,
-            items
-          });
-        }
+      // 3. Platos de Almuerzos restantes agrupados DINÁMICAMENTE POR SU PRECIO ACTUAL
+      const lunchDishes = platos.filter(p => !assignedIds.has(p.id));
+      const byPriceMap = new Map();
+      for (const p of lunchDishes) {
+        const pr = Math.round(Number(p.precio || 0));
+        const list = byPriceMap.get(pr) || [];
+        list.push(p);
+        byPriceMap.set(pr, list);
+      }
+
+      const sortedLunchPrices = Array.from(byPriceMap.keys()).sort((a, b) => a - b);
+      for (const pr of sortedLunchPrices) {
+        const items = byPriceMap.get(pr) || [];
+        items.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+        const meta = LUNCH_PRICE_METADATA[pr] || {
+          title: `🍛 Almuerzos de ${fmtCOP(pr)}`,
+          subtitle: `${items.length} plato(s) con tarifa de ${fmtCOP(pr)}`,
+          badgeColor: 'bg-parrilla-gold text-white'
+        };
+
+        blocks.push({
+          key: `ALM_PRICE_${pr}`,
+          family: 'ALMUERZOS',
+          title: meta.title,
+          subtitle: meta.subtitle,
+          badgeColor: meta.badgeColor,
+          representativePrice: pr,
+          items
+        });
       }
 
       return blocks;
@@ -1621,26 +1563,15 @@ const formatPrice = (val) => {
                       </div>
                     </div>
 
-                    <div class="flex items-center gap-1.5 shrink-0">
-                      <!-- Precio individual -->
-                      <div class="flex items-center bg-parrilla-dark rounded-lg border border-parrilla-border px-2 py-1">
-                        <span class="text-[10px] font-bold text-parrilla-muted mr-1">$</span>
-                        <input
-                          type="number"
-                          step="100"
-                          value="${priceNum}"
-                          data-single-price-input="${dish.id}"
-                          class="w-20 bg-transparent text-xs font-mono font-bold text-parrilla-ivory outline-none"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        data-save-single-id="${dish.id}"
-                        class="btn-save-single-plato px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-[10px] transition cursor-pointer"
-                        title="Guardar nuevo precio de este plato"
+                    <div class="flex items-center gap-2 shrink-0">
+                      <!-- Selector estático de precio (reemplaza inputs y botones manuales) -->
+                      <select
+                        data-single-price-select="${dish.id}"
+                        class="select-single-plato-price px-2.5 py-1.5 rounded-lg bg-parrilla-dark border border-parrilla-border text-xs font-mono font-black text-parrilla-gold focus:border-parrilla-gold outline-none cursor-pointer"
+                        title="Cambiar precio y mover plato a otro bloque de precio"
                       >
-                        Guardar $
-                      </button>
+                        ${buildPriceOptionsHtml(priceNum)}
+                      </select>
 
                       <!-- Interruptor 1-Clic Disponible / Agotado -->
                       <button
@@ -1701,33 +1632,41 @@ const formatPrice = (val) => {
         });
       });
 
-      // Bind eventos de guardar precio individual
-      container.querySelectorAll('.btn-save-single-plato').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const platoId = Number(btn.getAttribute('data-save-single-id'));
+      // Bind eventos de cambio de precio inmediato mediante selector estático (<select>)
+      container.querySelectorAll('.select-single-plato-price').forEach(sel => {
+        sel.addEventListener('change', async () => {
+          const platoId = Number(sel.getAttribute('data-single-price-select'));
           // @ts-ignore
-          const inputEl = container.querySelector(`input[data-single-price-input="${platoId}"]`);
-          // @ts-ignore
-          const nuevoPrecio = Number(inputEl?.value || 0);
-          if (!platoId || !nuevoPrecio || nuevoPrecio <= 0) return;
+          const nuevoPrecio = Number(sel.value || 0);
+          if (!platoId || isNaN(nuevoPrecio) || nuevoPrecio < 0) return;
 
-          const origText = btn.textContent;
-          btn.textContent = '⏳';
+          // @ts-ignore
+          sel.disabled = true;
           try {
-            const res = await fetch(`/api/platos/${platoId}`, {
-              method: 'PUT',
+            let res = await fetch(`/api/platos/${platoId}`, {
+              method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ precio: nuevoPrecio })
             });
+            if (!res.ok) {
+              res = await fetch(`/api/platos/${platoId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ precio: nuevoPrecio })
+              });
+            }
             if (!res.ok) throw new Error('Error HTTP ' + res.status);
             const updated = await res.json();
-            allLivePlatos = allLivePlatos.map(p => Number(p.id) === platoId ? { ...p, ...updated, precio: nuevoPrecio } : p);
+            allLivePlatos = allLivePlatos.map(p =>
+              Number(p.id) === platoId ? { ...p, ...updated, precio: nuevoPrecio } : p
+            );
             broadcastPlatosUpdate(allLivePlatos);
-            btn.textContent = '✓ Guardado';
-            setTimeout(() => { btn.textContent = origText; }, 1400);
+            // Reorganizar visualmente de inmediato al bloque de precio correspondiente
+            renderAdminPriceGroups();
           } catch (err) {
-            alert('Error al guardar precio del plato: ' + (err.message || err));
-            btn.textContent = origText;
+            alert('Error actualizando precio del plato: ' + (err.message || err));
+            // @ts-ignore
+            sel.disabled = false;
           }
         });
       });
@@ -1740,12 +1679,21 @@ const formatPrice = (val) => {
           const nextDisp = !curDisp;
 
           btn.textContent = '⏳...';
+          // @ts-ignore
+          btn.disabled = true;
           try {
-            const res = await fetch(`/api/platos/${platoId}`, {
-              method: 'PUT',
+            let res = await fetch(`/api/platos/${platoId}`, {
+              method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ disponible: nextDisp, activo: nextDisp })
             });
+            if (!res.ok) {
+              res = await fetch(`/api/platos/${platoId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ disponible: nextDisp, activo: nextDisp })
+              });
+            }
             if (!res.ok) throw new Error('Error HTTP ' + res.status);
             const updated = await res.json();
             allLivePlatos = allLivePlatos.map(p =>

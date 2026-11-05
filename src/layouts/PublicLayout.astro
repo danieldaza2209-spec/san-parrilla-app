@@ -27,39 +27,37 @@ const WHATSAPP = 'https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20deseo
         </div>
       </a>
 
-      <div class="flex items-center gap-2 sm:gap-3">
-        <!-- Selector de Vista (Header) desactivado temporalmente: vista fija en Pedidos Rápidos -->
-        <!--
-        <div
-          class="hidden md:inline-flex items-center bg-slate-100 p-1 rounded-xl border border-parrilla-border"
-          role="tablist"
-          aria-label="Modo de visualización del menú"
+      <!-- Selector de Menú Header: ☀️ Almuerzos vs 🍔 Comidas Rápidas -->
+      <div
+        class="inline-flex items-center bg-slate-100 p-1 rounded-xl border border-parrilla-border shadow-xs"
+        role="tablist"
+        aria-label="Selector de menú"
+      >
+        <button
+          type="button"
+          data-menu-switch="almuerzos"
+          class="menu-switch-btn active px-2.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-black transition bg-parrilla-gold text-white shadow-xs cursor-pointer flex items-center gap-1.5"
         >
-          <button
-            type="button"
-            data-menu-view="quick"
-            role="tab"
-            aria-selected="true"
-            class="menu-view-btn px-3 py-1.5 rounded-lg text-xs font-extrabold transition bg-parrilla-gold text-white shadow-sm"
-          >
-            ⚡ Pedidos Rápidos
-          </button>
-          <button
-            type="button"
-            data-menu-view="styled"
-            role="tab"
-            aria-selected="false"
-            class="menu-view-btn px-3 py-1.5 rounded-lg text-xs font-extrabold transition text-parrilla-ivory hover:text-parrilla-gold"
-          >
-            📖 Carta Estilizada
-          </button>
-        </div>
-        -->
+          <span>☀️</span>
+          <span>Almuerzos</span>
+        </button>
+        <button
+          type="button"
+          data-menu-switch="rapidas"
+          class="menu-switch-btn px-2.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-extrabold transition text-parrilla-ivory hover:text-parrilla-gold cursor-pointer flex items-center gap-1.5"
+        >
+          <span>🍔</span>
+          <span class="hidden sm:inline">Comidas Rápidas</span>
+          <span class="sm:hidden">Rápidas</span>
+        </button>
+      </div>
 
+      <div class="flex items-center gap-2 sm:gap-3">
         <a href={WHATSAPP} target="_blank" rel="noopener noreferrer"
            class="inline-flex items-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs sm:text-sm px-3.5 py-2 rounded-lg shadow-sm hover:shadow transition active:scale-95">
           <i data-lucide="message-circle" class="w-4 h-4"></i>
-          <span>Pedir por WhatsApp</span>
+          <span class="hidden md:inline">Pedir por WhatsApp</span>
+          <span class="md:hidden">WhatsApp</span>
         </a>
       </div>
     </div>

@@ -18,6 +18,21 @@ const dailySpecials = getDailySpecials() || fallbackDailySpecials;
 // Picadas y bebidas se agregan tal cual, sin esas opciones.
 const customizableCategories = new Set(['especiales_hoy', 'fuertes_165', 'fuertes_175', 'especiales_21']);
 
+// Separación limpia: Almuerzos (Día) vs Comidas Rápidas (Noche)
+const lunchProducts = products.filter((p) => !p.id.startsWith('rap-') && p.menu_type !== 'rapidas');
+const rapidasProducts = products.filter((p) => p.id.startsWith('rap-') || p.menu_type === 'rapidas');
+
+const rapidasCatCards = [
+  { id: 'hamburguesas', title: 'Hamburguesas', icon: '🍔' },
+  { id: 'perros_calientes', title: 'Perros Calientes', icon: '🌭' },
+  { id: 'salchipapas_papas_locas', title: 'Salchipapas y Papas Locas', icon: '🍟' },
+  { id: 'patacones', title: 'Patacones', icon: '🫓' },
+  { id: 'sandwich', title: 'Sándwiches', icon: '🥪' },
+  { id: 'picadas_noche', title: 'Picadas Noche', icon: '🥩' },
+  { id: 'especiales_noche', title: 'Especiales Noche', icon: '🔥' },
+  { id: 'bebidas', title: 'Granizados, Jugos y Bebidas', icon: '🥤', catIds: ['granizados_jugos', 'bebidas_rapidas'] },
+];
+
 // Group products by category
 const productsByCat = {};
 categories.forEach(cat => {
@@ -60,93 +75,153 @@ const formatPrice = (val) => {
 
   <!-- Menu Carta Section -->
   <section id="menu-carta" class="max-w-6xl mx-auto px-2 sm:px-6 lg:px-8 pt-8 sm:pt-14 pb-24">
-    <!-- Selector de Vista Destacado (Oculto / comentado temporalmente: vista fija en Pedidos Rápidos) -->
-    <!--
-    <div class="flex flex-col items-center justify-center mb-12">
-      <span class="text-[11px] font-bold uppercase tracking-widest text-parrilla-muted mb-2.5">Elige cómo prefieres ver el menú</span>
+    <!-- Selector Prominente de Menú: ☀️ Almuerzos vs 🍔 Comidas Rápidas -->
+    <div class="flex flex-col items-center justify-center mb-8 sm:mb-12">
+      <span class="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-parrilla-gold block mb-2">
+        SELECCIONA TU MENÚ
+      </span>
       <div
-        class="inline-flex items-center bg-white p-1.5 rounded-2xl border border-parrilla-border shadow-md"
+        class="inline-flex items-center bg-white p-1.5 rounded-2xl border-2 border-parrilla-gold/40 shadow-md"
         role="tablist"
-        aria-label="Selector de vista de la carta"
+        aria-label="Selector de menú"
       >
         <button
           type="button"
-          data-menu-view="quick"
-          role="tab"
-          aria-selected="true"
-          class="menu-view-btn px-5 sm:px-7 py-3 rounded-xl text-xs sm:text-sm font-extrabold transition bg-parrilla-gold text-white shadow-sm cursor-pointer"
+          data-menu-switch="almuerzos"
+          class="menu-switch-btn active px-4 sm:px-8 py-2 sm:py-3.5 rounded-xl text-xs sm:text-sm font-black transition bg-parrilla-gold text-white shadow-xs cursor-pointer flex items-center gap-2"
         >
-          ⚡ Pedidos Rápidos
+          <span class="text-base sm:text-lg">☀️</span>
+          <span>Almuerzos (Menú del Día)</span>
         </button>
         <button
           type="button"
-          data-menu-view="styled"
-          role="tab"
-          aria-selected="false"
-          class="menu-view-btn px-5 sm:px-7 py-3 rounded-xl text-xs sm:text-sm font-extrabold transition text-parrilla-ivory hover:text-parrilla-gold cursor-pointer"
+          data-menu-switch="rapidas"
+          class="menu-switch-btn px-4 sm:px-8 py-2 sm:py-3.5 rounded-xl text-xs sm:text-sm font-extrabold transition text-parrilla-ivory hover:text-parrilla-gold cursor-pointer flex items-center gap-2"
         >
-          📖 Carta Estilizada
+          <span class="text-base sm:text-lg">🍔</span>
+          <span>Comidas Rápidas (Noche)</span>
         </button>
       </div>
     </div>
-    -->
 
-    <!-- Vista Principal Fija: ⚡ Pedidos Rápidos -->
-    <div id="view-panel-quick">
+    <!-- Vista 1: ☀️ Almuerzos (Activa por defecto en el día) -->
+    <div id="view-panel-almuerzos">
       <QuickOrderView
-        products={products}
+        products={lunchProducts}
         dailySpecials={dailySpecials}
         customizableCategories={customizableCategories}
       />
     </div>
 
-    <!-- Vista Alternativa Desconectada (No borrada): 📖 Carta Estilizada ("La Carta del Asador") -->
-    {false && (
-      <div id="view-panel-styled" class="hidden">
-        <StyledMenuView categories={categories} products={products} customizableCategories={customizableCategories} />
+    <!-- Vista 2: 🍔 Comidas Rápidas (Turno Noche) -->
+    <div id="view-panel-rapidas" class="hidden space-y-8 sm:space-y-12">
+      <div class="text-center max-w-2xl mx-auto px-2">
+        <span class="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-parrilla-gold block mb-1">
+          TURNO NOCHE & BRASAS
+        </span>
+        <h2 class="font-display font-black text-2xl sm:text-4xl text-parrilla-ivory">
+          Comidas Rápidas
+        </h2>
+        <p class="text-xs sm:text-sm text-parrilla-muted mt-1">
+          Hamburguesas artesanales, perros calientes, salchipapas, patacones, sándwiches, picadas de la casa y bebidas.
+        </p>
       </div>
-    )}
+
+      <!-- Grid de 2 columnas compactas (grid-cols-1 sm:grid-cols-2) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5 px-1 sm:px-2 items-start">
+        {rapidasCatCards.map((cat) => {
+          const catItems = cat.catIds
+            ? rapidasProducts.filter((p) => cat.catIds.includes(p.category_id))
+            : rapidasProducts.filter((p) => p.category_id === cat.id);
+          if (catItems.length === 0) return null;
+          return (
+            <div class="bg-white rounded-xl sm:rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-3 sm:p-5 shadow-sm flex flex-col" data-cat={cat.id}>
+              <div class="text-center border-b border-parrilla-border pb-2 sm:pb-3 mb-2 sm:mb-3">
+                <span class="font-display font-black text-sm sm:text-lg text-parrilla-gold tracking-tight flex items-center justify-center gap-1.5 uppercase">
+                  <span>{cat.icon}</span>
+                  <span>{cat.title}</span>
+                </span>
+              </div>
+              <ul class="divide-y divide-gray-100">
+                {catItems.map((item) => (
+                  <li class="flex items-center justify-between gap-2 py-2 sm:py-2.5">
+                    <span class="text-xs sm:text-sm font-semibold text-parrilla-ivory leading-tight min-w-0 flex-1">
+                      {item.name}
+                    </span>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                      <span class="font-display font-black text-xs sm:text-sm text-parrilla-gold font-mono">
+                        {formatPrice(item.price)}
+                      </span>
+                      <button
+                        type="button"
+                        data-name={item.name}
+                        data-price={item.price}
+                        data-customizable="false"
+                        aria-label={`Agregar ${item.name} al pedido`}
+                        class="btn-add-cart w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer font-bold text-sm"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   </section>
 
-  <!-- Script de alternancia de vistas (comentado mientras la vista Pedidos Rápidos permanece fija) -->
-  <!--
+  <!-- Script de alternancia de menú: ☀️ Almuerzos vs 🍔 Comidas Rápidas -->
   <script>
-    const viewButtons = document.querySelectorAll('.menu-view-btn');
-    const quickPanel = document.getElementById('view-panel-quick');
-    const styledPanel = document.getElementById('view-panel-styled');
+    function setClientActiveMenu(menu: string, scrollIntoMenu = false) {
+      const isAlmuerzos = menu !== 'rapidas';
+      const almuerzosPanel = document.getElementById('view-panel-almuerzos');
+      const rapidasPanel = document.getElementById('view-panel-rapidas');
 
-    function setActiveMenuView(view: string, scrollIntoMenu = false) {
-      const isQuick = view !== 'styled';
-      quickPanel?.classList.toggle('hidden', !isQuick);
-      styledPanel?.classList.toggle('hidden', isQuick);
+      if (almuerzosPanel) almuerzosPanel.classList.toggle('hidden', !isAlmuerzos);
+      if (rapidasPanel) rapidasPanel.classList.toggle('hidden', isAlmuerzos);
 
-      viewButtons.forEach((btn) => {
-        const active = btn.getAttribute('data-menu-view') === (isQuick ? 'quick' : 'styled');
-        btn.setAttribute('aria-selected', String(active));
-        btn.classList.toggle('bg-parrilla-gold', active);
-        btn.classList.toggle('text-white', active);
-        btn.classList.toggle('shadow-sm', active);
-        btn.classList.toggle('text-parrilla-ivory', !active);
-        btn.classList.toggle('hover:text-parrilla-gold', !active);
+      document.querySelectorAll('[data-menu-switch]').forEach((btn) => {
+        const btnMenu = btn.getAttribute('data-menu-switch');
+        const isActive = (isAlmuerzos && btnMenu === 'almuerzos') || (!isAlmuerzos && btnMenu === 'rapidas');
+        btn.classList.toggle('bg-parrilla-gold', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('shadow-xs', isActive);
+        btn.classList.toggle('font-black', isActive);
+        btn.classList.toggle('text-parrilla-ivory', !isActive);
+        btn.classList.toggle('hover:text-parrilla-gold', !isActive);
+        btn.classList.toggle('font-extrabold', !isActive);
       });
 
       if (scrollIntoMenu) {
         const menuSection = document.getElementById('menu-carta');
-        if (menuSection && window.scrollY < menuSection.offsetTop - 140) {
+        if (menuSection && window.scrollY < menuSection.offsetTop - 100) {
           menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }
+
+      try {
+        localStorage.setItem('sp_active_client_menu', isAlmuerzos ? 'almuerzos' : 'rapidas');
+      } catch (_) {}
     }
 
-    viewButtons.forEach((btn) => {
+    document.querySelectorAll('[data-menu-switch]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const targetView = btn.getAttribute('data-menu-view') || 'quick';
+        const targetMenu = btn.getAttribute('data-menu-switch') || 'almuerzos';
         const inHeader = Boolean(btn.closest('header'));
-        setActiveMenuView(targetView, inHeader);
+        setClientActiveMenu(targetMenu, inHeader);
       });
     });
+
+    try {
+      const saved = localStorage.getItem('sp_active_client_menu');
+      if (saved === 'rapidas') {
+        setClientActiveMenu('rapidas', false);
+      }
+    } catch (_) {}
   </script>
-  -->
 
   <!-- Carrito flotante (pedido local, campos de entrega/pago y envío por WhatsApp) -->
   <CartDrawer specials={dailySpecials} />

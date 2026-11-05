@@ -527,9 +527,63 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
 
         // Actualizar precio visible en tarjetas de Picadas, Bebidas o Comidas Rápidas
         if (rowOrCard && !btn.closest('[data-price-column]')) {
-          const priceLabel = rowOrCard.querySelector('.font-display.text-parrilla-gold, .pos-rapida-price');
+          const priceLabel = rowOrCard.querySelector('.font-display.text-parrilla-gold, .font-mono.text-parrilla-gold, .pos-rapida-price');
           if (priceLabel && newPrice > 0) {
             priceLabel.textContent = fmtCOP(newPrice);
+          }
+        }
+
+        // Reorganización visual dinámica: si cambió de precio, moverlo a la caja de precio correspondiente
+        const parentCol = btn.closest('[data-price-column]');
+        if (parentCol && newPrice > 0) {
+          const currentColPrice = Number(parentCol.getAttribute('data-price-column') || 0);
+          if (currentColPrice > 0 && newPrice !== currentColPrice) {
+            const li = btn.closest('li');
+            if (li) {
+              let targetCol = document.querySelector(`[data-price-column="${newPrice}"]`);
+              if (!targetCol) {
+                // Crear caja de columna de precio en el DOM si aún no existe
+                const newCol = document.createElement('div');
+                newCol.className = 'bg-white rounded-xl sm:rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-2.5 sm:p-5 shadow-sm flex flex-col';
+                newCol.setAttribute('data-price-column', String(newPrice));
+                newCol.innerHTML = `
+                  <div class="text-center border-b border-parrilla-border pb-2 sm:pb-3 mb-1.5 sm:mb-2">
+                    <span class="font-display font-black text-lg sm:text-3xl text-parrilla-gold tracking-tight">
+                      ${fmtCOP(newPrice)}
+                    </span>
+                  </div>
+                  <ul></ul>
+                `;
+                const containerGrid = parentCol.parentElement;
+                if (containerGrid) {
+                  const existingCols = Array.from(containerGrid.querySelectorAll(':scope > [data-price-column]'));
+                  let inserted = false;
+                  for (const ec of existingCols) {
+                    if (Number(ec.getAttribute('data-price-column')) > newPrice) {
+                      containerGrid.insertBefore(newCol, ec);
+                      inserted = true;
+                      break;
+                    }
+                  }
+                  if (!inserted) containerGrid.appendChild(newCol);
+                  targetCol = newCol;
+                }
+              }
+
+              if (targetCol) {
+                targetCol.style.display = '';
+                const targetUl = targetCol.querySelector(':scope > ul');
+                if (targetUl && li.parentElement !== targetUl) {
+                  targetUl.appendChild(li);
+                }
+              }
+
+              // Ocultar la columna de precio anterior si quedó vacía
+              const remainingItems = parentCol.querySelectorAll(':scope > ul > li, [data-special-items] > li');
+              if (remainingItems.length === 0) {
+                parentCol.style.display = 'none';
+              }
+            }
           }
         }
 
@@ -565,51 +619,15 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
         }
       });
 
-      // 2. Actualizar encabezados de columnas de precios ([data-price-column]) y badges individuales si un plato cambió de precio
+      // 2. Limpieza de badges de precios personalizados si el plato ya está en su caja correcta
       document.querySelectorAll('[data-price-column]').forEach((colEl) => {
-        const regularBtns = Array.from(colEl.querySelectorAll(':scope > ul .btn-add-cart[data-price]'));
-        if (regularBtns.length === 0) return;
-
-        // Calcular el precio dominante (moda) de la columna por si se actualizó todo el grupo en bloque
-        const freq = new Map();
-        let dominantPrice = Number(colEl.getAttribute('data-price-column') || 0);
-        let maxCount = 0;
-        regularBtns.forEach((b) => {
-          const p = Number(b.getAttribute('data-price') || 0);
-          if (p > 0) {
-            const c = (freq.get(p) || 0) + 1;
-            freq.set(p, c);
-            if (c > maxCount) {
-              maxCount = c;
-              dominantPrice = p;
-            }
-          }
-        });
-
-        const headerPriceEl = colEl.querySelector(':scope > div:first-child span');
-        if (headerPriceEl && dominantPrice > 0) {
-          headerPriceEl.textContent = fmtCOP(dominantPrice);
-          colEl.setAttribute('data-price-column', String(dominantPrice));
-        }
-
-        // Si un plato individual dentro de la columna tiene un precio distinto al encabezado de la columna, mostrar su precio al lado
-        regularBtns.forEach((b) => {
-          const p = Number(b.getAttribute('data-price') || 0);
-          const li = b.closest('li');
-          const nameSpan = li ? li.querySelector('span.flex-1') : null;
-          if (!nameSpan) return;
-          const existingPriceTag = nameSpan.querySelector('[data-custom-price-tag]');
-          if (p > 0 && p !== dominantPrice) {
-            if (existingPriceTag) {
-              existingPriceTag.textContent = `(${fmtCOP(p)})`;
-            } else {
-              const tag = document.createElement('span');
-              tag.setAttribute('data-custom-price-tag', 'true');
-              tag.className = 'ml-1 text-[11px] font-extrabold text-parrilla-gold font-mono';
-              tag.textContent = `(${fmtCOP(p)})`;
-              nameSpan.appendChild(tag);
-            }
-          } else if (existingPriceTag) {
+        const colPrice = Number(colEl.getAttribute('data-price-column') || 0);
+        colEl.querySelectorAll('li').forEach((li) => {
+          const btn = li.querySelector('.btn-add-cart');
+          const p = Number(btn?.getAttribute('data-price') || 0);
+          const nameSpan = li.querySelector('span.flex-1');
+          const existingPriceTag = nameSpan?.querySelector('[data-custom-price-tag]');
+          if (p > 0 && p === colPrice && existingPriceTag) {
             existingPriceTag.remove();
           }
         });
