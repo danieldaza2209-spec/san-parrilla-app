@@ -6,7 +6,7 @@ from app.database import engine, Base, get_db
 from app import schemas, crud
 import app.models  # Import standard models so Base.metadata knows about all tables
 
-from app.routers import platos, menu, pedidos, metricas, auth, caja, clientes
+from app.routers import platos, menu, pedidos, metricas, auth, caja, clientes, impresion
 
 # Create database tables and sync POS catalog automatically
 Base.metadata.create_all(bind=engine)
@@ -51,6 +51,7 @@ app.include_router(menu.router)
 app.include_router(pedidos.router)
 app.include_router(caja.router)
 app.include_router(metricas.router)
+app.include_router(impresion.router)
 
 
 @app.get("/api/especiales-dia", response_model=schemas.DailySpecialsConfigOut, tags=["Especiales del Día"])

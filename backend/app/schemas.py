@@ -381,10 +381,47 @@ class PedidoOut(BaseModel):
     packaging_fee: float = 0.0
     total: float
     notas: Optional[str] = None
+    impreso_cocina: Optional[bool] = False
+    impreso_ticket: Optional[bool] = False
     detalles: List[DetallePedidoOut] = []
     payments: List[PaymentOut] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- IMPRESIÓN TÉRMICA SAT Q22 (80mm) ---
+
+class ItemImpresionOut(BaseModel):
+    id: int
+    cantidad: int
+    plato_nombre: str
+    precio_unitario: float = 0.0
+    subtotal: float = 0.0
+    sopa: Optional[str] = None
+    principio: Optional[str] = None
+    acompanamiento: Optional[str] = None
+    notas_item: Optional[str] = None
+
+
+class PedidoImpresionOut(BaseModel):
+    id: int
+    codigo_pedido: str
+    fecha_hora: datetime
+    tipo: str
+    tipo_label: str
+    mesa: Optional[str] = None
+    cliente_nombre: str
+    cliente_telefono: Optional[str] = None
+    creado_por: Optional[str] = None
+    notas: Optional[str] = None
+    packaging_fee: float = 0.0
+    delivery_fee: float = 0.0
+    subtotal: float = 0.0
+    total: float = 0.0
+    impreso_cocina: bool = False
+    impreso_ticket: bool = False
+    items: List[ItemImpresionOut] = []
+    texto_comanda_sugerido: Optional[str] = None
 
 
 # --- CIERRES DE CAJA (CASH CLOSURES) ---

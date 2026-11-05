@@ -193,6 +193,8 @@ class Pedido(Base):
     creado_por = Column(String(100), nullable=True)
     cantidad_domicilios = Column(Integer, default=0, nullable=True)
     notas = Column(Text, nullable=True)
+    impreso_cocina = Column(Boolean, default=False, server_default="false")
+    impreso_ticket = Column(Boolean, default=False, server_default="false")
 
     cliente = relationship("Cliente", back_populates="pedidos")
     detalles = relationship("DetallePedido", back_populates="pedido", cascade="all, delete-orphan")
