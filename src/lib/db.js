@@ -287,18 +287,29 @@ if (!isVercel) {
         CREATE TABLE IF NOT EXISTS views_counter (date TEXT PRIMARY KEY, views_count INTEGER DEFAULT 0);
       `);
       try {
-        const insertCat = db.prepare('INSERT OR REPLACE INTO categories (id, name, sort_order) VALUES (?, ?, ?)');
-        for (const c of fallbackCategories) {
-          insertCat.run(c.id, c.name, c.sort_order);
-        }
-        // Sync products catalog with initialProductList
+        // Sync products catalog with initialProductList (delete products first to avoid FK constraint on categories)
         db.exec('DELETE FROM products');
+        const insertCat = db.prepare(
+          'INSERT INTO categories (id, name, sort_order) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, sort_order = excluded.sort_order'
+        );
+        for (const c of fallbackCategories) {
+          insertCat.run(c.id, c.name, c.sort_order ?? 0);
+        }
         const insertProd = db.prepare(`
           INSERT INTO products (id, name, price, category_id, description, is_active, is_featured, sort_order)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
         for (const p of initialProductList) {
-          insertProd.run(p.id, p.name, p.price, p.category_id, p.description || '', p.is_active, p.is_featured, p.sort_order);
+          insertProd.run(
+            String(p.id),
+            String(p.name),
+            Number(p.price ?? 0),
+            String(p.category_id),
+            String(p.description || ''),
+            Number(p.is_active ?? 1),
+            Number(p.is_featured ?? 0),
+            Number(p.sort_order ?? 0)
+          );
         }
 
         // Sync default daily specials if empty or outdated
@@ -356,19 +367,42 @@ export function getCategories() {
   return fallbackCategories;
 }
 
+const metaById = new Map(
+  initialProductList.map((p) => [
+    p.id,
+    {
+      menu_type: p.menu_type || (String(p.id).startsWith('rap-') ? 'rapidas' : String(p.id).startsWith('conv-') ? 'convenios' : 'almuerzo'),
+      has_flavor: p.has_flavor || 0,
+      special_badge: p.special_badge || '',
+    },
+  ])
+);
+
+function enrichProductRow(row) {
+  if (!row) return row;
+  const meta = metaById.get(row.id);
+  if (!meta) return row;
+  return {
+    ...row,
+    menu_type: row.menu_type || meta.menu_type,
+    has_flavor: row.has_flavor ?? meta.has_flavor,
+    special_badge: row.special_badge || meta.special_badge || undefined,
+  };
+}
+
 export function getProducts(onlyActive = true) {
   if (db) {
     try {
       const rows = onlyActive
         ? db.prepare('SELECT * FROM products WHERE is_active = 1 ORDER BY sort_order ASC').all()
         : db.prepare('SELECT * FROM products ORDER BY category_id, sort_order ASC').all();
-      if (rows && rows.length > 0) return rows;
+      if (rows && rows.length > 0) return rows.map(enrichProductRow);
     } catch (e) {}
   }
   if (onlyActive) {
-    return memProducts.filter(p => p.is_active === 1);
+    return memProducts.filter(p => p.is_active === 1).map(enrichProductRow);
   }
-  return memProducts;
+  return memProducts.map(enrichProductRow);
 }
 
 // Productos de uso interno (solo visibles para el personal en el POS, nunca en la carta pública).

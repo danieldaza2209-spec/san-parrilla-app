@@ -122,16 +122,20 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
     const STORAGE_KEY = 'sp_staff_session';
     const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas
 
-    // Si ya tiene sesión activa y no viene con ?switch=1, redirigir directamente a su panel
+    // Limpiar sesión vencida y rescatar último rol/nombre si aún no están guardados
     try {
-      const switchMode = new URLSearchParams(window.location.search).get('switch');
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw && !switchMode) {
+      if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && parsed.role && parsed.exp > Date.now()) {
-          window.location.replace('/pos');
-        } else {
+        if (!parsed || !parsed.role || parsed.exp <= Date.now()) {
           localStorage.removeItem(STORAGE_KEY);
+        } else {
+          if (!localStorage.getItem('sanparrilla_last_role') && parsed.role) {
+            localStorage.setItem('sanparrilla_last_role', parsed.role);
+          }
+          if (!localStorage.getItem('sanparrilla_last_name') && parsed.name) {
+            localStorage.setItem('sanparrilla_last_name', parsed.name);
+          }
         }
       }
     } catch {}
