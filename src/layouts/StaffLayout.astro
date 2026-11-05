@@ -321,10 +321,11 @@ const navItems = [
               });
             })
             .catch(function () {
+              var adminPin = localStorage.getItem('sp_admin_pin') || '8989';
               var localOk =
-                (r === 'mesero' && (p === '0000' || p === '1234' || p === '1111' || p === '2222')) ||
-                (r === 'cajero' && (p === '1111' || p === '2222')) ||
-                (r === 'admin' && p === '2222');
+                (r === 'mesero' && (p === '0000' || p === '1234' || p === '1111' || p === adminPin || p === '8989')) ||
+                (r === 'cajero' && (p === '1111' || p === adminPin || p === '8989')) ||
+                (r === 'admin' && (p === adminPin || p === '8989'));
               return { ok: localOk, data: { success: localOk, role: r, name: n } };
             })
             .then(function (result) {

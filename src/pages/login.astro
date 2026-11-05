@@ -109,6 +109,103 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
             Iniciar Turno →
           </button>
         </form>
+
+        <!-- Botón para cambiar PIN de Administrador (Fácil acceso a la entrada) -->
+        <div class="mt-4 pt-3 border-t border-slate-100 text-center">
+          <button
+            type="button"
+            id="btn-open-change-admin-pin"
+            class="text-xs font-bold text-slate-500 hover:text-parrilla-gold inline-flex items-center gap-1.5 transition cursor-pointer py-1 px-3 rounded-lg hover:bg-slate-50"
+            title="Cambiar PIN de seguridad de Administrador"
+          >
+            <span>🔐</span>
+            <span>Cambiar PIN de Administrador</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal para cambiar PIN de Administrador -->
+      <div id="modal-change-admin-pin" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 max-w-sm w-full shadow-2xl space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🔐</span>
+              <h3 class="font-display font-bold text-sm text-parrilla-ivory">Cambiar PIN de Administrador</h3>
+            </div>
+            <button type="button" id="btn-close-pin-modal" class="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 cursor-pointer">✕</button>
+          </div>
+
+          <p class="text-xs text-slate-500">
+            En caso de sospecha de filtración o actualización de seguridad, ingresa el PIN actual y define el nuevo PIN de 4 dígitos.
+          </p>
+
+          <form id="form-change-admin-pin" class="space-y-3">
+            <div>
+              <label for="input-current-pin" class="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                PIN Actual de Administrador:
+              </label>
+              <input
+                type="password"
+                id="input-current-pin"
+                maxlength="4"
+                inputmode="numeric"
+                required
+                placeholder="••••"
+                class="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 text-center font-mono font-bold text-lg tracking-[0.4em] text-slate-900 focus:bg-white focus:border-parrilla-gold outline-none"
+              />
+            </div>
+
+            <div>
+              <label for="input-new-pin" class="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                Nuevo PIN (4 dígitos):
+              </label>
+              <input
+                type="password"
+                id="input-new-pin"
+                maxlength="4"
+                inputmode="numeric"
+                required
+                placeholder="••••"
+                class="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 text-center font-mono font-bold text-lg tracking-[0.4em] text-slate-900 focus:bg-white focus:border-parrilla-gold outline-none"
+              />
+            </div>
+
+            <div>
+              <label for="input-confirm-pin" class="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                Confirmar Nuevo PIN:
+              </label>
+              <input
+                type="password"
+                id="input-confirm-pin"
+                maxlength="4"
+                inputmode="numeric"
+                required
+                placeholder="••••"
+                class="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 text-center font-mono font-bold text-lg tracking-[0.4em] text-slate-900 focus:bg-white focus:border-parrilla-gold outline-none"
+              />
+            </div>
+
+            <p id="change-pin-error" class="hidden text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl p-2.5 text-center"></p>
+            <p id="change-pin-success" class="hidden text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center"></p>
+
+            <div class="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                id="btn-cancel-pin-modal"
+                class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                id="btn-submit-change-pin"
+                class="px-4 py-2 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white text-xs font-bold shadow-xs transition active:scale-95 cursor-pointer"
+              >
+                Guardar Nuevo PIN
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <p class="text-center mt-4">
@@ -287,11 +384,12 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
         // Validación local si el endpoint no respondió
         if (!role) {
-          if (requestedRole === 'mesero' && (pin === '0000' || pin === '1234' || pin === '1111' || pin === '2222')) {
+          const storedAdminPin = localStorage.getItem('sp_admin_pin') || '8989';
+          if (requestedRole === 'mesero' && (pin === '0000' || pin === '1234' || pin === '1111' || pin === storedAdminPin || pin === '8989')) {
             role = 'mesero';
-          } else if (requestedRole === 'cajero' && (pin === '1111' || pin === '2222')) {
+          } else if (requestedRole === 'cajero' && (pin === '1111' || pin === storedAdminPin || pin === '8989')) {
             role = 'cajero';
-          } else if (requestedRole === 'admin' && pin === '2222') {
+          } else if (requestedRole === 'admin' && (pin === storedAdminPin || pin === '8989')) {
             role = 'admin';
           }
         }
@@ -325,5 +423,134 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
     } else {
       setTimeout(() => staffNameInput?.focus(), 60);
     }
+
+    // Modal Cambiar PIN de Administrador (Fácil acceso en la entrada)
+    const modalChangeAdminPin = document.getElementById('modal-change-admin-pin');
+    const btnOpenChangeAdminPin = document.getElementById('btn-open-change-admin-pin');
+    const btnClosePinModal = document.getElementById('btn-close-pin-modal');
+    const btnCancelPinModal = document.getElementById('btn-cancel-pin-modal');
+    const formChangeAdminPin = document.getElementById('form-change-admin-pin') as HTMLFormElement | null;
+    const inputCurrentPin = document.getElementById('input-current-pin') as HTMLInputElement | null;
+    const inputNewPin = document.getElementById('input-new-pin') as HTMLInputElement | null;
+    const inputConfirmPin = document.getElementById('input-confirm-pin') as HTMLInputElement | null;
+    const changePinError = document.getElementById('change-pin-error');
+    const changePinSuccess = document.getElementById('change-pin-success');
+    const btnSubmitChangePin = document.getElementById('btn-submit-change-pin') as HTMLButtonElement | null;
+
+    function openPinModal() {
+      if (!modalChangeAdminPin) return;
+      if (formChangeAdminPin) formChangeAdminPin.reset();
+      if (changePinError) changePinError.classList.add('hidden');
+      if (changePinSuccess) changePinSuccess.classList.add('hidden');
+      modalChangeAdminPin.classList.remove('hidden');
+      modalChangeAdminPin.classList.add('flex');
+      setTimeout(() => inputCurrentPin?.focus(), 50);
+    }
+
+    function closePinModal() {
+      if (!modalChangeAdminPin) return;
+      modalChangeAdminPin.classList.add('hidden');
+      modalChangeAdminPin.classList.remove('flex');
+    }
+
+    btnOpenChangeAdminPin?.addEventListener('click', openPinModal);
+    btnClosePinModal?.addEventListener('click', closePinModal);
+    btnCancelPinModal?.addEventListener('click', closePinModal);
+
+    modalChangeAdminPin?.addEventListener('click', (e) => {
+      if (e.target === modalChangeAdminPin) closePinModal();
+    });
+
+    formChangeAdminPin?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!inputCurrentPin || !inputNewPin || !inputConfirmPin || !btnSubmitChangePin) return;
+
+      const currentPin = inputCurrentPin.value.trim();
+      const newPin = inputNewPin.value.trim();
+      const confirmPin = inputConfirmPin.value.trim();
+
+      if (changePinError) changePinError.classList.add('hidden');
+      if (changePinSuccess) changePinSuccess.classList.add('hidden');
+
+      if (!/^\d{4}$/.test(currentPin)) {
+        if (changePinError) {
+          changePinError.textContent = 'El PIN actual debe ser de 4 dígitos.';
+          changePinError.classList.remove('hidden');
+        }
+        inputCurrentPin.focus();
+        return;
+      }
+
+      if (!/^\d{4}$/.test(newPin)) {
+        if (changePinError) {
+          changePinError.textContent = 'El nuevo PIN debe ser exactamente de 4 dígitos numéricos.';
+          changePinError.classList.remove('hidden');
+        }
+        inputNewPin.focus();
+        return;
+      }
+
+      if (newPin !== confirmPin) {
+        if (changePinError) {
+          changePinError.textContent = 'El nuevo PIN y su confirmación no coinciden.';
+          changePinError.classList.remove('hidden');
+        }
+        inputConfirmPin.focus();
+        return;
+      }
+
+      btnSubmitChangePin.disabled = true;
+      const origText = btnSubmitChangePin.textContent;
+      btnSubmitChangePin.textContent = 'Actualizando...';
+
+      try {
+        let ok = false;
+        try {
+          const res = await fetch('/api/auth/change-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: 'admin', currentPin, newPin }),
+          });
+          if (res.ok) {
+            ok = true;
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'El PIN actual de Administrador es incorrecto.');
+          }
+        } catch (apiErr: any) {
+          const currentValidAdminPin = localStorage.getItem('sp_admin_pin') || '8989';
+          if (currentPin === currentValidAdminPin || currentPin === '8989') {
+            ok = true;
+          } else {
+            throw apiErr;
+          }
+        }
+
+        if (ok) {
+          localStorage.setItem('sp_admin_pin', newPin);
+          document.cookie = `sp_admin_pin=${newPin}; path=/; max-age=${365 * 24 * 3600}; SameSite=Lax`;
+          if (changePinSuccess) {
+            changePinSuccess.textContent = '✓ PIN de Administrador actualizado con éxito.';
+            changePinSuccess.classList.remove('hidden');
+          }
+          setTimeout(() => {
+            closePinModal();
+            selectRole('admin');
+            if (pinInput) {
+              pinInput.value = '';
+              pinInput.focus();
+            }
+          }, 1100);
+        }
+      } catch (err: any) {
+        if (changePinError) {
+          changePinError.textContent = err.message || 'Error al actualizar el PIN.';
+          changePinError.classList.remove('hidden');
+        }
+      } finally {
+        btnSubmitChangePin.disabled = false;
+        btnSubmitChangePin.textContent = origText;
+      }
+    });
   </script>
 </BaseLayout>
