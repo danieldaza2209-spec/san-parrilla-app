@@ -50,20 +50,26 @@ async function handleRequest({ params, request, url }) {
 
   if (method === 'GET') {
     const prods = getAllProducts() || [];
-    const mapped = prods.map((p) => ({
-      id: p.id,
-      nombre: p.name,
-      descripcion: p.category,
-      precio: Number(p.price || 0),
-      activo: Boolean(p.in_stock),
-      disponible: Boolean(p.in_stock),
-      categoria_id: p.menu_type === 'rapidas' ? 20 : 1,
-    }));
+    const mapped = prods.map((p) => {
+      const isAct = p.is_active !== undefined ? Boolean(p.is_active) : (p.in_stock !== undefined ? Boolean(p.in_stock) : true);
+      return {
+        id: p.id,
+        nombre: p.name,
+        descripcion: p.category || p.description || '',
+        precio: Number(p.price || 0),
+        activo: isAct,
+        disponible: isAct,
+        categoria_id: p.menu_type === 'rapidas' ? 20 : 1,
+      };
+    });
     return new Response(JSON.stringify(mapped), { status: 200, headers: JSON_HEADERS });
   }
 
   if ((method === 'PUT' || method === 'PATCH' || method === 'POST') && parsedBody) {
-    const id = Number(action) || Number(parsedBody.id);
+    const id = action || String(parsedBody.id || '');
+    const prods = getAllProducts() || [];
+    const existing = prods.find((p) => String(p.id) === String(id));
+
     if (id && parsedBody.precio !== undefined) {
       updateProductPrice(id, Number(parsedBody.precio));
     }
@@ -71,13 +77,21 @@ async function handleRequest({ params, request, url }) {
       const disp = parsedBody.disponible !== undefined ? parsedBody.disponible : parsedBody.activo;
       toggleProductStock(id, Boolean(disp));
     }
+    const finalDisp = parsedBody.disponible !== undefined
+      ? Boolean(parsedBody.disponible)
+      : (parsedBody.activo !== undefined ? Boolean(parsedBody.activo) : (existing?.is_active !== undefined ? Boolean(existing.is_active) : true));
+    const finalPrice = parsedBody.precio !== undefined
+      ? Number(parsedBody.precio)
+      : (existing?.price !== undefined ? Number(existing.price) : 0);
+    const finalName = parsedBody.nombre || (existing?.name || '');
+
     return new Response(
       JSON.stringify({
         id: id || 0,
-        nombre: parsedBody.nombre || '',
-        precio: Number(parsedBody.precio || 0),
-        disponible: parsedBody.disponible !== undefined ? Boolean(parsedBody.disponible) : true,
-        activo: parsedBody.disponible !== undefined ? Boolean(parsedBody.disponible) : true,
+        nombre: finalName,
+        precio: finalPrice,
+        disponible: finalDisp,
+        activo: finalDisp,
       }),
       { status: 200, headers: JSON_HEADERS }
     );

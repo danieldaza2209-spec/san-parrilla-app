@@ -18,8 +18,11 @@ def listar_categorias(db: Session = Depends(get_db)):
 def listar_platos_catalogo(
     categoria_id: Optional[int] = Query(None),
     solo_activos: bool = Query(False),
+    include_inactive: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
 ):
+    if include_inactive is not None:
+        solo_activos = not include_inactive
     return crud.get_platos(db, categoria_id=categoria_id, solo_activos=solo_activos)
 
 
@@ -45,8 +48,11 @@ def listar_acompanamientos(db: Session = Depends(get_db)):
 def obtener_todos_los_platos(
     categoria_id: Optional[int] = Query(None),
     solo_activos: bool = Query(False),
+    include_inactive: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
 ):
+    if include_inactive is not None:
+        solo_activos = not include_inactive
     return crud.get_platos(db, categoria_id=categoria_id, solo_activos=solo_activos)
 
 
