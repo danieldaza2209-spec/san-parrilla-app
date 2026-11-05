@@ -385,7 +385,7 @@ const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
         // Validación local si el endpoint no respondió
         if (!role) {
           const storedAdminPin = localStorage.getItem('sp_admin_pin') || '8989';
-          if (requestedRole === 'mesero' && (pin === '0000' || pin === '1234' || pin === '1111' || pin === storedAdminPin || pin === '8989')) {
+          if (requestedRole === 'mesero' && (pin === '0000' || pin === storedAdminPin || pin === '8989')) {
             role = 'mesero';
           } else if (requestedRole === 'cajero' && (pin === '1111' || pin === storedAdminPin || pin === '8989')) {
             role = 'cajero';

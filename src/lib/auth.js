@@ -82,8 +82,8 @@ export function authenticatePin(pin, requestedRole = '', collaboratorName = '') 
   const cleanName = String(collaboratorName || '').trim();
 
   const meseroPin = getConfig('MESERO_PIN') || '0000';
-  const meseroOk = safeEqual(pin, meseroPin) || safeEqual(pin, '1234');
-  const cajeroOk = safeEqual(pin, getConfig('CAJERO_PIN'));
+  const meseroOk = safeEqual(pin, meseroPin);
+  const cajeroOk = safeEqual(pin, getConfig('CAJERO_PIN') || '1111');
   const currentAdminPin = getAdminPin();
   const adminOk = safeEqual(pin, currentAdminPin) || safeEqual(pin, '8989');
 
