@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List, Optional, Tuple
 from datetime import datetime
 import re
@@ -169,7 +170,10 @@ def obtener_pedidos_pendientes_impresion(
     query = (
         db.query(models.Pedido)
         .filter(
-            models.Pedido.impreso_cocina.is_(False),
+            or_(
+                models.Pedido.impreso_cocina.is_(False),
+                models.Pedido.impreso_caja.is_(False),
+            ),
             models.Pedido.estado.notin_([models.EstadoPedido.BORRADOR_WEB, models.EstadoPedido.CANCELADO]),
         )
         .order_by(models.Pedido.id.asc())
@@ -322,17 +326,27 @@ def marcar_ticket_como_impreso(
 @router.post("/reimprimir/{pedido_id}")
 def habilitar_reimpresion_pedido(
     pedido_id: int,
+    tipo: Optional[str] = Query(default="CUENTA", description="Tipo de reimpresión: CUENTA (pre-cuenta mesa) o COCINA (comanda preparación)"),
     db: Session = Depends(get_db)
 ):
     """
-    Restablece impreso_cocina = False e impreso_caja = False para que el agente vuelva a imprimir.
+    Restablece el flag de impresión según el tipo solicitado:
+    - CUENTA: impreso_caja = False (para pre-cuenta de mesa o recibo)
+    - COCINA: impreso_cocina = False (para comanda de preparación)
     """
     pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
     if not pedido:
         raise HTTPException(status_code=404, detail=f"Pedido con ID #{pedido_id} no encontrado.")
 
-    pedido.impreso_cocina = False
-    pedido.impreso_caja = False
+    tipo_norm = (tipo or "CUENTA").upper().strip()
+    if tipo_norm == "COCINA":
+        pedido.impreso_cocina = False
+    elif tipo_norm == "CUENTA":
+        pedido.impreso_caja = False
+    else:
+        pedido.impreso_cocina = False
+        pedido.impreso_caja = False
+
     db.commit()
     db.refresh(pedido)
 
@@ -340,7 +354,8 @@ def habilitar_reimpresion_pedido(
         "success": True,
         "pedido_id": pedido.id,
         "codigo_pedido": pedido.codigo_pedido,
-        "impreso_cocina": pedido.impreso_cocina,
-        "impreso_caja": pedido.impreso_caja,
-        "mensaje": f"Pedido #{pedido.codigo_pedido} encolado nuevamente para impresión."
+        "tipo": tipo_norm,
+        "impreso_cocina": bool(pedido.impreso_cocina),
+        "impreso_caja": bool(getattr(pedido, "impreso_caja", False)),
+        "mensaje": f"Pedido #{pedido.codigo_pedido} encolado para reimpresión de {tipo_norm} en SAT Q22."
     }

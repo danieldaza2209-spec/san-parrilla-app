@@ -289,38 +289,35 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
     return bytes(b)
 
 
+def alinear_linea(izquierda: str, derecha: str, ancho: int = LINE_WIDTH) -> str:
+    """Alinea el texto izquierdo a la izquierda y el derecho a la derecha rellenando con espacios."""
+    espacio_disp = ancho - len(derecha) - 1
+    if len(izquierda) > espacio_disp:
+        izquierda = izquierda[:espacio_disp]
+    espacios = " " * max(1, ancho - len(izquierda) - len(derecha))
+    return izquierda + espacios + derecha + "\n"
+
+
 def construir_tirilla_caja(pedido: dict) -> bytes:
     """
-    Construye la Tirilla de Cuenta / Domicilio (80mm) con precios, cliente y método de pago:
-    ========================================
-             RESTAURANTE SAN PARRILLA       
-              Barrancabermeja - POS         
-    ----------------------------------------
-    Pedido: #SP-XXXX | Tipo: DOMICILIO     
-    Cliente: Don Carlos | Tel: 302...      
-    Dirección: Cra 19 # 52-20 (Torcoroma)  
-    Mensajero: Lucely                      
-    ----------------------------------------
-    Items detallados con valor unitario     
-    Empaques: $X.000                       
-    Domicilio: $X.000                       
-    TOTAL A PAGAR: $XX.XXX                  
-    Método de Pago: EFECTIVO / NEQUI       
-    ========================================
+    Construye la Tirilla de Cuenta / Pre-cuenta (80mm) con precios y totales.
+    Si el pedido es de mesa, formatea como PRE-CUENTA MESA.
+    Si el pedido es Domicilio o Para Llevar, formatea como Tirilla de Cuenta / Entrega.
     """
     sep = ("=" * LINE_WIDTH + "\n").encode("cp850")
     subsep = ("-" * LINE_WIDTH + "\n").encode("cp850")
 
     raw_cod = str(pedido.get("codigo") or pedido.get("codigo_pedido") or f"SP-{pedido.get('id', 0)}")
     codigo = raw_cod if raw_cod.startswith("#") else f"#{raw_cod}"
-    tipo = limpiar_texto(pedido.get("tipo_label") or pedido.get("tipo") or "MESA").upper()
+    tipo_str = limpiar_texto(pedido.get("tipo_label") or pedido.get("tipo") or "MESA").upper()
+    mesa_val = limpiar_texto(pedido.get("mesa") or "")
+    if mesa_val and not mesa_val.lower().startswith("mesa"):
+        mesa_val = f"Mesa {mesa_val}"
+
+    es_mesa = bool(mesa_val) or ("MESA" in tipo_str)
     hora = extraer_hora(pedido.get("fecha_hora"))
-    cliente = limpiar_texto(pedido.get("cliente_nombre") or "Cliente")
-    telefono = limpiar_texto(pedido.get("cliente_telefono") or "")
-    direccion = limpiar_texto(pedido.get("direccion") or "")
-    barrio = limpiar_texto(pedido.get("barrio") or "")
-    mensajero = limpiar_texto(pedido.get("courier_name") or "")
-    metodo_pago = limpiar_texto(pedido.get("metodo_pago") or "EFECTIVO")
+    creado_por = limpiar_texto(pedido.get("creado_por") or "Colaborador")
+    subtotal = float(pedido.get("subtotal") or 0)
     packaging_fee = float(pedido.get("packaging_fee") or 0)
     delivery_fee = float(pedido.get("delivery_fee") or 0)
     total = float(pedido.get("total") or 0)
@@ -329,7 +326,73 @@ def construir_tirilla_caja(pedido: dict) -> bytes:
     b = bytearray()
     b.extend(ESC_RESET)
 
-    # Encabezado Restaurante
+    if es_mesa:
+        # ==============================================================
+        # FORMATO TÉRMICO OFICIAL: PRE-CUENTA MESA (80mm)
+        # ==============================================================
+        mesa_nombre = mesa_val if mesa_val else tipo_str
+        b.extend(ESC_ALIGN_CENTER)
+        b.extend(sep)
+        b.extend(ESC_BOLD_ON)
+        b.extend(GS_DOUBLE_H)
+        b.extend(b"RESTAURANTE SAN PARRILLA\n")
+        b.extend(GS_NORMAL)
+        b.extend(b"PRE-CUENTA MESA\n")
+        b.extend(ESC_BOLD_OFF)
+        b.extend(subsep)
+
+        b.extend(ESC_ALIGN_LEFT)
+        b.extend(ESC_BOLD_ON)
+        b.extend(limpiar_texto(f"Mesa: {mesa_nombre} | Pedido: {codigo}\n").encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
+        b.extend(limpiar_texto(f"Hora: {hora} | Atendido por: {creado_por}\n").encode("cp850", errors="ignore"))
+        b.extend(subsep)
+
+        # Detalle de platos y precios
+        for it in items:
+            cant = int(it.get("cantidad") or 1)
+            nombre = limpiar_texto(it.get("nombre") or it.get("plato_nombre") or "Plato").upper()
+            unit = float(it.get("precio") or it.get("precio_unitario") or 0)
+            sub_it = float(it.get("subtotal") or (unit * cant))
+            linea_item = alinear_linea(f"[{cant}] {nombre}", fmt_cop(sub_it))
+            b.extend(ESC_BOLD_ON)
+            b.extend(linea_item.encode("cp850", errors="ignore"))
+            b.extend(ESC_BOLD_OFF)
+            if cant > 1:
+                b.extend(f"   ({fmt_cop(unit)} c/u)\n".encode("cp850", errors="ignore"))
+
+        b.extend(subsep)
+        if subtotal > 0 and (packaging_fee > 0 or subtotal != total):
+            b.extend(alinear_linea("SUBTOTAL:", fmt_cop(subtotal)).encode("cp850", errors="ignore"))
+        else:
+            b.extend(alinear_linea("SUBTOTAL:", fmt_cop(total)).encode("cp850", errors="ignore"))
+
+        if packaging_fee > 0:
+            b.extend(alinear_linea("EMPAQUES:", fmt_cop(packaging_fee)).encode("cp850", errors="ignore"))
+
+        b.extend(ESC_BOLD_ON)
+        b.extend(GS_DOUBLE_H)
+        b.extend(alinear_linea("TOTAL A PAGAR:", fmt_cop(total)).encode("cp850", errors="ignore"))
+        b.extend(GS_NORMAL)
+        b.extend(ESC_BOLD_OFF)
+
+        b.extend(sep)
+        b.extend(ESC_ALIGN_CENTER)
+        b.extend(b"   !Gracias por su visita a San Parrilla!\n")
+        b.extend(ESC_FEED_4)
+        b.extend(GS_CUT_FULL)
+        return bytes(b)
+
+    # ==============================================================
+    # FORMATO: DOMICILIOS Y PARA LLEVAR (CUENTA / ENTREGA)
+    # ==============================================================
+    cliente = limpiar_texto(pedido.get("cliente_nombre") or "Cliente")
+    telefono = limpiar_texto(pedido.get("cliente_telefono") or "")
+    direccion = limpiar_texto(pedido.get("direccion") or "")
+    barrio = limpiar_texto(pedido.get("barrio") or "")
+    mensajero = limpiar_texto(pedido.get("courier_name") or "")
+    metodo_pago = limpiar_texto(pedido.get("metodo_pago") or "EFECTIVO")
+
     b.extend(ESC_ALIGN_CENTER)
     b.extend(sep)
     b.extend(ESC_BOLD_ON)
@@ -340,10 +403,9 @@ def construir_tirilla_caja(pedido: dict) -> bytes:
     b.extend(b"Barrancabermeja - POS\n")
     b.extend(subsep)
 
-    # Datos del Pedido y Cliente
     b.extend(ESC_ALIGN_LEFT)
     b.extend(ESC_BOLD_ON)
-    b.extend(f"Pedido: {codigo} | Tipo: {tipo}\n".encode("cp850", errors="ignore"))
+    b.extend(f"Pedido: {codigo} | Tipo: {tipo_str}\n".encode("cp850", errors="ignore"))
     b.extend(ESC_BOLD_OFF)
     b.extend(f"Hora: {hora}\n".encode("cp850", errors="ignore"))
 
@@ -365,7 +427,6 @@ def construir_tirilla_caja(pedido: dict) -> bytes:
 
     b.extend(subsep)
 
-    # Lista de ítems con valor unitario y subtotal
     for it in items:
         cant = int(it.get("cantidad") or 1)
         nombre = limpiar_texto(it.get("nombre") or it.get("plato_nombre") or "Plato")
@@ -377,23 +438,23 @@ def construir_tirilla_caja(pedido: dict) -> bytes:
         if ubicacion:
             titulo_it += f" [{ubicacion.upper()}]"
 
-        precio_str = fmt_cop(sub_it)
+        linea_it = alinear_linea(titulo_it, fmt_cop(sub_it))
         b.extend(ESC_BOLD_ON)
-        b.extend(f"{titulo_it}\n".encode("cp850", errors="ignore"))
+        b.extend(linea_it.encode("cp850", errors="ignore"))
         b.extend(ESC_BOLD_OFF)
-        b.extend(f"   ({fmt_cop(unit)} c/u) -> {precio_str}\n".encode("cp850", errors="ignore"))
+        if cant > 1:
+            b.extend(f"   ({fmt_cop(unit)} c/u)\n".encode("cp850", errors="ignore"))
 
     b.extend(subsep)
 
-    # Totales
     if packaging_fee > 0:
-        b.extend(f"Empaques: {fmt_cop(packaging_fee)}\n".encode("cp850", errors="ignore"))
+        b.extend(alinear_linea("Empaques:", fmt_cop(packaging_fee)).encode("cp850", errors="ignore"))
     if delivery_fee > 0:
-        b.extend(f"Domicilio: {fmt_cop(delivery_fee)}\n".encode("cp850", errors="ignore"))
+        b.extend(alinear_linea("Domicilio:", fmt_cop(delivery_fee)).encode("cp850", errors="ignore"))
 
     b.extend(ESC_BOLD_ON)
     b.extend(GS_DOUBLE_H)
-    b.extend(f"TOTAL A PAGAR: {fmt_cop(total)}\n".encode("cp850", errors="ignore"))
+    b.extend(alinear_linea("TOTAL A PAGAR:", fmt_cop(total)).encode("cp850", errors="ignore"))
     b.extend(GS_NORMAL)
     b.extend(f"Metodo de Pago: {metodo_pago}\n".encode("cp850", errors="ignore"))
     b.extend(ESC_BOLD_OFF)
@@ -475,24 +536,27 @@ def iniciar_agente():
                     ped_id = ped.get("id")
                     cod = ped.get("codigo") or ped.get("codigo_pedido") or f"#{ped_id}"
                     tipo = ped.get("tipo_label") or ped.get("tipo") or "PEDIDO"
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Nuevo pedido detectado: {cod} ({tipo})")
+                    impreso_cocina_bd = bool(ped.get("impreso_cocina", False))
+                    impreso_caja_bd = bool(ped.get("impreso_caja", False))
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Pedido pendiente detectado: {cod} ({tipo}) [Cocina: {impreso_cocina_bd}, Caja: {impreso_caja_bd}]")
 
                     exito_cocina = True
                     exito_caja = True
 
-                    if IMPRIMIR_COCINA:
+                    if IMPRIMIR_COCINA and not impreso_cocina_bd:
                         bytes_cocina = construir_tirilla_cocina(ped)
                         exito_cocina = enviar_raw_spooler(printer_target, bytes_cocina, f"Cocina_{cod}")
                         if exito_cocina:
                             print(f"    [+] Tirilla de COCINA enviada a '{printer_target}'.")
 
-                    if IMPRIMIR_CAJA:
-                        if IMPRIMIR_COCINA:
+                    if IMPRIMIR_CAJA and not impreso_caja_bd:
+                        if IMPRIMIR_COCINA and not impreso_cocina_bd:
                             time.sleep(0.4)
                         bytes_caja = construir_tirilla_caja(ped)
-                        exito_caja = enviar_raw_spooler(printer_target, bytes_caja, f"Cuenta_{cod}")
+                        job_label = f"PreCuenta_{cod}" if ("MESA" in str(tipo).upper() or ped.get("mesa")) else f"Cuenta_{cod}"
+                        exito_caja = enviar_raw_spooler(printer_target, bytes_caja, job_label)
                         if exito_caja:
-                            print(f"    [+] Tirilla de CAJA/CUENTA enviada a '{printer_target}'.")
+                            print(f"    [+] Tirilla de CUENTA / PRE-CUENTA enviada a '{printer_target}'.")
 
                     if exito_cocina and exito_caja:
                         if marcar_pedido_impreso(http_session, active_base, ped_id):

@@ -374,6 +374,53 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
     </div>
   </div>
 
+  <!-- MODAL RÁPIDO DE OPCIONES DE IMPRESIÓN MESA (CUENTA / COCINA) -->
+  <div id="modal-table-print-menu" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border-2 border-parrilla-gold/60 max-w-sm w-full p-4 sm:p-5 shadow-2xl space-y-3.5">
+      <div class="flex items-start justify-between pb-2.5 border-b border-parrilla-border">
+        <div>
+          <h3 id="table-print-menu-title" class="font-display font-black text-sm sm:text-base text-parrilla-ivory">🖨️ Imprimir Mesa</h3>
+          <p class="text-[11px] text-parrilla-muted">Elige el ticket que deseas enviar a la SAT Q22</p>
+        </div>
+        <button type="button" id="btn-close-table-print-menu" class="text-slate-400 hover:text-slate-600 font-bold text-lg p-1 cursor-pointer">✕</button>
+      </div>
+
+      <div class="space-y-2">
+        <button
+          type="button"
+          id="btn-opt-print-cuenta"
+          class="w-full py-3 px-3.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-display font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition active:scale-95 cursor-pointer"
+        >
+          <span>🧾 Imprimir Pre-cuenta (SAT Q22)</span>
+        </button>
+
+        <button
+          type="button"
+          id="btn-opt-print-cocina"
+          class="w-full py-3 px-3.5 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-800 hover:text-orange-950 border border-slate-300 font-display font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
+        >
+          <span>🍳 Reenviar Comanda a Cocina (SAT Q22)</span>
+        </button>
+
+        <button
+          type="button"
+          id="btn-opt-print-screen"
+          class="w-full py-2 px-3 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-50 text-[11px] font-bold text-center transition cursor-pointer"
+        >
+          🖥️ Vista previa manual en pantalla (Plan B)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION DE PEDIDOS -->
+  <div
+    id="board-toast"
+    class="fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl font-bold text-xs sm:text-sm border flex items-center gap-2 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none"
+  >
+    <span id="board-toast-msg">Mensaje</span>
+  </div>
+
   <!-- CONTENEDOR IMPRESIÓN TÉRMICA 80MM SAT Q22 -->
   <div id="printable-ticket" class="receipt-ticket hidden"></div>
 
@@ -387,6 +434,21 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
     let allOrders = [];
     let activePayOrder = null;
     let selectedPayMethod = 'CASH';
+    let activeTablePrintOrder = null;
+    const modalTablePrint = document.getElementById('modal-table-print-menu');
+
+    function showBoardToast(msg, isSuccess = true) {
+      const toast = document.getElementById('board-toast');
+      const toastMsg = document.getElementById('board-toast-msg');
+      if (!toast || !toastMsg) return;
+      toastMsg.textContent = msg;
+      toast.className = `fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl font-bold text-xs sm:text-sm border flex items-center gap-2 transform transition-all duration-300 translate-y-0 opacity-100 ${
+        isSuccess ? 'bg-slate-900 text-white border-emerald-500' : 'bg-red-900 text-white border-red-500'
+      }`;
+      setTimeout(() => {
+        toast.className = toast.className.replace('translate-y-0 opacity-100', 'translate-y-20 opacity-0 pointer-events-none');
+      }, 3500);
+    }
 
     // Si es mesero, ocultar barra de liquidación financiera de mensajeros
     if (window.__SP_STAFF_ROLE__ === 'mesero') {
@@ -566,14 +628,26 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
                   >
                     ➕ Agregar/POS
                   </a>
-                  <button
-                    type="button"
-                    class="btn-table-print py-1.5 px-2 rounded-lg bg-white hover:bg-slate-100 text-parrilla-ivory border border-orange-300 text-[11px] font-extrabold transition cursor-pointer"
-                    data-id="${openOrder.id}"
-                    title="Imprimir Comanda o Pre-cuenta"
-                  >
-                    🖨️ Comanda/Cta
-                  </button>
+                  <div class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      class="btn-table-print flex-1 py-1.5 px-2 rounded-lg bg-white hover:bg-orange-50 text-orange-950 border border-orange-300 text-[11px] font-extrabold transition cursor-pointer text-center truncate"
+                      data-id="${openOrder.id}"
+                      data-mesa="${tableName}"
+                      title="Enviar Pre-cuenta directamente a impresora SAT Q22"
+                    >
+                      🖨️ Comanda/Cta
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-table-print-menu p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-500 border border-orange-300 text-[10px] font-extrabold transition cursor-pointer"
+                      data-id="${openOrder.id}"
+                      data-mesa="${tableName}"
+                      title="Opciones de impresión (Cuenta o Cocina)"
+                    >
+                      ▾
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -1328,6 +1402,70 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
       }, 80);
     }
 
+    function openTablePrintMenu(order, mesaName) {
+      if (!order) return;
+      activeTablePrintOrder = order;
+      const titleEl = document.getElementById('table-print-menu-title');
+      if (titleEl) {
+        titleEl.textContent = `🖨️ ${mesaName || order.mesa || 'Mesa'} (${order.codigo_pedido || '#' + order.id})`;
+      }
+      modalTablePrint?.classList.remove('hidden');
+      modalTablePrint?.classList.add('flex');
+    }
+
+    function closeTablePrintMenu() {
+      modalTablePrint?.classList.add('hidden');
+      modalTablePrint?.classList.remove('flex');
+      activeTablePrintOrder = null;
+    }
+
+    async function sendRemotePrintJob(pedidoId, tipo = 'CUENTA', mesaLabel = 'Mesa') {
+      try {
+        const res = await fetch(`/api/impresion/reimprimir/${pedidoId}?tipo=${encodeURIComponent(tipo)}`, {
+          method: 'POST'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.detail || `Error HTTP ${res.status}`);
+        }
+        if (tipo === 'COCINA') {
+          showBoardToast(`✅ Comanda de ${mesaLabel} reenviada a Cocina (SAT Q22)`);
+        } else {
+          showBoardToast(`✅ Cuenta de ${mesaLabel} enviada a la impresora SAT Q22`);
+        }
+      } catch (err) {
+        showBoardToast(`❌ Error al imprimir en SAT Q22: ${err.message}`, false);
+      }
+    }
+
+    document.getElementById('btn-close-table-print-menu')?.addEventListener('click', closeTablePrintMenu);
+    document.getElementById('modal-table-print-menu')?.addEventListener('click', (e) => {
+      if (e.target === modalTablePrint) closeTablePrintMenu();
+    });
+
+    document.getElementById('btn-opt-print-cuenta')?.addEventListener('click', () => {
+      if (!activeTablePrintOrder) return;
+      const o = activeTablePrintOrder;
+      const mesa = o.mesa || 'Mesa';
+      closeTablePrintMenu();
+      sendRemotePrintJob(o.id, 'CUENTA', mesa);
+    });
+
+    document.getElementById('btn-opt-print-cocina')?.addEventListener('click', () => {
+      if (!activeTablePrintOrder) return;
+      const o = activeTablePrintOrder;
+      const mesa = o.mesa || 'Mesa';
+      closeTablePrintMenu();
+      sendRemotePrintJob(o.id, 'COCINA', mesa);
+    });
+
+    document.getElementById('btn-opt-print-screen')?.addEventListener('click', () => {
+      if (!activeTablePrintOrder) return;
+      const o = activeTablePrintOrder;
+      closeTablePrintMenu();
+      printOrderTicket(o, 'customer');
+    });
+
     document.addEventListener('click', (e) => {
       const payBtn = e.target.closest('.btn-open-pay-modal');
       if (payBtn) {
@@ -1340,8 +1478,24 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
       const tablePrintBtn = e.target.closest('.btn-table-print');
       if (tablePrintBtn) {
         const id = Number(tablePrintBtn.getAttribute('data-id'));
+        const mesa = tablePrintBtn.getAttribute('data-mesa') || 'Mesa';
+        tablePrintBtn.disabled = true;
+        const origText = tablePrintBtn.innerHTML;
+        tablePrintBtn.innerHTML = '<span>⏳ Enviando...</span>';
+
+        sendRemotePrintJob(id, 'CUENTA', mesa).finally(() => {
+          tablePrintBtn.disabled = false;
+          tablePrintBtn.innerHTML = origText;
+        });
+        return;
+      }
+
+      const tableMoreBtn = e.target.closest('.btn-table-print-menu');
+      if (tableMoreBtn) {
+        const id = Number(tableMoreBtn.getAttribute('data-id'));
+        const mesa = tableMoreBtn.getAttribute('data-mesa') || 'Mesa';
         const order = allOrders.find((o) => o.id === id);
-        if (order) printOrderTicket(order, 'customer');
+        if (order) openTablePrintMenu(order, mesa);
         return;
       }
 
