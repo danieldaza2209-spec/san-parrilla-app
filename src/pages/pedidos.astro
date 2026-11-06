@@ -530,12 +530,12 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
     }
 
     function getPaymentBadge(order) {
-      if (order.estado === 'PAGADO' || (order.payments && order.payments.length > 0)) {
+      if (order.estado === 'PAGADO' || order.estado_pago === 'PAGADO' || (order.payments && order.payments.length > 0)) {
         const methods = (order.payments || []).map((p) => {
-          const map = { CASH: '💵 Efectivo', NEQUI: '🟣 Nequi', BANCOLOMBIA: '🟡 Bancolombia', DAVIPLATA: '🔴 Daviplata', CARD: '💳 Datáfono' };
+          const map = { CASH: '💵 Efectivo', NEQUI: '🟣 Nequi', BANCOLOMBIA: '🟡 Bancolombia', DAVIPLATA: '🔴 Daviplata', CARD: '💳 Datáfono', FIADO: '📝 Fiado' };
           return map[p.method] || p.method;
         });
-        const label = methods.length > 0 ? methods.join(' + ') : 'Pagado';
+        const label = methods.length > 0 ? methods.join(' + ') : (order.metodo_pago || 'Pagado');
         return `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">✅ Pagado (${escapeHtml(label)})</span>`;
       }
       return `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">⏳ Pendiente de Cobro</span>`;
@@ -1195,10 +1195,12 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
 
       const paidCash = Number(cashReceivedInp?.value || 0);
       const total = Number(activePayOrder.total || 0);
-      const change = (selectedPayMethod === 'CASH' && paidCash > total) ? (paidCash - total) : 0;
+      const normalizedMethod = String(selectedPayMethod || 'CASH').trim().toUpperCase();
+      const change = (normalizedMethod === 'CASH' && paidCash > total) ? (paidCash - total) : 0;
+      const wantReceipt = document.getElementById('chk-board-print-receipt')?.checked ?? true;
 
       try {
-        if (selectedPayMethod === 'FIADO' && fiadoName) {
+        if (normalizedMethod === 'FIADO' && fiadoName) {
           await fetch(`/api/pedidos/${activePayOrder.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -1212,16 +1214,21 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
         }
 
         const payPayload = {
+          metodo_pago: normalizedMethod,
+          payment_method: normalizedMethod,
+          imprimir_recibo: wantReceipt,
           payments: [{
-            method: selectedPayMethod,
+            method: normalizedMethod,
             amount: total,
             change_given: change
           }],
           creado_por: window.__SP_STAFF_NAME__ || activePayOrder.creado_por || 'Colaborador',
           cantidad_domicilios: cantDom,
+          estado: 'ENTREGADO',
         };
-        if (activePayOrder.tipo === 'DOMICILIO') {
-          payPayload.estado = 'ENTREGADO';
+        if (normalizedMethod === 'FIADO' && fiadoName) {
+          payPayload.cliente_nombre = fiadoName;
+          payPayload.cliente_telefono = fiadoPhone || ('CONV-' + fiadoName.slice(0, 10).toUpperCase());
         }
 
         const res = await fetch(`/api/caja/pay/${activePayOrder.id}`, {
@@ -1234,19 +1241,28 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
           throw new Error(data.detail || data.error || `Error HTTP ${res.status} al cobrar el pedido.`);
         }
 
-        // Inmediata sincronización visual y liberación de mesa / remoción de pedidos
-        const isTable = activePayOrder.tipo === 'EN_MESA' || Boolean(activePayOrder.mesa);
-        const isTakeout = activePayOrder.tipo === 'PARA_LLEVAR';
-        const isDelivery = activePayOrder.tipo === 'DOMICILIO';
-        const targetTable = activePayOrder.mesa;
+        // Guardar copia para impresión antes de cerrar modal
+        const paidOrderRef = activePayOrder;
+        const orderToPrint = data.id ? data : paidOrderRef;
+        const isTable = paidOrderRef.tipo === 'EN_MESA' || Boolean(paidOrderRef.mesa);
+        const isTakeout = paidOrderRef.tipo === 'PARA_LLEVAR';
+        const isDelivery = paidOrderRef.tipo === 'DOMICILIO';
+        const targetTable = paidOrderRef.mesa;
+
+        // Retirar indicador "Procesando cobro..." y cerrar el modal inmediatamente
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+        closePayModal();
 
         // Actualizar el estado en memoria de inmediato para eliminar latencia visual
-        activePayOrder.estado = 'ENTREGADO';
-        activePayOrder.estado_pago = 'PAGADO';
-        const oIdx = allOrders.findIndex((o) => o.id === activePayOrder.id);
+        paidOrderRef.estado = 'ENTREGADO';
+        paidOrderRef.estado_pago = 'PAGADO';
+        paidOrderRef.metodo_pago = normalizedMethod;
+        const oIdx = allOrders.findIndex((o) => o.id === paidOrderRef.id);
         if (oIdx !== -1) {
           allOrders[oIdx].estado = 'ENTREGADO';
           allOrders[oIdx].estado_pago = 'PAGADO';
+          allOrders[oIdx].metodo_pago = normalizedMethod;
         }
 
         if (isTable) {
@@ -1254,7 +1270,7 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
           if (targetTable) {
             const cleanTarget = String(targetTable).trim().toLowerCase().replace(/^mesa\s*/i, '');
             allOrders.forEach((o) => {
-              if (o.tipo === 'EN_MESA' && o.mesa) {
+              if ((o.tipo === 'EN_MESA' || o.mesa) && o.mesa) {
                 const cm = String(o.mesa).trim().toLowerCase().replace(/^mesa\s*/i, '');
                 if (cm === cleanTarget) {
                   o.estado = 'ENTREGADO';
@@ -1265,10 +1281,10 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
           }
           // Cambiar de inmediato el estado visual de la tarjeta de la mesa en /pedidos a verde "Disponible"
           renderTablesGrid();
-          showBoardToast('✅ Mesa liberada y cobro registrado exitosamente', true);
+          showBoardToast('✅ Mesa liberada exitosamente', true);
         } else if (isDelivery) {
           // Si es domicilio, asegurar transición y remoción instantánea en UI
-          const cardEl = document.getElementById(`delivery-card-${activePayOrder.id}`);
+          const cardEl = document.getElementById(`delivery-card-${paidOrderRef.id}`);
           if (cardEl) {
             cardEl.style.transition = 'all 0.3s ease-out';
             cardEl.style.opacity = '0';
@@ -1278,7 +1294,7 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
           renderDeliveriesSection();
           showBoardToast('✅ Domicilio cobrado y entregado exitosamente', true);
         } else if (isTakeout) {
-          const takeoutCard = document.getElementById(`takeout-card-${activePayOrder.id}`);
+          const takeoutCard = document.getElementById(`takeout-card-${paidOrderRef.id}`);
           if (takeoutCard) {
             takeoutCard.style.transition = 'all 0.3s ease-out';
             takeoutCard.style.opacity = '0';
@@ -1289,13 +1305,10 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
           showBoardToast('✅ Pedido para llevar cobrado y entregado exitosamente', true);
         }
 
-        const wantReceipt = document.getElementById('chk-board-print-receipt')?.checked ?? true;
-        const orderToPrint = data.id ? data : activePayOrder;
-        closePayModal();
         await fetchOrders();
 
         if (wantReceipt) {
-          printOrderTicket(orderToPrint, 'customer', selectedPayMethod, paidCash);
+          printOrderTicket(orderToPrint, 'customer', normalizedMethod, paidCash);
         }
       } catch (err) {
         alert('No se pudo cobrar: ' + err.message);

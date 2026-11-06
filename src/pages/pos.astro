@@ -1505,6 +1505,36 @@ const searchableCatalog = allPosProducts.map((p) => ({
       return `[${clean} - ${loc}]`;
     }
 
+    // Platos con Guarnición Fija por receta (Bandeja Paisa, Pescados/Cazuelas, Arroces, Creps)
+    function isFixedGarnishDish(name) {
+      if (!name) return false;
+      const n = normalizeStr(name);
+      const fixed = [
+        'bandeja paisa',
+        'creps de pollo',
+        'crep de pollo',
+        'crepe de pollo',
+        'crepes de pollo',
+        'arroz con pollo',
+        'arroz campesino',
+        'arroz mixto',
+        'arroz paisa',
+        'arroz ranchero',
+        'espagueti con pollo',
+        'spaghetti con pollo',
+        'bagre frito',
+        'bagre sudado',
+        'bagre al ajillo',
+        'robalo apanado',
+        'robalo al ajillo',
+        'mojarra',
+        'mini cazuela',
+        'cazuela de mariscos',
+        'cazuela'
+      ];
+      return fixed.some((f) => n.includes(f));
+    }
+
     function showPosToast(title, desc = 'Impresión automática silenciosa en SAT Q22') {
       const toast = document.getElementById('pos-toast');
       const tTitle = document.getElementById('pos-toast-title');
@@ -1903,13 +1933,14 @@ const searchableCatalog = allPosProducts.map((p) => ({
     // Arma el string de notas y guarniciones de un plato
     function buildPlateNotes(item) {
       if (item.isCustomizable) {
+        const isFixed = isFixedGarnishDish(item.name);
         const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
-        const parts = [
-          item.soup || soupDefault,
-          `Principio: ${item.principle || (dailySpecialsData.principios?.[0] || 'Sin Principio')}`,
-          `Acomp: ${item.side || (dailySpecialsData.acompanamientos?.[0] || 'Sin Acompañamiento')}`,
-          item.salad || 'Con ensalada'
-        ];
+        const parts = [item.soup || soupDefault];
+        if (!isFixed) {
+          parts.push(`Principio: ${item.principle || (dailySpecialsData.principios?.[0] || 'Sin Principio')}`);
+          parts.push(`Acomp: ${item.side || (dailySpecialsData.acompanamientos?.[0] || 'Sin Acompañamiento')}`);
+          parts.push(item.salad || 'Con ensalada');
+        }
         if (currentOrderType !== 'mesa') {
           parts.push(`Empaque: ${item.packaging || globalPackagingType}`);
         }
@@ -1976,6 +2007,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
       editingCartUid = cartItem.uid;
       pendingGarnishItem = cartItem;
 
+      const isFixed = isFixedGarnishDish(cartItem.name);
       const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
       const soupOptions = [soupDefault, 'Sin Sopa'];
       const principleOptions = [...(dailySpecialsData.principios || []), 'Sin Principio'];
@@ -1986,9 +2018,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
       garnishState = {
         quantity: 1,
         soup: cartItem.soup || soupOptions[0],
-        principle: cartItem.principle || principleOptions[0] || 'Sin Principio',
-        side: cartItem.side || sideOptions[0] || 'Sin Acompañamiento',
-        salad: cartItem.salad || 'Con ensalada',
+        principle: isFixed ? null : (cartItem.principle || principleOptions[0] || 'Sin Principio'),
+        side: isFixed ? null : (cartItem.side || sideOptions[0] || 'Sin Acompañamiento'),
+        salad: isFixed ? null : (cartItem.salad || 'Con ensalada'),
         packaging: cartItem.packaging || globalPackagingType || 'Icopor'
       };
 
@@ -2008,9 +2040,21 @@ const searchableCatalog = allPosProducts.map((p) => ({
       if (btnLabel) btnLabel.textContent = 'Guardar Cambios';
 
       renderOptionPills(garnishSoupContainer, soupOptions, garnishState.soup, (val) => (garnishState.soup = val));
-      renderOptionPills(garnishPrincipleContainer, principleOptions, garnishState.principle, (val) => (garnishState.principle = val));
-      renderOptionPills(garnishSideContainer, sideOptions, garnishState.side, (val) => (garnishState.side = val));
-      renderOptionPills(garnishSaladContainer, saladOptions, garnishState.salad, (val) => (garnishState.salad = val));
+
+      // Si es plato con receta fija, ocultar los selectores de Principio, Acompañamiento y Ensalada
+      const principleSection = garnishPrincipleContainer ? garnishPrincipleContainer.closest('div') : null;
+      const sideSection = garnishSideContainer ? garnishSideContainer.closest('div') : null;
+      const saladSection = garnishSaladContainer ? garnishSaladContainer.closest('div') : null;
+
+      if (principleSection) principleSection.style.display = isFixed ? 'none' : 'block';
+      if (sideSection) sideSection.style.display = isFixed ? 'none' : 'block';
+      if (saladSection) saladSection.style.display = isFixed ? 'none' : 'block';
+
+      if (!isFixed) {
+        renderOptionPills(garnishPrincipleContainer, principleOptions, garnishState.principle, (val) => (garnishState.principle = val));
+        renderOptionPills(garnishSideContainer, sideOptions, garnishState.side, (val) => (garnishState.side = val));
+        renderOptionPills(garnishSaladContainer, saladOptions, garnishState.salad, (val) => (garnishState.salad = val));
+      }
       renderOptionPills(garnishPackagingContainer, packagingOptions, garnishState.packaging, (val) => (garnishState.packaging = val));
 
       modalGarnish?.classList.remove('hidden');
@@ -2054,11 +2098,12 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
       // @ts-ignore
       const extra = garnishExtraNotes ? garnishExtraNotes.value.trim() : '';
+      const isFixed = isFixedGarnishDish(item.name);
 
       item.soup = garnishState.soup;
-      item.principle = garnishState.principle;
-      item.side = garnishState.side;
-      item.salad = garnishState.salad;
+      item.principle = isFixed ? null : garnishState.principle;
+      item.side = isFixed ? null : garnishState.side;
+      item.salad = isFixed ? null : garnishState.salad;
       item.packaging = garnishState.packaging;
       item.extraNotes = extra;
       item.notes = buildPlateNotes(item);
@@ -2076,6 +2121,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
       const isDrink = isDrinkProduct(name, category_id);
 
       if (isCustomizable) {
+        const isFixed = isFixedGarnishDish(name);
         const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
         const soupOptions = [soupDefault, 'Sin Sopa'];
         const principleOptions = [...(dailySpecialsData.principios || []), 'Sin Principio'];
@@ -2089,13 +2135,14 @@ const searchableCatalog = allPosProducts.map((p) => ({
           quantity: 1,
           category_id: category_id || 'fuertes_165',
           isCustomizable: true,
+          isFixedGarnish: isFixed,
           isRapidasFood: false,
           isJuice: false,
           isDrink: false,
           soup: soupOptions[0],
-          principle: principleOptions[0] || 'Sin Principio',
-          side: sideOptions[0] || 'Sin Acompañamiento',
-          salad: 'Con ensalada',
+          principle: isFixed ? null : (principleOptions[0] || 'Sin Principio'),
+          side: isFixed ? null : (sideOptions[0] || 'Sin Acompañamiento'),
+          salad: isFixed ? null : 'Con ensalada',
           packaging: globalPackagingType,
           extraNotes: '',
           notes: ''
@@ -2334,20 +2381,12 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
         let inlineControls = '';
         if (item.isCustomizable) {
+          const isFixed = isFixedGarnishDish(item.name);
           const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
           const soupOptions = [
             soupDefault,
             'Sin Sopa'
           ];
-          const principleOptions = [
-            ...(dailySpecialsData.principios || []),
-            'Sin Principio'
-          ];
-          const sideOptions = [
-            ...(dailySpecialsData.acompanamientos || []),
-            'Sin Acompañamiento'
-          ];
-          const saladOptions = ['Con ensalada', 'Sin ensalada'];
           const packagingOptions = ['Icopor', 'Caja'];
 
           const optHtml = (arr, sel) =>
@@ -2355,59 +2394,112 @@ const searchableCatalog = allPosProducts.map((p) => ({
               .map((val) => `<option value="${escapeHtml(val)}" ${val === sel ? 'selected' : ''}>${escapeHtml(val)}</option>`)
               .join('');
 
-          inlineControls = `
-            <div class="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-dashed border-parrilla-border/70 text-[11px]">
-              <div>
-                <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🥣 Sopa</label>
-                <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="soup" data-uid="${item.uid}">
-                  ${optHtml(soupOptions, item.soup)}
-                </select>
-              </div>
+          if (isFixed) {
+            // Plato con receta fija (Bandeja Paisa, Pescados/Cazuelas, Arroces, Creps):
+            // MOSTRAR ÚNICAMENTE Sopa, Empaque (si es para llevar/domicilio) y Notas
+            inlineControls = `
+              <div class="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-dashed border-parrilla-border/70 text-[11px]">
+                <div class="col-span-2">
+                  <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    🍲 Guarnición fija por receta (incluye acompañamientos predeterminados)
+                  </span>
+                </div>
 
-              <div>
-                <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🍚 Principio</label>
-                <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="principle" data-uid="${item.uid}">
-                  ${optHtml(principleOptions, item.principle)}
-                </select>
-              </div>
+                <div class="col-span-2 sm:col-span-1">
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🥣 Sopa</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="soup" data-uid="${item.uid}">
+                    ${optHtml(soupOptions, item.soup)}
+                  </select>
+                </div>
 
-              <div>
-                <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🍟 Acomp.</label>
-                <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="side" data-uid="${item.uid}">
-                  ${optHtml(sideOptions, item.side)}
-                </select>
-              </div>
+                ${
+                  currentOrderType !== 'mesa'
+                    ? `
+                <div class="col-span-2 sm:col-span-1">
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">📦 Empaque</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-uid="${item.uid}">
+                    ${optHtml(packagingOptions, item.packaging || globalPackagingType)}
+                  </select>
+                </div>`
+                    : ''
+                }
 
-              <div>
-                <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🥗 Ensalada</label>
-                <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="salad" data-uid="${item.uid}">
-                  ${optHtml(saladOptions, item.salad)}
-                </select>
+                <div class="col-span-2">
+                  <input
+                    type="text"
+                    class="pos-inline-notes w-full py-1 px-2 bg-slate-50 hover:bg-white focus:bg-white rounded-lg border border-parrilla-border text-[11px] font-medium text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition"
+                    data-uid="${item.uid}"
+                    placeholder="Nota: ej: bien asado, sin cebolla..."
+                    value="${escapeHtml(item.extraNotes || '')}"
+                  />
+                </div>
               </div>
+            `;
+          } else {
+            const principleOptions = [
+              ...(dailySpecialsData.principios || []),
+              'Sin Principio'
+            ];
+            const sideOptions = [
+              ...(dailySpecialsData.acompanamientos || []),
+              'Sin Acompañamiento'
+            ];
+            const saladOptions = ['Con ensalada', 'Sin ensalada'];
 
-              ${
-                currentOrderType !== 'mesa'
-                  ? `
-              <div class="col-span-2">
-                <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">📦 Empaque</label>
-                <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-uid="${item.uid}">
-                  ${optHtml(packagingOptions, item.packaging || globalPackagingType)}
-                </select>
-              </div>`
-                  : ''
-              }
+            inlineControls = `
+              <div class="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-dashed border-parrilla-border/70 text-[11px]">
+                <div>
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🥣 Sopa</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="soup" data-uid="${item.uid}">
+                    ${optHtml(soupOptions, item.soup)}
+                  </select>
+                </div>
 
-              <div class="col-span-2">
-                <input
-                  type="text"
-                  class="pos-inline-notes w-full py-1 px-2 bg-slate-50 hover:bg-white focus:bg-white rounded-lg border border-parrilla-border text-[11px] font-medium text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition"
-                  data-uid="${item.uid}"
-                  placeholder="Nota: ej: bien asado, sin cebolla..."
-                  value="${escapeHtml(item.extraNotes || '')}"
-                />
+                <div>
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🍚 Principio</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="principle" data-uid="${item.uid}">
+                    ${optHtml(principleOptions, item.principle)}
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🍟 Acomp.</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="side" data-uid="${item.uid}">
+                    ${optHtml(sideOptions, item.side)}
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🥗 Ensalada</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="salad" data-uid="${item.uid}">
+                    ${optHtml(saladOptions, item.salad)}
+                  </select>
+                </div>
+
+                ${
+                  currentOrderType !== 'mesa'
+                    ? `
+                <div class="col-span-2">
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">📦 Empaque</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-uid="${item.uid}">
+                    ${optHtml(packagingOptions, item.packaging || globalPackagingType)}
+                  </select>
+                </div>`
+                    : ''
+                }
+
+                <div class="col-span-2">
+                  <input
+                    type="text"
+                    class="pos-inline-notes w-full py-1 px-2 bg-slate-50 hover:bg-white focus:bg-white rounded-lg border border-parrilla-border text-[11px] font-medium text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition"
+                    data-uid="${item.uid}"
+                    placeholder="Nota: ej: bien asado, sin cebolla..."
+                    value="${escapeHtml(item.extraNotes || '')}"
+                  />
+                </div>
               </div>
-            </div>
-          `;
+            `;
+          }
         } else if (item.isRapidasFood) {
           const packagingOptions = ['Icopor', 'Caja'];
           const optHtml = (arr, sel) =>

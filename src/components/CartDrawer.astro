@@ -342,10 +342,45 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       }
     }
 
+    // Platos con Guarnición Fija por receta (Bandeja Paisa, Pescados/Cazuelas, Arroces, Creps)
+    function isFixedGarnishDish(name) {
+      if (!name) return false;
+      const n = String(name)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+      const fixed = [
+        'bandeja paisa',
+        'creps de pollo',
+        'crep de pollo',
+        'crepe de pollo',
+        'crepes de pollo',
+        'arroz con pollo',
+        'arroz campesino',
+        'arroz mixto',
+        'arroz paisa',
+        'arroz ranchero',
+        'espagueti con pollo',
+        'spaghetti con pollo',
+        'bagre frito',
+        'bagre sudado',
+        'bagre al ajillo',
+        'robalo apanado',
+        'robalo al ajillo',
+        'mojarra',
+        'mini cazuela',
+        'cazuela de mariscos',
+        'cazuela'
+      ];
+      return fixed.some((f) => n.includes(f));
+    }
+
     // Corrige elecciones que ya no existan (p. ej. si cambió el menú del día)
     function sanitizeItem(raw) {
       if (!raw || typeof raw.name !== 'string' || !Number.isFinite(raw.price)) return null;
       const soupDefault = specials.sopa ? `Con Sopa (${specials.sopa})` : 'Con Sopa';
+      const isFixed = isFixedGarnishDish(raw.name);
       const item = {
         id: typeof raw.id === 'string' ? raw.id : `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
         name: raw.name,
@@ -359,16 +394,23 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         notes: typeof raw.notes === 'string' ? raw.notes : '',
       };
       if (item.customizable) {
-        const principles = [...(specials.principios || []), 'Sin Principio'];
-        const sides = [...(specials.acompanamientos || []), 'Sin Acompañamiento'];
-        const salads = ['Con ensalada', 'Sin ensalada'];
-        const packagings = ['Icopor', 'Caja'];
-
         item.soup = raw.soup === 'Sin Sopa' ? 'Sin Sopa' : soupDefault;
-        item.principle = principles.includes(raw.principle) ? raw.principle : (principles[0] || 'Sin Principio');
-        item.side = sides.includes(raw.side) ? raw.side : (sides[0] || 'Sin Acompañamiento');
-        item.salad = salads.includes(raw.salad) ? raw.salad : 'Con ensalada';
+        const packagings = ['Icopor', 'Caja'];
         item.packaging = packagings.includes(raw.packaging) ? raw.packaging : 'Icopor';
+
+        if (isFixed) {
+          item.principle = null;
+          item.side = null;
+          item.salad = null;
+        } else {
+          const principles = [...(specials.principios || []), 'Sin Principio'];
+          const sides = [...(specials.acompanamientos || []), 'Sin Acompañamiento'];
+          const salads = ['Con ensalada', 'Sin ensalada'];
+
+          item.principle = principles.includes(raw.principle) ? raw.principle : (principles[0] || 'Sin Principio');
+          item.side = sides.includes(raw.side) ? raw.side : (sides[0] || 'Sin Acompañamiento');
+          item.salad = salads.includes(raw.salad) ? raw.salad : 'Con ensalada';
+        }
       }
       return item;
     }
@@ -483,15 +525,16 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
 
     function addToCart(name, price, customizable) {
       const soupDefault = specials.sopa ? `Con Sopa (${specials.sopa})` : 'Con Sopa';
+      const isFixed = isFixedGarnishDish(name);
       cart.push({
         id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
         name,
         price,
         customizable,
         soup: customizable ? soupDefault : null,
-        principle: customizable ? (specials.principios?.[0] ?? 'Sin Principio') : null,
-        side: customizable ? (specials.acompanamientos?.[0] ?? 'Sin Acompañamiento') : null,
-        salad: customizable ? 'Con ensalada' : null,
+        principle: customizable && !isFixed ? (specials.principios?.[0] ?? 'Sin Principio') : null,
+        side: customizable && !isFixed ? (specials.acompanamientos?.[0] ?? 'Sin Acompañamiento') : null,
+        salad: customizable && !isFixed ? 'Con ensalada' : null,
         packaging: customizable ? currentGlobalPackaging : null,
         notes: '',
       });
@@ -526,29 +569,12 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         </div>`;
 
       if (item.customizable) {
+        const isFixed = isFixedGarnishDish(item.name);
         const soupOptionsList = [
           { value: soupDefault, label: soupDefault },
           { value: 'Sin Sopa', label: 'Sin Sopa' },
         ];
         const soupHtml = optionsHtml(soupOptionsList, item.soup);
-
-        const principleOptionsList = [
-          ...(specials.principios || []).map((p) => ({ value: p, label: p })),
-          { value: 'Sin Principio', label: 'Sin Principio' },
-        ];
-        const principleHtml = optionsHtml(principleOptionsList, item.principle);
-
-        const sideOptionsList = [
-          ...(specials.acompanamientos || []).map((a) => ({ value: a, label: a })),
-          { value: 'Sin Acompañamiento', label: 'Sin Acompañamiento' },
-        ];
-        const sideHtml = optionsHtml(sideOptionsList, item.side);
-
-        const saladOptionsList = [
-          { value: 'Con ensalada', label: 'Con ensalada' },
-          { value: 'Sin ensalada', label: 'Sin ensalada' },
-        ];
-        const saladHtml = optionsHtml(saladOptionsList, item.salad);
 
         const packagingOptionsList = [
           { value: 'Icopor', label: 'Icopor' },
@@ -556,48 +582,101 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
         ];
         const packagingHtml = optionsHtml(packagingOptionsList, item.packaging || currentGlobalPackaging || 'Icopor');
 
-        html += `
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5 pt-2.5 border-t border-dashed border-parrilla-border text-xs">
-            <div>
-              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🥣 Sopa</label>
-              <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="soup" data-id="${item.id}">
-                ${soupHtml}
-              </select>
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🍚 Principio</label>
-              <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="principle" data-id="${item.id}">
-                ${principleHtml}
-              </select>
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🍟 Acompañamiento</label>
-              <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="side" data-id="${item.id}">
-                ${sideHtml}
-              </select>
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🥗 Ensalada</label>
-              <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="salad" data-id="${item.id}">
-                ${saladHtml}
-              </select>
-            </div>
-            ${
-              isToGo()
-                ? `
-            <div class="sm:col-span-2">
-              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">📦 Empaque</label>
-              <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-id="${item.id}">
-                ${packagingHtml}
-              </select>
-            </div>`
-                : ''
-            }
-            <div class="sm:col-span-2">
-              <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">📝 Observaciones / Notas</label>
-              <input type="text" class="item-notes w-full py-1.5 px-2.5 bg-white rounded-lg border border-parrilla-border text-xs text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition" data-id="${item.id}" placeholder="Ej: bien asado, sin cebolla..." value="${escapeHtml(item.notes || '')}">
-            </div>
-          </div>`;
+        if (isFixed) {
+          // Platos con receta fija (Bandeja Paisa, Pescados, Arroces especiales, Creps):
+          // Mostrar ÚNICAMENTE Sopa, Empaque (si es para llevar/domicilio) y Notas
+          html += `
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5 pt-2.5 border-t border-dashed border-parrilla-border text-xs">
+              <div class="sm:col-span-2">
+                <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                  🍲 Guarnición fija por receta (incluye acompañamientos predeterminados)
+                </span>
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🥣 Sopa</label>
+                <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="soup" data-id="${item.id}">
+                  ${soupHtml}
+                </select>
+              </div>
+              ${
+                isToGo()
+                  ? `
+              <div class="sm:col-span-2">
+                <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">📦 Empaque</label>
+                <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-id="${item.id}">
+                  ${packagingHtml}
+                </select>
+              </div>`
+                  : ''
+              }
+              <div class="sm:col-span-2">
+                <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">📝 Observaciones / Notas</label>
+                <input type="text" class="item-notes w-full py-1.5 px-2.5 bg-white rounded-lg border border-parrilla-border text-xs text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition" data-id="${item.id}" placeholder="Ej: bien asado, sin cebolla..." value="${escapeHtml(item.notes || '')}">
+              </div>
+            </div>`;
+        } else {
+          // Platos tradicionales con elección de principio, acompañamiento y ensalada
+          const principleOptionsList = [
+            ...(specials.principios || []).map((p) => ({ value: p, label: p })),
+            { value: 'Sin Principio', label: 'Sin Principio' },
+          ];
+          const principleHtml = optionsHtml(principleOptionsList, item.principle);
+
+          const sideOptionsList = [
+            ...(specials.acompanamientos || []).map((a) => ({ value: a, label: a })),
+            { value: 'Sin Acompañamiento', label: 'Sin Acompañamiento' },
+          ];
+          const sideHtml = optionsHtml(sideOptionsList, item.side);
+
+          const saladOptionsList = [
+            { value: 'Con ensalada', label: 'Con ensalada' },
+            { value: 'Sin ensalada', label: 'Sin ensalada' },
+          ];
+          const saladHtml = optionsHtml(saladOptionsList, item.salad);
+
+          html += `
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5 pt-2.5 border-t border-dashed border-parrilla-border text-xs">
+              <div>
+                <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🥣 Sopa</label>
+                <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="soup" data-id="${item.id}">
+                  ${soupHtml}
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🍚 Principio</label>
+                <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="principle" data-id="${item.id}">
+                  ${principleHtml}
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🍟 Acompañamiento</label>
+                <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="side" data-id="${item.id}">
+                  ${sideHtml}
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">🥗 Ensalada</label>
+                <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="salad" data-id="${item.id}">
+                  ${saladHtml}
+                </select>
+              </div>
+              ${
+                isToGo()
+                  ? `
+              <div class="sm:col-span-2">
+                <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">📦 Empaque</label>
+                <select class="item-select w-full py-1.5 px-2 bg-white rounded-lg border border-parrilla-border text-xs font-semibold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-id="${item.id}">
+                  ${packagingHtml}
+                </select>
+              </div>`
+                  : ''
+              }
+              <div class="sm:col-span-2">
+                <label class="block text-[10px] font-bold text-parrilla-muted uppercase tracking-wider mb-1">📝 Observaciones / Notas</label>
+                <input type="text" class="item-notes w-full py-1.5 px-2.5 bg-white rounded-lg border border-parrilla-border text-xs text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition" data-id="${item.id}" placeholder="Ej: bien asado, sin cebolla..." value="${escapeHtml(item.notes || '')}">
+              </div>
+            </div>`;
+        }
       } else {
         html += `
           <div class="mt-2 pt-2 border-t border-dashed border-parrilla-border">
@@ -796,12 +875,13 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
           detalles: cart.map(item => {
             let sideNotes = '';
             if (item.customizable) {
-              const parts = [
-                item.soup || '',
-                item.principle ? `Principio: ${item.principle}` : '',
-                item.side ? `Acomp: ${item.side}` : '',
-                item.salad || 'Con ensalada',
-              ];
+              const isFixed = isFixedGarnishDish(item.name);
+              const parts = [item.soup || ''];
+              if (!isFixed) {
+                if (item.principle) parts.push(`Principio: ${item.principle}`);
+                if (item.side) parts.push(`Acomp: ${item.side}`);
+                if (item.salad) parts.push(item.salad);
+              }
               if (isToGo()) parts.push(`Empaque: ${item.packaging || currentGlobalPackaging || 'Icopor'}`);
               if (item.notes && item.notes.trim()) parts.push(`Nota: ${item.notes.trim()}`);
               sideNotes = parts.filter(Boolean).join(' | ');
@@ -860,10 +940,13 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       cart.forEach((item, index) => {
         text += `*${index + 1}. ${item.name}* (${money(item.price)})\n`;
         if (item.customizable) {
+          const isFixed = isFixedGarnishDish(item.name);
           text += `   🥣 Sopa: ${item.soup || 'No elegida'}\n`;
-          text += `   🍚 Principio: ${item.principle || 'No elegido'}\n`;
-          text += `   🍟 Acompañante: ${item.side || 'No elegido'}\n`;
-          text += `   🥗 Ensalada: ${item.salad || 'Con ensalada'}\n`;
+          if (!isFixed) {
+            text += `   🍚 Principio: ${item.principle || 'No elegido'}\n`;
+            text += `   🍟 Acompañante: ${item.side || 'No elegido'}\n`;
+            text += `   🥗 Ensalada: ${item.salad || 'Con ensalada'}\n`;
+          }
           if (isToGo()) {
             text += `   📦 Empaque: ${item.packaging || currentGlobalPackaging || 'Icopor'}\n`;
           }

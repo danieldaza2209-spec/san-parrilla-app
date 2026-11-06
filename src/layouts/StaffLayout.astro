@@ -74,11 +74,11 @@ const navItems = [
   </script>
 
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-parrilla-border no-print">
-    <div class="max-w-[1600px] mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-3">
+    <div class="max-w-[1600px] mx-auto px-2 sm:px-4 h-14 flex items-center justify-between gap-1.5 sm:gap-3 w-full">
 
-      <div class="flex items-center gap-3 min-w-0">
-        <img src="/logo.png" alt="San Parrilla" class="h-9 w-auto rounded-full ring-2 ring-parrilla-gold/30" />
-        <nav class="flex items-center gap-1 bg-slate-100/90 p-1 rounded-full border border-parrilla-border text-sm">
+      <div class="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
+        <img src="/logo.png" alt="San Parrilla" class="h-8 sm:h-9 w-auto rounded-full ring-2 ring-parrilla-gold/30 shrink-0" />
+        <nav class="flex items-center gap-0.5 sm:gap-1 bg-slate-100/90 p-1 rounded-full border border-parrilla-border text-xs sm:text-sm overflow-x-auto scrollbar-none shrink min-w-0">
           {navItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const navId = item.adminOnly ? 'nav-admin-link' : item.cashierOrAdmin ? 'nav-caja-link' : undefined;
@@ -87,14 +87,14 @@ const navItems = [
                 href={item.href}
                 id={navId}
                 class:list={[
-                  'px-3 sm:px-4 py-1.5 rounded-full font-semibold transition items-center gap-1.5',
+                  'px-2.5 sm:px-4 py-1.5 rounded-full font-semibold transition items-center gap-1 sm:gap-1.5 shrink-0 text-xs sm:text-sm',
                   item.adminOnly && !isAdmin ? 'hidden' : 'inline-flex',
                   active
                     ? 'bg-parrilla-gold text-white shadow-sm'
                     : 'text-parrilla-ivory hover:text-parrilla-gold hover:bg-white',
                 ]}
               >
-                <i data-lucide={item.icon} class="w-4 h-4"></i>
+                <i data-lucide={item.icon} class="w-3.5 sm:w-4 h-3.5 sm:h-4"></i>
                 <span class="hidden sm:inline">{item.label}</span>
               </a>
             );
@@ -102,7 +102,7 @@ const navItems = [
         </nav>
       </div>
 
-      <div class="flex items-center gap-2 sm:gap-3">
+      <div class="flex items-center gap-1 sm:gap-2.5 shrink-0">
         <span
           id="header-cash-badge"
           class:list={[
@@ -119,32 +119,35 @@ const navItems = [
         <button
           id="btn-global-print-agent"
           type="button"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-sm transition cursor-pointer"
+          class="inline-flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-sm transition cursor-pointer shrink-0"
           title="Instalar Agente de Impresión Automática SAT Q22 en Windows"
+          aria-label="Instalador Impresor SAT Q22"
         >
-          <i data-lucide="printer" class="w-3.5 h-3.5 text-white"></i>
-          <span class="hidden sm:inline">🖨️ Instalar Impresor SAT Q22</span>
-          <span class="sm:hidden">🖨️ Impresor</span>
+          <i data-lucide="printer" class="w-4 h-4 text-white shrink-0"></i>
+          <span class="hidden sm:inline">🖨️ Impresor SAT Q22</span>
         </button>
 
         <button
           id="btn-switch-role-modal"
           type="button"
-          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition"
+          class="inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold transition shrink-0 max-w-[125px] sm:max-w-none"
           title="Cambiar de Colaborador o Rol con PIN"
         >
-          <i data-lucide="user-round" class="w-3.5 h-3.5 text-amber-700"></i>
-          <span id="staff-role-label">{user ? `${ROLE_LABELS[user.role]}: ${user.name}` : 'Personal'}</span>
+          <i data-lucide="user-round" class="w-3.5 h-3.5 text-amber-700 shrink-0"></i>
+          <span id="staff-role-label-full" class="hidden sm:inline truncate">{user ? `${ROLE_LABELS[user.role]}: ${user.name}` : 'Personal'}</span>
+          <span id="staff-role-label-short" class="sm:hidden truncate">{user ? `${user.name.split(' ')[0]}` : 'Personal'}</span>
+          <span id="staff-role-label" class="sr-only">{user ? `${ROLE_LABELS[user.role]}: ${user.name}` : 'Personal'}</span>
           <span class="text-[10px] text-amber-700 underline ml-0.5 hidden sm:inline">Cambiar</span>
         </button>
 
         <button
           id="btn-staff-logout"
           type="button"
-          class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border transition"
+          class="inline-flex items-center justify-center gap-1 text-xs font-bold p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border transition shrink-0"
           title="Cerrar sesión"
+          aria-label="Cerrar sesión"
         >
-          <i data-lucide="log-out" class="w-4 h-4"></i>
+          <i data-lucide="log-out" class="w-4 h-4 shrink-0"></i>
           <span class="hidden sm:inline">Salir</span>
         </button>
       </div>
@@ -297,8 +300,18 @@ const navItems = [
         }
       }
 
+      var roleLabelFull = document.getElementById('staff-role-label-full');
+      var roleLabelShort = document.getElementById('staff-role-label-short');
+      var roleIcon = role === 'admin' ? '🛡️' : role === 'cajero' ? '💰' : '🍽️';
+      var roleTitle = role === 'admin' ? '🛡️ Admin' : role === 'cajero' ? '💰 Cajero' : '🍽️ Mesero';
+      var firstName = staffName ? staffName.trim().split(/\s+/)[0] : '';
+      if (roleLabelFull) {
+        roleLabelFull.textContent = staffName ? roleTitle + ': ' + staffName : roleTitle;
+      }
+      if (roleLabelShort) {
+        roleLabelShort.textContent = firstName ? roleIcon + ' ' + firstName : roleTitle;
+      }
       if (roleLabel) {
-        var roleTitle = role === 'admin' ? '🛡️ Admin' : role === 'cajero' ? '💰 Cajero' : '🍽️ Mesero';
         roleLabel.textContent = staffName ? roleTitle + ': ' + staffName : roleTitle;
       }
 
