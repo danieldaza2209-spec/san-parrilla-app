@@ -8,13 +8,8 @@ import app.models  # Import standard models so Base.metadata knows about all tab
 
 from app.routers import platos, menu, pedidos, metricas, auth, caja, clientes, impresion
 
-# Create database tables and sync POS catalog automatically
+# Create database tables automatically
 Base.metadata.create_all(bind=engine)
-try:
-    from app.fix_enum import fix
-    fix()
-except Exception as e:
-    print(f"[!] Aviso en inicialización de esquema: {e}")
 
 app = FastAPI(
     title=settings.APP_NAME,
