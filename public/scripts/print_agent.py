@@ -78,6 +78,7 @@ def normalizar_texto(texto: str) -> str:
     """
     if not texto:
         return ""
+    # Mantiene la 'ñ' y reemplaza acentos comunes si es necesario
     t = texto.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
     t = t.replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U")
     t = t.replace("ñ", "n").replace("Ñ", "N")
@@ -102,6 +103,7 @@ def detectar_impresora() -> str:
         print(f"[i] Impresora predeterminada actual: '{default_printer}'")
 
         if PRINTER_NAME:
+            # Búsqueda exacta o coincidencia parcial sensible / insensible
             for p in printers:
                 if PRINTER_NAME.lower() in p.lower():
                     print(f"[+] Coincidencia encontrada para '{PRINTER_NAME}': Usando '{p}'")
@@ -122,6 +124,7 @@ def enviar_raw_a_impresora(printer_name: str, raw_bytes: bytes, doc_name: str = 
     Envía bytes RAW directamente al spooler de la impresora de Windows.
     """
     if not HAS_WIN32PRINT or printer_name == "DEBUG_PRINTER":
+        # Simulación en consola para diagnóstico
         print(f"\n--- [IMPRESIÓN SIMULADA: {doc_name}] ---")
         try:
             print(raw_bytes.decode("cp850", errors="ignore"))
@@ -158,6 +161,7 @@ def construir_comanda_escpos(pedido: dict) -> bytes:
     notas = pedido.get("notas") or ""
     items = pedido.get("items") or []
 
+    # Fecha y hora local
     fecha_raw = pedido.get("fecha_hora")
     try:
         if fecha_raw:
@@ -237,7 +241,12 @@ def construir_comanda_escpos(pedido: dict) -> bytes:
             b.extend(f"     > ACOMP: {acomp}\n".encode("cp850", errors="ignore"))
         if notas_item:
             b.extend(CMD_BOLD_ON)
-            b.extend(f"     * NOTA: {notas_item}\n".encode("cp850", errors="ignore"))
+            if any(k in notas_item.upper() for k in ["TORRE A", "TORRE B", "URGENCIAS"]):
+                b.extend(CMD_TEXT_DOUBLE_H)
+                b.extend(f"     >>> {notas_item} <<<\n".encode("cp850", errors="ignore"))
+                b.extend(CMD_TEXT_NORMAL)
+            else:
+                b.extend(f"     * NOTA: {notas_item}\n".encode("cp850", errors="ignore"))
             b.extend(CMD_BOLD_OFF)
 
         b.extend(b"\n")
@@ -304,10 +313,14 @@ def ciclo_impresion(printer_target: str):
 
                         print(f"  --> Imprimiendo Comanda #{codigo} ({tipo}{' - Mesa ' + mesa if mesa else ''})...")
 
+                        # Generar bytes ESC/POS
                         raw_data = construir_comanda_escpos(ped)
+
+                        # Enviar a la impresora
                         ok = enviar_raw_a_impresora(printer_target, raw_data, f"Comanda_{codigo}")
 
                         if ok:
+                            # Notificar al servidor que ya fue impreso
                             url_marcar = f"{API_BASE_URL}/api/impresion/marcar-impreso/{ped_id}"
                             try:
                                 r_marcar = requests.post(url_marcar, timeout=8)
@@ -321,6 +334,7 @@ def ciclo_impresion(printer_target: str):
                             print(f"      [X] Falló el envío al spooler de la impresora para el pedido #{codigo}.")
 
             elif resp.status_code == 404:
+                # Si el endpoint en el backend está iniciando o no responde
                 consecutive_errors += 1
                 if consecutive_errors == 1:
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] Aviso: Endpoint /api/impresion/pendientes no respondió (404). Reintentando...")
@@ -347,6 +361,7 @@ def main():
     print("  Iniciando Agente de Impresión Térmica San Parrilla (SAT Q22)")
     print("=" * 60)
 
+    # Detectar impresora
     printer_target = detectar_impresora()
     ciclo_impresion(printer_target)
 

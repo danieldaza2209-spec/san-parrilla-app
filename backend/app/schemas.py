@@ -249,6 +249,7 @@ class DetallePedidoCreate(BaseModel):
     cantidad: int = 1
     notas_item: Optional[str] = None
     notas: Optional[str] = None
+    ubicacion_hospitalaria: Optional[str] = None
 
 class DetallePedidoOut(BaseModel):
     id: int
@@ -259,6 +260,7 @@ class DetallePedidoOut(BaseModel):
     cantidad: int
     precio_unitario: float
     notas_item: Optional[str] = None
+    ubicacion_hospitalaria: Optional[str] = None
     plato: PlatoOut
     sopa: Optional[SopaOut] = None
     principio: Optional[PrincipioOut] = None
