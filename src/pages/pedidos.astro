@@ -348,9 +348,9 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
         </div>
       </div>
 
-      <!-- Checkbox Imprimir Recibo Cliente -->
+      <!-- Checkbox Imprimir Recibo Cliente (Desactivado por defecto para evitar gasto innecesario de papel) -->
       <label class="flex items-center gap-2 text-xs font-bold text-parrilla-ivory cursor-pointer select-none bg-slate-50 p-2.5 rounded-xl border border-parrilla-border">
-        <input type="checkbox" id="chk-board-print-receipt" checked class="w-4 h-4 rounded text-parrilla-gold focus:ring-0 cursor-pointer" />
+        <input type="checkbox" id="chk-board-print-receipt" class="w-4 h-4 rounded text-parrilla-gold focus:ring-0 cursor-pointer" />
         <span>🧾 Imprimir Recibo / Cuenta al Confirmar Cobro</span>
       </label>
 
@@ -1121,6 +1121,8 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
       if (fDomInp) fDomInp.value = String(order.cantidad_domicilios || 0);
       if (cashReceivedInp) cashReceivedInp.value = '';
       if (cashChangeEl) cashChangeEl.textContent = '$0';
+      const receiptChk = document.getElementById('chk-board-print-receipt');
+      if (receiptChk) receiptChk.checked = false;
 
       modalPay.classList.remove('hidden');
       modalPay.classList.add('flex');
@@ -1197,7 +1199,7 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
       const total = Number(activePayOrder.total || 0);
       const normalizedMethod = String(selectedPayMethod || 'CASH').trim().toUpperCase();
       const change = (normalizedMethod === 'CASH' && paidCash > total) ? (paidCash - total) : 0;
-      const wantReceipt = document.getElementById('chk-board-print-receipt')?.checked ?? true;
+      const wantReceipt = Boolean(document.getElementById('chk-board-print-receipt')?.checked);
 
       try {
         if (normalizedMethod === 'FIADO' && fiadoName) {
@@ -1217,6 +1219,8 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
           metodo_pago: normalizedMethod,
           payment_method: normalizedMethod,
           imprimir_recibo: wantReceipt,
+          impreso_cocina: true, // REGLA ESTRICTA DE CIERRE: Cocina ya cocinó este pedido, permanece en True
+          impreso_caja: !wantReceipt, // Si wantReceipt es false, impreso_caja = True (NO imprimir). Si es true, impreso_caja = False (imprimir cuenta).
           payments: [{
             method: normalizedMethod,
             amount: total,

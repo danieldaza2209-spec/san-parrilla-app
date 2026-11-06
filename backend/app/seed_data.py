@@ -89,6 +89,7 @@ def seed():
                 models.Plato(nombre="Costillas bbq", descripcion="Tiernas costillas de cerdo bañadas en salsa BBQ ahumada.", precio=23000.0, imagen_emoji="🥓", categoria_id=cat_230.id),
                 models.Plato(nombre="Pechuga con maíz gratinada", descripcion="Pechuga de pollo en salsa cremosa de maíz con queso gratinado.", precio=23000.0, imagen_emoji="🌽", categoria_id=cat_230.id),
                 models.Plato(nombre="Pechuga en champiñones", descripcion="Pechuga de pollo en rica salsa cremosa con champiñones frescos.", precio=23000.0, imagen_emoji="🍄", categoria_id=cat_230.id),
+                models.Plato(nombre="Combo San Parrilla", descripcion="Combo especial de la casa con carnes selectas a la parrilla y acompañamientos.", precio=23000.0, imagen_emoji="🔥", categoria_id=cat_230.id),
 
                 # $27.500
                 models.Plato(nombre="Churrasco", descripcion="Corte de res jugoso a las brasas sazonado con sal marina.", precio=27500.0, imagen_emoji="🥩", categoria_id=cat_275.id),

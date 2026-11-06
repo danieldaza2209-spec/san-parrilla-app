@@ -1216,6 +1216,12 @@ def actualizar_pedido(
         db.flush()
         pedido.subtotal = nuevo_subtotal
         pedido.impreso_cocina = False
+        pedido.impreso_caja = True
+
+    if getattr(data, "impreso_cocina", None) is not None:
+        pedido.impreso_cocina = bool(data.impreso_cocina)
+    if getattr(data, "impreso_caja", None) is not None:
+        pedido.impreso_caja = bool(data.impreso_caja)
 
     pedido.delivery_fee = float(pedido.delivery_fee or 0.0)
     pedido.packaging_fee = float(pedido.packaging_fee or 0.0)
@@ -1643,6 +1649,7 @@ def pagar_pedido(
     imprimir_recibo: Optional[bool] = False,
     cliente_nombre: Optional[str] = None,
     cliente_telefono: Optional[str] = None,
+    impreso_cocina: Optional[bool] = None,
 ) -> models.Pedido:
     pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
     if not pedido:
@@ -1770,13 +1777,19 @@ def pagar_pedido(
     else:
         pedido.estado = models.EstadoPedido.ENTREGADO
 
-    # 2. Si el cliente solicitó imprimir recibo/cuenta (imprimir_recibo == True), encolar tirilla en impresion.py
+    # 2. Control estricto de impresión
     if imprimir_recibo:
         pedido.impreso_caja = False
         pedido.impreso_ticket = False
     else:
         pedido.impreso_caja = True
         pedido.impreso_ticket = True
+
+    if impreso_cocina is not None:
+        pedido.impreso_cocina = bool(impreso_cocina)
+        if impreso_cocina is True and pedido.detalles:
+            for det in pedido.detalles:
+                det.impreso_cocina = True
 
     # 3. LIBERACIÓN OBLIGATORIA: Asegurar liberación formal de la mesa en Neon DB para TODOS los métodos
     if (pedido.tipo == models.TipoPedido.EN_MESA or pedido.mesa) and pedido.mesa:

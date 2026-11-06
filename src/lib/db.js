@@ -118,6 +118,7 @@ export const lunchProductList = [
   { id: 'esp-11', name: 'Costillas bbq', price: 23000, category_id: 'especiales_21', description: 'Costillas ahumadas bañadas en salsa BBQ casera.', is_active: 1, is_featured: 0, sort_order: 11 },
   { id: 'esp-12', name: 'Pechuga con maíz gratinada', price: 23000, category_id: 'especiales_21', description: 'Pechuga a la plancha con crema de maíz y queso gratinado.', is_active: 1, is_featured: 0, sort_order: 12 },
   { id: 'esp-13', name: 'Pechuga en champiñones', price: 23000, category_id: 'especiales_21', description: 'Filete de pechuga con salsa cremosa de champiñones.', is_active: 1, is_featured: 0, sort_order: 13 },
+  { id: 'esp-combo-san-parrilla', name: 'Combo San Parrilla', price: 23000, category_id: 'especiales_21', description: 'Combo especial de la casa con carnes selectas a la parrilla y acompañamientos.', is_active: 1, is_featured: 1, sort_order: 14 },
 
   // $27.500
   { id: 'esp-14', name: 'Churrasco', price: 27500, category_id: 'especiales_21', description: 'Corte de res jugoso asado al carbón.', is_active: 1, is_featured: 1, sort_order: 14 },
@@ -226,7 +227,7 @@ export const rapidasProductList = [
 ];
 
 export const conveniosProductList = [
-  // Clínica Primero de Mayo (Pacientes) - Desayuno (7 dietas)
+  // Clínica Primero de Mayo (Pacientes) - Desayuno (9 dietas)
   { id: 'conv-des-normal', name: 'Desayuno Clínica - Dieta Normal', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 100, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Normal' },
   { id: 'conv-des-hiposodica', name: 'Desayuno Clínica - Dieta Hiposódica', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 101, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
   { id: 'conv-des-hipoglucida', name: 'Desayuno Clínica - Dieta Hipoglúcida', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 102, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
@@ -234,8 +235,10 @@ export const conveniosProductList = [
   { id: 'conv-des-liquida', name: 'Desayuno Clínica - Dieta Líquida', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 104, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Líquida' },
   { id: 'conv-des-liq-hiposodica', name: 'Desayuno Clínica - Dieta Líquida Hiposódica', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 105, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
   { id: 'conv-des-liq-hipoglucida', name: 'Desayuno Clínica - Dieta Líquida Hipoglúcida', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 106, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-des-hiperproteica', name: 'Desayuno Clínica - Dieta Hiperproteica', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 107, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Hiperproteica' },
+  { id: 'conv-des-blanda', name: 'Desayuno Clínica - Dieta Blanda', price: 12000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 108, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Blanda' },
 
-  // Clínica Primero de Mayo (Pacientes) - Almuerzo (7 dietas)
+  // Clínica Primero de Mayo (Pacientes) - Almuerzo (9 dietas)
   { id: 'conv-alm-normal', name: 'Almuerzo Clínica - Dieta Normal', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 110, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Normal' },
   { id: 'conv-alm-hiposodica', name: 'Almuerzo Clínica - Dieta Hiposódica', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 111, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
   { id: 'conv-alm-hipoglucida', name: 'Almuerzo Clínica - Dieta Hipoglúcida', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 112, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
@@ -243,8 +246,10 @@ export const conveniosProductList = [
   { id: 'conv-alm-liquida', name: 'Almuerzo Clínica - Dieta Líquida', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 114, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Líquida' },
   { id: 'conv-alm-liq-hiposodica', name: 'Almuerzo Clínica - Dieta Líquida Hiposódica', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 115, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
   { id: 'conv-alm-liq-hipoglucida', name: 'Almuerzo Clínica - Dieta Líquida Hipoglúcida', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 116, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-alm-hiperproteica', name: 'Almuerzo Clínica - Dieta Hiperproteica', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 117, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Hiperproteica' },
+  { id: 'conv-alm-blanda', name: 'Almuerzo Clínica - Dieta Blanda', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 118, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Blanda' },
 
-  // Clínica Primero de Mayo (Pacientes) - Cena (7 dietas)
+  // Clínica Primero de Mayo (Pacientes) - Cena (9 dietas)
   { id: 'conv-cen-normal', name: 'Cena Clínica - Dieta Normal', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 120, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Normal' },
   { id: 'conv-cen-hiposodica', name: 'Cena Clínica - Dieta Hiposódica', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 121, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
   { id: 'conv-cen-hipoglucida', name: 'Cena Clínica - Dieta Hipoglúcida', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 122, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
@@ -252,6 +257,8 @@ export const conveniosProductList = [
   { id: 'conv-cen-liquida', name: 'Cena Clínica - Dieta Líquida', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 124, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Líquida' },
   { id: 'conv-cen-liq-hiposodica', name: 'Cena Clínica - Dieta Líquida Hiposódica', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 125, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
   { id: 'conv-cen-liq-hipoglucida', name: 'Cena Clínica - Dieta Líquida Hipoglúcida', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 126, description: 'Clínica Primero de Mayo (Pacientes) — Incluye Botella con Agua ($0)' },
+  { id: 'conv-cen-hiperproteica', name: 'Cena Clínica - Dieta Hiperproteica', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 127, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Hiperproteica' },
+  { id: 'conv-cen-blanda', name: 'Cena Clínica - Dieta Blanda', price: 15000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 128, description: 'Clínica Primero de Mayo (Pacientes) — Dieta Blanda' },
 
   // Botella con Agua ($0) automática para dietas Hipo + Convenios Corporativos
   { id: 'conv-agua-hipo', name: 'Botella con Agua (Dieta Hipo Clínica)', price: 0, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 130, description: 'Incluida automáticamente en dietas Hiposódicas e Hipoglúcidas ($0)' },

@@ -252,6 +252,8 @@ class PedidoPayRequest(BaseModel):
     amount: Optional[float] = None
     change_given: Optional[float] = 0.0
     imprimir_recibo: Optional[bool] = False
+    impreso_cocina: Optional[bool] = None
+    impreso_caja: Optional[bool] = None
     creado_por: Optional[str] = None
     cantidad_domicilios: Optional[int] = None
     estado: Optional[Union[EstadoPedido, str]] = None
@@ -309,6 +311,8 @@ class PedidoCreate(BaseModel):
     total: Optional[float] = None
     es_borrador_web: bool = False
     notas: Optional[str] = None
+    impreso_cocina: Optional[bool] = False
+    impreso_caja: Optional[bool] = True
     detalles: List[DetallePedidoCreate]
 
     @field_validator("tipo", mode="before")
@@ -384,6 +388,8 @@ class PedidoUpdate(BaseModel):
     packaging_fee: Optional[float] = None
     total: Optional[float] = None
     notas: Optional[str] = None
+    impreso_cocina: Optional[bool] = None
+    impreso_caja: Optional[bool] = None
     detalles: Optional[List[DetallePedidoCreate]] = None
 
 
@@ -458,6 +464,7 @@ class PedidoImpresionOut(BaseModel):
     metodo_pago: Optional[str] = None
     creado_por: Optional[str] = None
     notas: Optional[str] = None
+    cantidad_domicilios: Optional[int] = 0
     packaging_fee: float = 0.0
     delivery_fee: float = 0.0
     subtotal: float = 0.0

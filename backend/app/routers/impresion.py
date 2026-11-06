@@ -136,6 +136,79 @@ def _desglosar_notas_item(
     return sopa, principio, acomp, empaque, ubicacion, notas_limpias
 
 
+def _es_pedido_clinica(pedido: models.Pedido, items: List[schemas.ItemImpresionOut]) -> bool:
+    cli = str(pedido.cliente_nombre or "").lower()
+    if "clínica" in cli or "clinica" in cli or "hospital" in cli:
+        return True
+    notas_ped = str(pedido.notas or "").lower()
+    if "clínica" in notas_ped or "clinica" in notas_ped or "domicilios_clinica" in notas_ped:
+        return True
+    for it in items:
+        nom = str(it.plato_nombre or it.nombre or "").lower()
+        ubic = str(it.ubicacion_hospitalaria or "").strip()
+        notas_it = str(it.notas or it.notas_item or "").lower()
+        if ubic:
+            return True
+        if "torre a" in notas_it or "torre b" in notas_it or "urgencias" in notas_it:
+            return True
+        if "dieta" in nom or "clínica" in nom or "clinica" in nom:
+            return True
+    return False
+
+
+def _extraer_tipo_dieta(nombre_plato: str) -> str:
+    nom = str(nombre_plato or "").strip()
+    if "Dieta" in nom:
+        return nom.split("Dieta", 1)[1].strip().upper()
+    elif "dieta" in nom.lower():
+        idx = nom.lower().find("dieta")
+        return nom[idx + 5:].strip(" -:").upper()
+    clean = re.sub(r"^(Desayuno|Almuerzo|Cena)\s+Cl[íi]nica\s*-\s*", "", nom, flags=re.IGNORECASE)
+    clean = re.sub(r"^Cl[íi]nica\s*-\s*", "", clean, flags=re.IGNORECASE)
+    return clean.strip().upper() or "NORMAL"
+
+
+def _es_item_agua_auto(nombre_plato: str) -> bool:
+    nom = str(nombre_plato or "").lower()
+    return "botella con agua" in nom or "agua (dieta hipo" in nom or "agua clinica" in nom
+
+
+def _es_dieta_hipo(nombre_plato: str) -> bool:
+    nom = str(nombre_plato or "").lower()
+    if _es_item_agua_auto(nom):
+        return False
+    return "hiposódica" in nom or "hiposodica" in nom or "hipoglúcida" in nom or "hipoglucida" in nom
+
+
+def _normalizar_ubicacion(ubic_raw: Optional[str], notas_raw: Optional[str]) -> str:
+    txt = f"{ubic_raw or ''} {notas_raw or ''}".upper()
+    if "TORRE B" in txt or "TORRE_B" in txt:
+        return "TORRE B"
+    elif "URGENCIAS" in txt or "URGENCIA" in txt:
+        return "URGENCIAS"
+    elif "TORRE A" in txt or "TORRE_A" in txt:
+        return "TORRE A"
+    elif ubic_raw and ubic_raw.strip():
+        return ubic_raw.strip().upper()
+    return "TORRE A"
+
+
+def _extraer_cantidad_domicilios(pedido: models.Pedido) -> int:
+    cant = getattr(pedido, "cantidad_domicilios", 0)
+    if cant and int(cant) > 0:
+        return int(cant)
+    if pedido.notas:
+        m = re.search(r"\[DOMICILIOS_CLINICA:(\d+)\]", pedido.notas, flags=re.IGNORECASE)
+        if m:
+            return int(m.group(1))
+    df = float(pedido.delivery_fee or 0)
+    if df > 0:
+        return max(1, int(round(df / 3000.0)))
+    if pedido.tipo == models.TipoPedido.DOMICILIO:
+        return 1
+    return 0
+
+
 def formatear_comanda_texto(pedido: models.Pedido, items: List[schemas.ItemImpresionOut], tipo_label: str) -> str:
     """
     Genera el texto limpio para comanda térmica de 80mm (40-42 columnas).
@@ -144,6 +217,70 @@ def formatear_comanda_texto(pedido: models.Pedido, items: List[schemas.ItemImpre
     sep = "=" * 40
     subsep = "-" * 40
     codigo = pedido.codigo_pedido if str(pedido.codigo_pedido).startswith("#") else f"#{pedido.codigo_pedido}"
+
+    if _es_pedido_clinica(pedido, items):
+        lineas = [
+            sep,
+            "        SAN PARRILLA - COCINA          ",
+            "   CONVENIO CLINICA PRIMERO DE MAYO    ",
+            f"Pedido: {codigo} | Tipo: {tipo_label.upper()}",
+            f"Hora: {fecha_str} | Atendido: {pedido.creado_por or 'Colaborador'}",
+            subsep,
+            ">>> DISTRIBUCION POR PABELLON Y DIETA <<<",
+            subsep,
+        ]
+
+        agrupado = {}
+        total_raciones = 0
+        total_agua_items = 0
+        total_dietas_hipo = 0
+
+        for item in items:
+            nombre = item.plato_nombre or item.nombre or "Plato"
+            cant = int(item.cantidad or 1)
+
+            if _es_item_agua_auto(nombre):
+                total_agua_items += cant
+                continue
+
+            total_raciones += cant
+            if _es_dieta_hipo(nombre):
+                total_dietas_hipo += cant
+
+            ubic = _normalizar_ubicacion(item.ubicacion_hospitalaria, item.notas_item or item.notas)
+            dieta = _extraer_tipo_dieta(nombre)
+
+            if ubic not in agrupado:
+                agrupado[ubic] = {}
+            if dieta not in agrupado[ubic]:
+                agrupado[ubic][dieta] = {"cantidad": 0, "notas": []}
+            agrupado[ubic][dieta]["cantidad"] += cant
+            if item.notas and item.notas not in agrupado[ubic][dieta]["notas"]:
+                agrupado[ubic][dieta]["notas"].append(item.notas)
+
+        orden_pabellon = ["TORRE A", "TORRE B", "URGENCIAS"]
+        ubicaciones_ordenadas = [u for u in orden_pabellon if u in agrupado] + [u for u in sorted(agrupado.keys()) if u not in orden_pabellon]
+
+        for ubic in ubicaciones_ordenadas:
+            lineas.append(f"[UBICACION: {ubic}]")
+            for dieta, data in sorted(agrupado[ubic].items()):
+                lineas.append(f"  {data['cantidad']:2d}X {dieta}")
+                for nota in data["notas"]:
+                    lineas.append(f"     * Nota: {nota}")
+            lineas.append("")
+
+        total_agua_final = max(total_agua_items, total_dietas_hipo)
+        total_dom = _extraer_cantidad_domicilios(pedido)
+
+        lineas.extend([
+            subsep,
+            "CONSOLIDADO GENERAL DEL SERVICIO:",
+            f"  TOTAL RACIONES ENTREGADAS   : {total_raciones}",
+            f"  TOTAL BOTELLAS AGUA AUTO    : {total_agua_final}",
+            f"  CANTIDAD DOMICILIOS/CARRERAS: {total_dom}",
+            sep,
+        ])
+        return "\n".join(lineas)
 
     lineas = [
         sep,
@@ -293,6 +430,7 @@ def obtener_pedidos_pendientes_impresion(
                     metodo_pago=metodo_pago,
                     creado_por=ped.creado_por,
                     notas=ped.notas,
+                    cantidad_domicilios=_extraer_cantidad_domicilios(ped),
                     packaging_fee=float(ped.packaging_fee or 0.0),
                     delivery_fee=float(ped.delivery_fee or 0.0),
                     subtotal=float(ped.subtotal or 0.0),
@@ -337,6 +475,7 @@ def obtener_pedidos_pendientes_impresion(
                     metodo_pago=metodo_pago,
                     creado_por=ped.creado_por,
                     notas=ped.notas,
+                    cantidad_domicilios=_extraer_cantidad_domicilios(ped),
                     packaging_fee=float(ped.packaging_fee or 0.0),
                     delivery_fee=float(ped.delivery_fee or 0.0),
                     subtotal=float(ped.subtotal or 0.0),

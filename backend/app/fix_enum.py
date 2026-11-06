@@ -248,6 +248,8 @@ def fix():
             "Líquida",
             "Líquida Hiposódica",
             "Líquida Hipoglúcida",
+            "Hiperproteica",
+            "Blanda",
         ]
         servicios_clinica = [
             ("Desayuno Clínica", 12000.0),

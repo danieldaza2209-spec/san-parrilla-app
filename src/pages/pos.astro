@@ -342,6 +342,40 @@ const searchableCatalog = allPosProducts.map((p) => ({
               </span>
             </div>
 
+            <!-- Selector Activo de Pabellón / Ubicación para Raciones Hospitalarias -->
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-emerald-50/90 border border-emerald-300 rounded-xl p-2.5">
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm">🏢</span>
+                <div>
+                  <span class="block text-[11px] font-black uppercase tracking-wider text-emerald-950">Pabellón / Ubicación para Raciones:</span>
+                  <span class="block text-[10px] text-emerald-700">Las raciones que agregues se asignarán a esta ubicación (o cámbiala directamente en cada renglón del carrito)</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5" id="hospital-active-loc-bar">
+                <button
+                  type="button"
+                  data-loc="Torre A"
+                  class="btn-hosp-loc-tab px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer bg-emerald-700 text-white shadow-xs"
+                >
+                  🏢 Torre A
+                </button>
+                <button
+                  type="button"
+                  data-loc="Torre B"
+                  class="btn-hosp-loc-tab px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer bg-white text-emerald-900 border border-emerald-300 hover:bg-emerald-100"
+                >
+                  🏢 Torre B
+                </button>
+                <button
+                  type="button"
+                  data-loc="Urgencias"
+                  class="btn-hosp-loc-tab px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer bg-white text-emerald-900 border border-emerald-300 hover:bg-emerald-100"
+                >
+                  🚨 Urgencias
+                </button>
+              </div>
+            </div>
+
             {['Desayuno Clínica', 'Almuerzo Clínica', 'Cena Clínica'].map((servicio) => {
               const serviceItems = conveniosProductList.filter((p) => p.name.startsWith(`${servicio} -`));
               const icon = servicio.startsWith('Desayuno') ? '🌅' : servicio.startsWith('Almuerzo') ? '☀️' : '🌙';
@@ -1368,6 +1402,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
     let currentOrderType = 'mesa';
     let currentPaymentMethod = 'efectivo';
     let activeMenuMode = 'almuerzos'; // 'almuerzos' | 'rapidas'
+    let currentActiveHospitalLocation = 'Torre A';
 
     // Format COP Currency
     const fmt = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
@@ -1503,6 +1538,14 @@ const searchableCatalog = allPosProducts.map((p) => ({
         .trim()
         .toUpperCase();
       return `[${clean} - ${loc}]`;
+    }
+
+    function formatHospitalDietShortName(dishName) {
+      let clean = String(dishName || '')
+        .replace(/Clínica\s*-\s*/gi, '')
+        .replace(/Dieta\s+/gi, '')
+        .trim();
+      return clean;
     }
 
     // Platos con Guarnición Fija por receta (Bandeja Paisa, Pescados/Cazuelas, Arroces, Creps)
@@ -2170,25 +2213,34 @@ const searchableCatalog = allPosProducts.map((p) => ({
         cart.push(item);
 
       } else if (isHospitalDiet) {
-        const item = {
-          uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-          id: id || name,
-          name,
-          price: numPrice,
-          quantity: 1,
-          category_id: category_id || 'convenios_clinica',
-          isCustomizable: false,
-          isRapidasFood: false,
-          isJuice: false,
-          isDrink: false,
-          isHospitalDiet: true,
-          hospitalLocation: 'Torre A',
-          packaging: globalPackagingType,
-          extraNotes: '',
-          notes: ''
-        };
-        item.notes = buildPlateNotes(item);
-        cart.push(item);
+        const targetLoc = currentActiveHospitalLocation || 'Torre A';
+        const existing = cart.find(
+          (it) => it.isHospitalDiet && it.name === name && (it.hospitalLocation || 'Torre A') === targetLoc
+        );
+        if (existing) {
+          existing.quantity += 1;
+          existing.notes = buildPlateNotes(existing);
+        } else {
+          const item = {
+            uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            id: id || name,
+            name,
+            price: numPrice,
+            quantity: 1,
+            category_id: category_id || 'convenios_clinica',
+            isCustomizable: false,
+            isRapidasFood: false,
+            isJuice: false,
+            isDrink: false,
+            isHospitalDiet: true,
+            hospitalLocation: targetLoc,
+            packaging: globalPackagingType,
+            extraNotes: '',
+            notes: ''
+          };
+          item.notes = buildPlateNotes(item);
+          cart.push(item);
+        }
 
       } else if (isJuice) {
         const isCerezada = normalizeStr(name).includes('cerezada');
@@ -2598,11 +2650,27 @@ const searchableCatalog = allPosProducts.map((p) => ({
           inlineControls = `<div class="text-[10px] text-parrilla-muted mt-1 leading-tight bg-slate-100/80 px-1.5 py-0.5 rounded border border-parrilla-border/60">${escapeHtml(item.notes)}</div>`;
         }
 
+        let itemTitleHtml = '';
+        if (item.isHospitalDiet) {
+          const cleanDiet = formatHospitalDietShortName(item.name);
+          const loc = item.hospitalLocation || 'Torre A';
+          itemTitleHtml = `
+            <div class="font-bold text-xs text-parrilla-ivory leading-snug flex flex-wrap items-center gap-1.5">
+              <span class="text-emerald-700 font-black text-xs font-mono bg-emerald-100/90 px-1 py-0.5 rounded">${item.quantity}x</span>
+              <span class="font-black text-slate-900">${escapeHtml(cleanDiet)}</span>
+              <span class="text-slate-400 font-bold">—</span>
+              <span class="bg-emerald-50 text-emerald-900 border border-emerald-300 font-extrabold text-[11px] px-1.5 py-0.5 rounded">${escapeHtml(loc)}</span>
+            </div>
+          `;
+        } else {
+          itemTitleHtml = `<div class="font-bold text-xs text-parrilla-ivory leading-snug">${escapeHtml(item.name)}</div>`;
+        }
+
         return `
           <div class="p-2.5 bg-slate-50/70 border border-parrilla-border/80 hover:border-parrilla-gold/60 rounded-xl transition shadow-2xs mb-2">
             <div class="flex items-start justify-between gap-2">
               <div class="flex-1 min-w-0">
-                <div class="font-bold text-xs text-parrilla-ivory leading-snug">${escapeHtml(item.name)}</div>
+                ${itemTitleHtml}
                 <div class="flex items-center gap-2 mt-1">
                   <span class="text-[11px] text-parrilla-gold font-bold font-mono">${fmt(item.price)}</span>
                   ${
@@ -3742,6 +3810,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
         packaging_fee: packagingFee,
         delivery_fee: deliveryFee,
         total,
+        impreso_cocina: false,
+        impreso_caja: true,
         detalles: detallesPayload
       };
       if (estadoOverride) {
@@ -3891,9 +3961,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
         // Notificación Toast Silenciosa (Sin popup window.print)
         const orderCode = savedOrder.codigo_pedido || savedOrder.id || 'NUEVO';
         if (wasOccupied) {
-          showPosToast(`✅ Nuevos platos agregados a ${meta.mesaStr || 'Mesa'} y comanda enviada a cocina`);
+          showPosToast(`✅ Nuevos platos agregados a ${meta.mesaStr || 'Mesa'} y comanda enviada a Cocina`);
         } else {
-          showPosToast(`✅ Pedido registrado y enviado a impresora (#${orderCode})`);
+          showPosToast(`✅ Pedido registrado y comanda enviada a Cocina (#${orderCode})`);
         }
         checkOccupiedTables();
       } catch (err) {
@@ -4022,6 +4092,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
             payments: paymentsPayload,
             creado_por: meta.staffCreator,
             cantidad_domicilios: meta.cantDomClinica,
+            impreso_cocina: false, // La SAT Q22 imprime ÚNICAMENTE la Comanda de Cocina
+            impreso_caja: true,    // NO imprime tirilla de cuenta/cliente al cobrar en POS
+            imprimir_recibo: false
           })
         });
 
@@ -4118,9 +4191,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
         // Notificación Toast de confirmación en pantalla
         const orderCode = (savedOrder && (savedOrder.codigo_pedido || savedOrder.id)) || 'NUEVO';
         if (currentOrderType === 'mesa') {
-          showPosToast(`✅ Mesa liberada, cobro registrado y comanda enviada a SAT Q22 (#${orderCode})`);
+          showPosToast(`✅ Mesa liberada, cobro registrado y comanda enviada a Cocina (#${orderCode})`);
         } else {
-          showPosToast(`✅ Pedido cobrado y enviado a SAT Q22 (#${orderCode})`);
+          showPosToast(`✅ Pedido cobrado y comanda enviada a Cocina (#${orderCode})`);
         }
       } catch (err) {
         alert('Ocurrió un error al cobrar: ' + err.message);

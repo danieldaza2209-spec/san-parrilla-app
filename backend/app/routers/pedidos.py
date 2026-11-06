@@ -173,6 +173,7 @@ def pagar_pedido(
         imprimir_recibo_val = False
         cliente_nombre_val = None
         cliente_telefono_val = None
+        impreso_cocina_val = None
 
         if isinstance(payload, schemas.PedidoPayRequest):
             pagos_lista = payload.payments
@@ -185,6 +186,8 @@ def pagar_pedido(
             imprimir_recibo_val = bool(payload.imprimir_recibo)
             cliente_nombre_val = payload.cliente_nombre
             cliente_telefono_val = payload.cliente_telefono
+            if payload.impreso_cocina is not None:
+                impreso_cocina_val = bool(payload.impreso_cocina)
         elif isinstance(payload, list):
             pagos_lista = payload
         elif isinstance(payload, schemas.PaymentCreate):
@@ -197,6 +200,8 @@ def pagar_pedido(
             if raw_m:
                 metodo_pago_val = str(raw_m).strip().upper()
             imprimir_recibo_val = bool(payload.get("imprimir_recibo", False))
+            if "impreso_cocina" in payload and payload["impreso_cocina"] is not None:
+                impreso_cocina_val = bool(payload["impreso_cocina"])
             creado_por_val = payload.get("creado_por")
             cant_dom_val = payload.get("cantidad_domicilios")
             estado_val = payload.get("estado")
@@ -219,6 +224,7 @@ def pagar_pedido(
             imprimir_recibo=imprimir_recibo_val,
             cliente_nombre=cliente_nombre_val,
             cliente_telefono=cliente_telefono_val,
+            impreso_cocina=impreso_cocina_val,
         )
         out_data = schemas.PedidoOut.model_validate(pedido).model_dump(mode="json")
         out_data["status"] = "success"
