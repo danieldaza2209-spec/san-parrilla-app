@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime, ForeignKey, Enum as SQLEnum, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, validates
 from sqlalchemy.sql import func
 import enum
 from app.database import Base
@@ -18,6 +18,7 @@ class EstadoPedido(str, enum.Enum):
     EN_CAMINO = "EN_CAMINO"
     SERVIDO = "SERVIDO"
     ENTREGADO = "ENTREGADO"
+    FINALIZADO = "FINALIZADO"
     PAGADO = "PAGADO"
     CANCELADO = "CANCELADO"
 
@@ -186,6 +187,7 @@ class Pedido(Base):
     tipo = Column(SQLEnum(TipoPedido), default=TipoPedido.EN_MESA)
     estado = Column(SQLEnum(EstadoPedido), default=EstadoPedido.PENDIENTE)
     estado_pago = Column(String(20), default="PENDIENTE", server_default="PENDIENTE", nullable=True)
+    metodo_pago = Column(String(50), nullable=True)
     subtotal = Column(Float, default=0.0)
     delivery_fee = Column(Float, default=0.0)
     packaging_fee = Column(Float, default=0.0)
@@ -274,13 +276,29 @@ class Payment(Base):
     id = Column(Integer, primary_key=True, index=True)
     pedido_id = Column(Integer, ForeignKey("pedidos.id"), nullable=False)
     cash_closure_id = Column(Integer, ForeignKey("cash_closures.id"), nullable=False)
-    method = Column(SQLEnum(PaymentMethod), nullable=False)
+    method = Column(String(50), nullable=False)
     amount = Column(Float, nullable=False)
     change_given = Column(Float, default=0.0)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     pedido = relationship("Pedido", back_populates="payments")
     cash_closure = relationship("CashClosure", back_populates="payments")
+
+    @validates("method")
+    def _validate_method(self, key, value):
+        if value is None:
+            return "CASH"
+        val = value.value if hasattr(value, "value") else str(value)
+        val_up = val.strip().upper()
+        if val_up in ("EFECTIVO", "CASH"):
+            return "CASH"
+        if val_up in ("DATAFONO", "DATÁFONO", "TARJETA", "CARD"):
+            return "CARD"
+        if val_up in ("TRANSFERENCIA", "QR", "AHORRO A LA MANO", "BANCOLOMBIA"):
+            return "BANCOLOMBIA"
+        if val_up in ("CREDITO", "CRÉDITO", "CREDIT", "POR COBRAR", "FIADO"):
+            return "FIADO"
+        return val_up
 
 
 class DailySpecialsConfig(Base):

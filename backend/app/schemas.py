@@ -109,10 +109,13 @@ class LiquidarFiadoRequest(BaseModel):
     cliente_telefono: Optional[str] = None
     pedido_ids: Optional[List[int]] = None
     metodo_pago: PaymentMethod = PaymentMethod.CASH
+    payment_method: Optional[PaymentMethod] = None
 
-    @field_validator("metodo_pago", mode="before")
+    @field_validator("metodo_pago", "payment_method", mode="before")
     @classmethod
     def normalize_liq_method(cls, v):
+        if v is None or v == "":
+            return None
         return _normalize_payment_method(v)
 
 
@@ -192,6 +195,8 @@ class MenuDiaOut(BaseModel):
 # --- PAGOS (PAYMENTS) ---
 
 def _normalize_payment_method(v):
+    if hasattr(v, "value"):
+        v = v.value
     if isinstance(v, str):
         val = v.strip().upper()
         if val in ("EFECTIVO", "CASH"):
@@ -204,14 +209,18 @@ def _normalize_payment_method(v):
             return PaymentMethod.DAVIPLATA
         if val in ("TARJETA", "DATAFONO", "DATÁFONO", "CARD"):
             return PaymentMethod.CARD
-        if val in ("FIADO", "CREDITO", "CRÉDITO", "POR COBRAR"):
+        if val in ("FIADO", "CREDITO", "CRÉDITO", "POR COBRAR", "CREDIT"):
             return PaymentMethod.FIADO
+        try:
+            return PaymentMethod(val)
+        except ValueError:
+            return PaymentMethod.CASH
     return v
 
 
 class PaymentCreate(BaseModel):
-    method: PaymentMethod
-    amount: float = Field(ge=0, description="Monto recibido en este método de pago")
+    method: Union[PaymentMethod, str] = PaymentMethod.CASH
+    amount: float = Field(default=0.0, ge=0, description="Monto recibido en este método de pago")
     change_given: float = Field(default=0.0, ge=0, description="Vueltos entregados al cliente")
 
     @field_validator("method", mode="before")
@@ -223,18 +232,31 @@ class PaymentOut(BaseModel):
     id: int
     pedido_id: int
     cash_closure_id: int
-    method: PaymentMethod
+    method: Union[PaymentMethod, str]
     amount: float
     change_given: float = 0.0
     created_at: datetime
 
+    @field_validator("method", mode="before")
+    @classmethod
+    def normalize_out_method(cls, v):
+        return _normalize_payment_method(v)
+
     model_config = ConfigDict(from_attributes=True)
 
 class PedidoPayRequest(BaseModel):
-    payments: List[PaymentCreate]
+    payments: Optional[List[PaymentCreate]] = None
+    metodo_pago: Optional[str] = None
+    payment_method: Optional[str] = None
+    method: Optional[str] = None
+    amount: Optional[float] = None
+    change_given: Optional[float] = 0.0
+    imprimir_recibo: Optional[bool] = False
     creado_por: Optional[str] = None
     cantidad_domicilios: Optional[int] = None
-    estado: Optional[EstadoPedido] = None
+    estado: Optional[Union[EstadoPedido, str]] = None
+    cliente_nombre: Optional[str] = None
+    cliente_telefono: Optional[str] = None
 
 
 # --- PEDIDOS & DETALLES ---
@@ -377,6 +399,10 @@ class PedidoOut(BaseModel):
     tipo: TipoPedido
     estado: EstadoPedido
     estado_pago: Optional[str] = "PENDIENTE"
+    metodo_pago: Optional[str] = None
+    status: Optional[str] = "success"
+    pedido_id: Optional[int] = None
+    mesa_liberada: Optional[bool] = True
     courier_name: Optional[str] = None
     creado_por: Optional[str] = None
     cantidad_domicilios: Optional[int] = 0

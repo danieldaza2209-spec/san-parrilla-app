@@ -16,8 +16,19 @@ def fix():
             "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'BORRADOR_WEB';",
             "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'EN_CAMINO';",
             "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'ENTREGADO';",
+            "ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'FINALIZADO';",
+            "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'CASH';",
+            "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'NEQUI';",
             "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'BANCOLOMBIA';",
+            "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'DAVIPLATA';",
+            "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'CARD';",
             "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'FIADO';",
+            "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'EFECTIVO';",
+            "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'DATAFONO';",
+            "ALTER TYPE paymentmethod ADD VALUE IF NOT EXISTS 'TRANSFERENCIA';",
+            "ALTER TABLE payments ALTER COLUMN method TYPE VARCHAR(50) USING method::text;",
+            "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS metodo_pago VARCHAR(50);",
+            "ALTER TABLE pedidos ALTER COLUMN metodo_pago TYPE VARCHAR(50) USING metodo_pago::text;",
             "ALTER TYPE rolusuario ADD VALUE IF NOT EXISTS 'CAJERO';",
             """
             CREATE TABLE IF NOT EXISTS clientes (
@@ -166,6 +177,7 @@ def fix():
             ("Costillas bbq", 23000.0),
             ("Pechuga con maíz gratinada", 23000.0),
             ("Pechuga en champiñones", 23000.0),
+            ("Combo San Parrilla", 23000.0),
             ("Churrasco", 27500.0),
             ("Parrillada", 27500.0),
             ("Pechuga con tocineta y champ.", 27500.0),
@@ -368,7 +380,10 @@ def fix():
         )
         clientes_sincronizados = 0
         for ped in pedidos_con_cliente:
-            has_fiado = any(p.method == app.models.PaymentMethod.FIADO for p in (ped.payments or []))
+            has_fiado = any(
+                (p.method.value if hasattr(p.method, "value") else str(p.method)).strip().upper() == "FIADO"
+                for p in (ped.payments or [])
+            )
             if (ped.cliente_telefono and ped.cliente_telefono.strip()) or has_fiado:
                 dir_ext, barrio_ext = crud._extraer_direccion_y_barrio_de_notas(ped.notas)
                 cli = crud.upsert_cliente(

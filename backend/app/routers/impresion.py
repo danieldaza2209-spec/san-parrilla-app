@@ -10,6 +10,23 @@ from app import schemas, models
 
 router = APIRouter(prefix="/api/impresion", tags=["Impresión Térmica SAT Q22"])
 
+# Cola en memoria para tickets de prueba (⚡ Test en POS) sin contaminar las ventas contables de Neon
+_COLA_TESTS: List[schemas.PedidoImpresionOut] = []
+_TEST_COUNTER: int = 999000
+
+
+def _buscar_pedido_por_id_o_codigo(db: Session, ref: str) -> Optional[models.Pedido]:
+    clean = str(ref or "").strip().lstrip("#")
+    if clean.isdigit():
+        ped = db.query(models.Pedido).filter(models.Pedido.id == int(clean)).first()
+        if ped:
+            return ped
+    return (
+        db.query(models.Pedido)
+        .filter(models.Pedido.codigo_pedido.ilike(clean))
+        .first()
+    )
+
 METODO_PAGO_LABELS = {
     "CASH": "EFECTIVO",
     "EFECTIVO": "EFECTIVO",
@@ -221,7 +238,7 @@ def obtener_pedidos_pendientes_impresion(
         query = query.filter(models.Pedido.tipo == tipo_filtro)
 
     pedidos = query.all()
-    resultado: List[schemas.PedidoImpresionOut] = []
+    resultado: List[schemas.PedidoImpresionOut] = list(_COLA_TESTS)
 
     for ped in pedidos:
         direccion, barrio = _extraer_direccion_barrio(ped)
@@ -335,17 +352,110 @@ def obtener_pedidos_pendientes_impresion(
     return resultado
 
 
+@router.post("/test")
+def encolar_ticket_prueba(
+    tipo: Optional[str] = Query(default="COCINA", description="Tipo de prueba: COCINA o CUENTA"),
+):
+    """
+    Encola un ticket de prueba inmediata para que el PC Receptor / print_agent.py
+    lo imprima en la SAT Q22 (80mm) sin crear ventas falsas en la contabilidad.
+    """
+    global _TEST_COUNTER, _COLA_TESTS
+    _TEST_COUNTER += 1
+    test_id = _TEST_COUNTER
+    ahora = datetime.now()
+    hora_str = ahora.strftime("%H:%M")
+    tipo_norm = (tipo or "COCINA").upper().strip()
+    if tipo_norm not in ("COCINA", "CUENTA"):
+        tipo_norm = "COCINA"
+
+    item_test = schemas.ItemImpresionOut(
+        id=1,
+        cantidad=1,
+        nombre="TICKET DE PRUEBA SAT Q22 (80MM)",
+        plato_nombre="TICKET DE PRUEBA SAT Q22 (80MM)",
+        precio=0.0,
+        precio_unitario=0.0,
+        subtotal=0.0,
+        notas="Conexion remota verificada OK desde POS",
+        notas_item="Conexion remota verificada OK desde POS",
+    )
+    texto_test = (
+        "========================================\n"
+        "        SAN PARRILLA - COCINA          \n"
+        f"Pedido: #TEST-{test_id % 1000} | Tipo: PRUEBA SAT Q22\n"
+        f"Hora: {hora_str}\n"
+        "----------------------------------------\n"
+        "[1] TICKET DE PRUEBA SAT Q22 (80MM)\n"
+        "  * Notas: Conexion remota verificada OK\n"
+        "========================================"
+    )
+    job = schemas.PedidoImpresionOut(
+        id=test_id,
+        codigo=f"#TEST-{test_id % 1000}",
+        codigo_pedido=f"TEST-{test_id % 1000}",
+        fecha_hora=ahora,
+        tipo="PRUEBA SAT Q22",
+        tipo_label="PRUEBA SAT Q22",
+        tipo_trabajo=tipo_norm,
+        es_adicion=False,
+        mesa="Caja",
+        cliente_nombre="Prueba Impresora SAT Q22",
+        cliente_telefono="3183821787",
+        metodo_pago="PRUEBA SISTEMA",
+        creado_por="Sistema POS",
+        notas="Ticket de prueba de impresion remota",
+        packaging_fee=0.0,
+        delivery_fee=0.0,
+        subtotal=0.0,
+        total=0.0,
+        impreso_cocina=(tipo_norm != "COCINA"),
+        impreso_caja=(tipo_norm != "CUENTA"),
+        impreso_ticket=(tipo_norm != "CUENTA"),
+        items=[item_test],
+        texto_comanda_sugerido=texto_test,
+    )
+    # Limitar tamaño de cola de tests por seguridad
+    if len(_COLA_TESTS) >= 10:
+        _COLA_TESTS.pop(0)
+    _COLA_TESTS.append(job)
+
+    return {
+        "success": True,
+        "pedido_id": test_id,
+        "codigo_pedido": job.codigo_pedido,
+        "tipo": tipo_norm,
+        "mensaje": "Ticket de prueba encolado para impresión remota en SAT Q22.",
+    }
+
+
 @router.post("/marcar-impreso/{pedido_id}")
 def marcar_pedido_como_impreso(
-    pedido_id: int,
+    pedido_id: str,
     tipo: Optional[str] = Query(default=None, description="Tipo de impresion confirmada: COCINA o CUENTA"),
     db: Session = Depends(get_db)
 ):
     """
     Confirma impresion en Neon DB para evitar re-impresiones.
-    Soporta marcar selectivamente COCINA o CUENTA.
+    Soporta marcar selectivamente COCINA o CUENTA, así como tickets de prueba.
     """
-    pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
+    global _COLA_TESTS
+    clean_ref = str(pedido_id or "").strip().lstrip("#")
+    if clean_ref.isdigit() and int(clean_ref) >= 999000:
+        tid = int(clean_ref)
+        _COLA_TESTS = [j for j in _COLA_TESTS if j.id != tid]
+        return {
+            "success": True,
+            "pedido_id": tid,
+            "codigo": f"#TEST-{tid % 1000}",
+            "codigo_pedido": f"TEST-{tid % 1000}",
+            "tipo_confirmado": (tipo or "TODOS").upper(),
+            "impreso_cocina": True,
+            "impreso_caja": True,
+            "impreso_ticket": True,
+        }
+
+    pedido = _buscar_pedido_por_id_o_codigo(db, clean_ref)
     if not pedido:
         raise HTTPException(status_code=404, detail=f"Pedido con ID #{pedido_id} no encontrado.")
 
@@ -381,13 +491,13 @@ def marcar_pedido_como_impreso(
 
 @router.post("/marcar-ticket/{pedido_id}")
 def marcar_ticket_como_impreso(
-    pedido_id: int,
+    pedido_id: str,
     db: Session = Depends(get_db)
 ):
     """
     Actualiza impreso_ticket = True e impreso_caja = True en Neon.
     """
-    pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
+    pedido = _buscar_pedido_por_id_o_codigo(db, pedido_id)
     if not pedido:
         raise HTTPException(status_code=404, detail=f"Pedido con ID #{pedido_id} no encontrado.")
 
@@ -407,7 +517,7 @@ def marcar_ticket_como_impreso(
 
 @router.post("/reimprimir/{pedido_id}")
 def habilitar_reimpresion_pedido(
-    pedido_id: int,
+    pedido_id: str,
     tipo: Optional[str] = Query(default="CUENTA", description="Tipo de reimpresión: CUENTA (pre-cuenta mesa) o COCINA (comanda preparación)"),
     db: Session = Depends(get_db)
 ):
@@ -416,7 +526,7 @@ def habilitar_reimpresion_pedido(
     - CUENTA: impreso_caja = False (para pre-cuenta de mesa o recibo)
     - COCINA: impreso_cocina = False (para comanda de preparación)
     """
-    pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
+    pedido = _buscar_pedido_por_id_o_codigo(db, pedido_id)
     if not pedido:
         raise HTTPException(status_code=404, detail=f"Pedido con ID #{pedido_id} no encontrado.")
 

@@ -1,9 +1,11 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date, datetime, timedelta, timezone
+import re
+import traceback
 import unicodedata
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from app import models, schemas
 
@@ -410,8 +412,9 @@ def liquidar_fiado_cliente(
     actualizando su método de pago a Efectivo (CASH), Nequi (NEQUI) o Bancolombia (BANCOLOMBIA) y dejando trazabilidad
     en las notas del pedido `[FIADO_PAGADO:METODO:FECHA]` para que sigan visibles en el filtro de 'Pagados' del módulo de Fiados.
     """
-    target_method = data.payment_method or models.PaymentMethod.CASH
-    if target_method == models.PaymentMethod.FIADO:
+    target_method = data.payment_method or data.metodo_pago or models.PaymentMethod.CASH
+    target_method_str = target_method.value if hasattr(target_method, "value") else str(target_method).strip().upper()
+    if target_method_str == "FIADO":
         raise ValueError("El método de liquidación debe ser Efectivo, Nequi, Bancolombia, Daviplata o Tarjeta.")
 
     query = (
@@ -419,7 +422,7 @@ def liquidar_fiado_cliente(
         .join(models.Payment, models.Payment.pedido_id == models.Pedido.id)
         .filter(
             models.Pedido.estado != models.EstadoPedido.CANCELADO,
-            models.Payment.method == models.PaymentMethod.FIADO,
+            models.Payment.method == "FIADO",
         )
     )
 
@@ -1212,6 +1215,7 @@ def actualizar_pedido(
         _asegurar_botella_agua_hipo(db, pedido.id, nuevos_detalles_list)
         db.flush()
         pedido.subtotal = nuevo_subtotal
+        pedido.impreso_cocina = False
 
     pedido.delivery_fee = float(pedido.delivery_fee or 0.0)
     pedido.packaging_fee = float(pedido.packaging_fee or 0.0)
@@ -1609,13 +1613,36 @@ def list_cash_closures_history(db: Session, limit: int = 50) -> List[schemas.Cas
     return [calcular_resumen_caja(db, c) for c in closures]
 
 
+def _normalizar_metodo_pago_str(m) -> str:
+    if m is None:
+        return "CASH"
+    raw = (m.value if hasattr(m, "value") else str(m)).strip().upper()
+    if raw in ("EFECTIVO", "CASH"):
+        return "CASH"
+    if raw == "NEQUI":
+        return "NEQUI"
+    if raw in ("BANCOLOMBIA", "QR", "AHORRO A LA MANO", "TRANSFERENCIA"):
+        return "BANCOLOMBIA"
+    if raw == "DAVIPLATA":
+        return "DAVIPLATA"
+    if raw in ("TARJETA", "DATAFONO", "DATÁFONO", "CARD"):
+        return "CARD"
+    if raw in ("FIADO", "CREDITO", "CRÉDITO", "CREDIT", "POR COBRAR"):
+        return "FIADO"
+    return raw or "CASH"
+
+
 def pagar_pedido(
     db: Session,
     pedido_id: int,
-    pagos_in: List[schemas.PaymentCreate],
+    pagos_in: Optional[List[schemas.PaymentCreate]] = None,
     creado_por: Optional[str] = None,
     cantidad_domicilios: Optional[int] = None,
-    nuevo_estado: Optional[models.EstadoPedido] = None,
+    nuevo_estado: Optional[Union[models.EstadoPedido, str]] = None,
+    metodo_pago: Optional[str] = None,
+    imprimir_recibo: Optional[bool] = False,
+    cliente_nombre: Optional[str] = None,
+    cliente_telefono: Optional[str] = None,
 ) -> models.Pedido:
     pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
     if not pedido:
@@ -1623,47 +1650,78 @@ def pagar_pedido(
 
     if pedido.estado == models.EstadoPedido.CANCELADO:
         raise ValueError("No se puede pagar un pedido CANCELADO.")
-    if pedido.estado in [models.EstadoPedido.PAGADO, models.EstadoPedido.ENTREGADO] and getattr(pedido, "estado_pago", None) == "PAGADO":
-        raise ValueError("El pedido ya se encuentra PAGADO.")
-    if pedido.estado == models.EstadoPedido.BORRADOR_WEB:
-        raise ValueError("El pedido está en BORRADOR_WEB. Debe ser aprobado antes de registrar el pago.")
 
-    if not pagos_in:
-        raise ValueError("Debe proporcionar al menos un pago.")
-
-    if creado_por and creado_por.strip():
-        pedido.creado_por = creado_por.strip()
+    if cliente_nombre and str(cliente_nombre).strip():
+        pedido.cliente_nombre = str(cliente_nombre).strip()
+    if cliente_telefono and str(cliente_telefono).strip():
+        pedido.cliente_telefono = str(cliente_telefono).strip()
+    if creado_por and str(creado_por).strip():
+        pedido.creado_por = str(creado_por).strip()
     if cantidad_domicilios is not None:
         pedido.cantidad_domicilios = int(cantidad_domicilios)
 
-    def _metodo_str(m):
-        return (m.value if hasattr(m, "value") else str(m)).upper().strip()
+    # Recalcular total si estaba en 0 pero tiene detalles
+    if not pedido.total and pedido.detalles:
+        sub = sum(float(d.precio_unitario or 0.0) * int(d.cantidad or 1) for d in pedido.detalles)
+        pedido.subtotal = sub
+        pedido.total = sub + float(pedido.delivery_fee or 0.0) + float(pedido.packaging_fee or 0.0)
 
-    has_fiado = any(_metodo_str(p_in.method) == "FIADO" for p_in in pagos_in)
+    total_pedido = float(pedido.total or 0.0)
+
+    # Normalizar pagos recibidos o construir desde metodo_pago
+    pagos_normalizados: List[schemas.PaymentCreate] = []
+    if pagos_in and len(pagos_in) > 0:
+        for p_item in pagos_in:
+            m_norm = _normalizar_metodo_pago_str(getattr(p_item, "method", None) or metodo_pago or "CASH")
+            amt = float(getattr(p_item, "amount", 0.0) or 0.0)
+            chg = float(getattr(p_item, "change_given", 0.0) or 0.0)
+            pagos_normalizados.append(
+                schemas.PaymentCreate(
+                    method=m_norm,
+                    amount=amt if amt > 0 else total_pedido,
+                    change_given=chg,
+                )
+            )
+    else:
+        m_norm = _normalizar_metodo_pago_str(metodo_pago or "CASH")
+        pagos_normalizados.append(
+            schemas.PaymentCreate(
+                method=m_norm,
+                amount=total_pedido,
+                change_given=0.0,
+            )
+        )
+
+    if len(pagos_normalizados) == 1 and round(float(pagos_normalizados[0].amount), 2) < round(total_pedido, 2):
+        pagos_normalizados[0].amount = total_pedido
+
+    total_pagado = sum(float(p.amount) for p in pagos_normalizados)
+    if round(total_pagado, 2) < round(total_pedido, 2):
+        raise ValueError(
+            f"El total de los pagos (${total_pagado:,.2f}) es menor al total del pedido (${total_pedido:,.2f})."
+        )
+
+    has_fiado = any(_normalizar_metodo_pago_str(p_in.method) == "FIADO" for p_in in pagos_normalizados)
     caja_activa = get_active_cash_closure(db)
     if not caja_activa:
-        if has_fiado:
-            caja_activa = (
-                db.query(models.CashClosure)
-                .order_by(models.CashClosure.opened_at.desc(), models.CashClosure.id.desc())
-                .first()
-            )
-            if not caja_activa:
-                caja_activa = models.CashClosure(
-                    status=models.CashClosureStatus.OPEN,
-                    initial_cash=0.0,
-                    notes="Apertura automática para registro de cartera Fiado",
-                )
-                db.add(caja_activa)
-                db.flush()
-        else:
-            raise ValueError("No hay una caja abierta (OPEN) en este momento. Abra caja antes de cobrar.")
-
-    total_pagado = sum(float(p.amount) for p in pagos_in)
-    if round(total_pagado, 2) < round(float(pedido.total or 0.0), 2):
-        raise ValueError(
-            f"El total de los pagos (${total_pagado:,.2f}) es menor al total del pedido (${pedido.total:,.2f})."
+        caja_activa = models.CashClosure(
+            status=models.CashClosureStatus.OPEN,
+            initial_cash=0.0,
+            total_cash_sales=0.0,
+            total_nequi_sales=0.0,
+            total_bancolombia_sales=0.0,
+            total_daviplata_sales=0.0,
+            total_transfer_sales=0.0,
+            total_card_sales=0.0,
+            total_credit_sales=0.0,
+            total_delivery_fees=0.0,
+            total_delivery_payouts=0.0,
+            total_expenses=0.0,
+            expected_cash=0.0,
+            notes="Apertura automática al registrar cobro",
         )
+        db.add(caja_activa)
+        db.flush()
 
     is_inst = _normalizar_texto(pedido.cliente_nombre) in CORPORATE_CLIENT_NAMES_NORM
     dir_extraida, barrio_extraido = _extraer_direccion_y_barrio_de_notas(pedido.notas)
@@ -1678,36 +1736,56 @@ def pagar_pedido(
     if cliente_obj:
         pedido.cliente_id = cliente_obj.id
 
-    for p_in in pagos_in:
+    # Eliminar pagos previos del mismo pedido si es un reintento para evitar duplicados
+    pagos_previos = db.query(models.Payment).filter(models.Payment.pedido_id == pedido.id).all()
+    for pp in pagos_previos:
+        db.delete(pp)
+    db.flush()
+
+    metodos_registrados = []
+    for p_in in pagos_normalizados:
+        metodo_str = _normalizar_metodo_pago_str(p_in.method)
+        metodos_registrados.append(metodo_str)
         nuevo_pago = models.Payment(
             pedido_id=pedido.id,
             cash_closure_id=caja_activa.id,
-            method=p_in.method,
+            method=metodo_str,
             amount=float(p_in.amount),
-            change_given=float(p_in.change_given or 0.0)
+            change_given=float(p_in.change_given or 0.0),
         )
         db.add(nuevo_pago)
 
-    # 1. Actualizar estado y estado_pago formalmente en Neon DB para TODOS los métodos de pago
+    # 1. Actualizar estado, estado_pago y metodo_pago formalmente en Neon DB para TODOS los métodos de pago
+    pedido.metodo_pago = metodos_registrados[0] if len(metodos_registrados) == 1 else "+".join(metodos_registrados)
     pedido.estado_pago = "PAGADO"
     if nuevo_estado:
-        pedido.estado = nuevo_estado
+        est_str = (nuevo_estado.value if hasattr(nuevo_estado, "value") else str(nuevo_estado)).strip().upper()
+        if est_str in ("FINALIZADO", "ENTREGADO"):
+            pedido.estado = models.EstadoPedido.ENTREGADO
+        else:
+            try:
+                pedido.estado = models.EstadoPedido(est_str)
+            except ValueError:
+                pedido.estado = models.EstadoPedido.ENTREGADO
     else:
         pedido.estado = models.EstadoPedido.ENTREGADO
 
-    # 2. Asegurar que las tirillas de cobro queden confirmadas
-    pedido.impreso_ticket = True
-    pedido.impreso_caja = True
+    # 2. Si el cliente solicitó imprimir recibo/cuenta (imprimir_recibo == True), encolar tirilla en impresion.py
+    if imprimir_recibo:
+        pedido.impreso_caja = False
+        pedido.impreso_ticket = False
+    else:
+        pedido.impreso_caja = True
+        pedido.impreso_ticket = True
 
-    # 3. Asegurar liberación formal de la mesa en Neon DB (disponible = True / sin órdenes abiertas)
-    if pedido.tipo == models.TipoPedido.EN_MESA and pedido.mesa:
+    # 3. LIBERACIÓN OBLIGATORIA: Asegurar liberación formal de la mesa en Neon DB para TODOS los métodos
+    if (pedido.tipo == models.TipoPedido.EN_MESA or pedido.mesa) and pedido.mesa:
         raw_m = str(pedido.mesa).strip()
         clean_num = re.sub(r'^(mesa\s*)', '', raw_m, flags=re.IGNORECASE).strip()
         nombres_m = {raw_m.lower(), f"mesa {clean_num}".lower(), clean_num.lower()}
         otros_abiertos = (
             db.query(models.Pedido)
             .filter(
-                models.Pedido.tipo == models.TipoPedido.EN_MESA,
                 models.Pedido.id != pedido.id,
                 models.Pedido.estado.notin_([
                     models.EstadoPedido.PAGADO,
@@ -1719,13 +1797,17 @@ def pagar_pedido(
             .all()
         )
         for ot in otros_abiertos:
-            if ot.mesa and ot.mesa.strip().lower() in nombres_m:
-                ot.estado = models.EstadoPedido.ENTREGADO
-                ot.estado_pago = "PAGADO"
+            if ot.mesa:
+                ot_m = str(ot.mesa).strip().lower()
+                ot_num = re.sub(r'^(mesa\s*)', '', ot_m, flags=re.IGNORECASE).strip()
+                if ot_m in nombres_m or (ot_num and ot_num in nombres_m):
+                    ot.estado = models.EstadoPedido.ENTREGADO
+                    ot.estado_pago = "PAGADO"
+                    ot.metodo_pago = pedido.metodo_pago
 
     db.flush()
 
-    # 4. Recalcular las métricas correspondientes en la caja activa (efectivo, digital, transferencias, fiado)
+    # 4. Clasificar y acumular contablemente en la sesión de caja activa (CashClosure)
     calcular_resumen_caja(db, caja_activa)
 
     db.commit()
@@ -1831,7 +1913,7 @@ def obtener_estadisticas_dashboard(db: Session) -> schemas.DashboardStatsOut:
 
     # Obtener pagos del día o del turno activo
     pagos_query = db.query(models.Payment).join(models.Pedido).filter(
-        models.Pedido.estado == models.EstadoPedido.PAGADO
+        models.Pedido.estado.in_([models.EstadoPedido.PAGADO, models.EstadoPedido.ENTREGADO])
     )
     if caja_activa:
         pagos_hoy = pagos_query.filter(
@@ -1843,12 +1925,12 @@ def obtener_estadisticas_dashboard(db: Session) -> schemas.DashboardStatsOut:
             models.Pedido.fecha_hora >= inicio_dia_utc
         ).all()
 
-    cash_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.CASH)
-    nequi_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.NEQUI)
-    bancolombia_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.BANCOLOMBIA)
-    daviplata_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.DAVIPLATA)
-    card_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.CARD)
-    credit_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if p.method == models.PaymentMethod.FIADO)
+    cash_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if _normalizar_metodo_pago_str(p.method) == "CASH")
+    nequi_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if _normalizar_metodo_pago_str(p.method) == "NEQUI")
+    bancolombia_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if _normalizar_metodo_pago_str(p.method) == "BANCOLOMBIA")
+    daviplata_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if _normalizar_metodo_pago_str(p.method) == "DAVIPLATA")
+    card_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if _normalizar_metodo_pago_str(p.method) == "CARD")
+    credit_sales = sum(float(p.amount or 0.0) for p in pagos_hoy if _normalizar_metodo_pago_str(p.method) == "FIADO")
     transfer_sales = nequi_sales + bancolombia_sales + daviplata_sales
     digital_sales = transfer_sales + card_sales
     today_sales = cash_sales + digital_sales
