@@ -802,6 +802,8 @@ def anexar_a_pedido_mesa(
     creado_por = (pedido_in.creado_por or "").strip() or None
     if creado_por:
         pedido_existente.creado_por = creado_por
+    if pedido_in.cliente_nombre and str(pedido_in.cliente_nombre).strip() and str(pedido_in.cliente_nombre).strip().lower() not in ("cliente", "none"):
+        pedido_existente.cliente_nombre = str(pedido_in.cliente_nombre).strip()
 
     nuevos_detalles: List[models.DetallePedido] = []
 

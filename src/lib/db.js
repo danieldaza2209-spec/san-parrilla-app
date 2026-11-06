@@ -153,6 +153,8 @@ export const lunchProductList = [
   { id: 'beb-5', name: 'Cerveza Club Colombia / Águila', price: 5500, category_id: 'bebidas', description: 'Botella fría.', is_active: 1, is_featured: 0, sort_order: 4 },
   { id: 'beb-6', name: 'Porción de Papas a la Francesa', price: 6000, category_id: 'bebidas', description: 'Papas crocantes.', is_active: 1, is_featured: 0, sort_order: 5 },
   { id: 'beb-7', name: 'Porción de Patacón con Hogao', price: 6500, category_id: 'bebidas', description: 'Con hogao tradicional de la casa.', is_active: 1, is_featured: 0, sort_order: 6 },
+  { id: 'beb-8', name: 'Botella de agua', price: 3000, category_id: 'bebidas', description: 'Botella de agua personal refrescante.', is_active: 1, is_featured: 0, sort_order: 7 },
+  { id: 'beb-9', name: 'Soda', price: 4500, category_id: 'bebidas', description: 'Soda bien fría.', is_active: 1, is_featured: 0, sort_order: 8 },
 ];
 
 export const rapidasProductList = [
@@ -219,8 +221,8 @@ export const rapidasProductList = [
   { id: 'rap-jug-3', name: 'Limonada Cerezada', price: 10000, category_id: 'granizados_jugos', menu_type: 'rapidas', is_active: 1, sort_order: 46 },
 
   // Bebidas
-  { id: 'rap-beb-1', name: 'Agua', price: 3000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 47 },
-  { id: 'rap-beb-2', name: 'Soda', price: 4000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 48 },
+  { id: 'rap-beb-1', name: 'Botella de agua', price: 3000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 47 },
+  { id: 'rap-beb-2', name: 'Soda', price: 4500, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 48 },
   { id: 'rap-beb-3', name: 'Gaseosa P400', price: 4000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 49 },
   { id: 'rap-beb-4', name: 'Gaseosa 1.5L', price: 8000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 50 },
   { id: 'rap-beb-5', name: 'Gaseosa Mega', price: 13500, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 51 },

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import List, Optional, Union, Any
 from datetime import date, datetime
 from app.models import (
@@ -295,7 +295,8 @@ class DetallePedidoOut(BaseModel):
 
 class PedidoCreate(BaseModel):
     cliente_id: Optional[int] = None
-    cliente_nombre: str = "Cliente"
+    cliente_nombre: Optional[str] = "Cliente"
+    customer_name: Optional[str] = None
     cliente_telefono: Optional[str] = None
     direccion: Optional[str] = None
     barrio: Optional[str] = None
@@ -314,6 +315,17 @@ class PedidoCreate(BaseModel):
     impreso_cocina: Optional[bool] = False
     impreso_caja: Optional[bool] = True
     detalles: List[DetallePedidoCreate]
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_cliente_nombre(cls, values):
+        if isinstance(values, dict):
+            c_name = values.get("cliente_nombre") or values.get("customer_name")
+            if c_name is not None and str(c_name).strip():
+                values["cliente_nombre"] = str(c_name).strip()
+            elif not values.get("cliente_nombre"):
+                values["cliente_nombre"] = "Cliente"
+        return values
 
     @field_validator("tipo", mode="before")
     @classmethod
@@ -374,6 +386,7 @@ class PedidoUpdatePaymentMethod(BaseModel):
 class PedidoUpdate(BaseModel):
     cliente_id: Optional[int] = None
     cliente_nombre: Optional[str] = None
+    customer_name: Optional[str] = None
     cliente_telefono: Optional[str] = None
     direccion: Optional[str] = None
     barrio: Optional[str] = None
@@ -391,6 +404,15 @@ class PedidoUpdate(BaseModel):
     impreso_cocina: Optional[bool] = None
     impreso_caja: Optional[bool] = None
     detalles: Optional[List[DetallePedidoCreate]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_cliente_nombre_update(cls, values):
+        if isinstance(values, dict):
+            c_name = values.get("cliente_nombre") or values.get("customer_name")
+            if c_name is not None and str(c_name).strip():
+                values["cliente_nombre"] = str(c_name).strip()
+        return values
 
 
 class PedidoOut(BaseModel):
@@ -457,6 +479,7 @@ class PedidoImpresionOut(BaseModel):
     es_adicion: bool = False
     mesa: Optional[str] = None
     cliente_nombre: str
+    customer_name: Optional[str] = None
     cliente_telefono: Optional[str] = None
     direccion: Optional[str] = None
     barrio: Optional[str] = None

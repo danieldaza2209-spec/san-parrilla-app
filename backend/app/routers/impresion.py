@@ -294,7 +294,8 @@ def formatear_comanda_texto(pedido: models.Pedido, items: List[schemas.ItemImpre
     tipo_upper = (tipo_label or "").upper()
     mesa_val = (pedido.mesa or "").strip()
     es_mesa = (pedido.tipo == models.TipoPedido.EN_MESA) or ("MESA" in tipo_upper) or bool(mesa_val)
-    cli_raw = (pedido.cliente_nombre or "").strip()
+    cli_val = getattr(pedido, "cliente_nombre", None) or getattr(pedido, "customer_name", None) or ""
+    cli_raw = str(cli_val).strip()
 
     lineas = [
         sep,
@@ -326,11 +327,15 @@ def formatear_comanda_texto(pedido: models.Pedido, items: List[schemas.ItemImpre
         lineas.append(f"UBICACIÓN: MESA {mesa_txt}")
         lineas.append(f"CLIENTE: {cli_mesa}")
     else:
-        if not cli_raw or cli_raw.lower() in ("cliente", "none", "null", "mostrador", "general"):
-            cli_nombre = "Mostrador / General"
+        is_mostrador = ("LLEVAR" in tipo_upper) or ("MOSTRADOR" in tipo_upper)
+        if cli_raw and cli_raw.lower() not in ("cliente", "none", "null", "mostrador", "general"):
+            cliente_str = cli_raw.upper()
+        elif is_mostrador:
+            cliente_str = "Mostrador"
         else:
-            cli_nombre = cli_raw.upper()
-        lineas.append(f"CLIENTE: {cli_nombre}")
+            cliente_str = "Cliente General"
+
+        lineas.append(f"CLIENTE: {cliente_str}")
 
     lineas.append(subsep)
 
@@ -430,6 +435,15 @@ def obtener_pedidos_pendientes_impresion(
         if ped.tipo == models.TipoPedido.EN_MESA:
             mesa_txt = (ped.mesa or "1").replace("Mesa", "").replace("MESA", "").strip()
 
+        cli_nombre_real = (ped.cliente_nombre or "").strip()
+        if not cli_nombre_real or cli_nombre_real.lower() in ("cliente", "none", "null"):
+            if ped.tipo == models.TipoPedido.DOMICILIO:
+                cli_nombre_real = "Cliente General"
+            elif ped.tipo == models.TipoPedido.PARA_LLEVAR:
+                cli_nombre_real = "Mostrador"
+            else:
+                cli_nombre_real = f"Mesa {mesa_txt}" if mesa_txt else "Cliente"
+
         # 1. TRABAJO DE COCINA PENDIENTE (AUTOMATICO)
         if not ped.impreso_cocina:
             nuevos_cocina = [d for d in ped.detalles if not getattr(d, "impreso_cocina", False)]
@@ -466,7 +480,8 @@ def obtener_pedidos_pendientes_impresion(
                     tipo_trabajo="COCINA",
                     es_adicion=es_adicion,
                     mesa=ped.mesa,
-                    cliente_nombre=ped.cliente_nombre or "Cliente",
+                    cliente_nombre=cli_nombre_real,
+                    customer_name=cli_nombre_real,
                     cliente_telefono=ped.cliente_telefono,
                     direccion=direccion,
                     barrio=barrio,
@@ -511,7 +526,8 @@ def obtener_pedidos_pendientes_impresion(
                     tipo_trabajo="CUENTA",
                     es_adicion=False,
                     mesa=ped.mesa,
-                    cliente_nombre=ped.cliente_nombre or "Cliente",
+                    cliente_nombre=cli_nombre_real,
+                    customer_name=cli_nombre_real,
                     cliente_telefono=ped.cliente_telefono,
                     direccion=direccion,
                     barrio=barrio,
@@ -588,6 +604,7 @@ def encolar_ticket_prueba(
         es_adicion=False,
         mesa="Caja",
         cliente_nombre="Prueba Impresora SAT Q22",
+        customer_name="Prueba Impresora SAT Q22",
         cliente_telefono="3183821787",
         metodo_pago="PRUEBA SISTEMA",
         creado_por="Sistema POS",

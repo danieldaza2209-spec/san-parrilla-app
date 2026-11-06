@@ -89,7 +89,8 @@ COMIDAS_RAPIDAS_DATA = [
     # Categoría: Bebidas
     ("Bebidas", "Bebidas frías y gaseosas", 28, [
         ("Agua", 3000.0, "💧"),
-        ("Soda", 4000.0, "🥤"),
+        ("Botella de agua", 3000.0, "💧"),
+        ("Soda", 4500.0, "🥤"),
         ("Gaseosa P400", 4000.0, "🥤"),
         ("Gaseosa 400ml", 4000.0, "🥤"),
         ("Gaseosa 1.5L", 8000.0, "🥤"),

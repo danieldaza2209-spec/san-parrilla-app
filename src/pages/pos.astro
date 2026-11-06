@@ -3779,15 +3779,22 @@ const searchableCatalog = allPosProducts.map((p) => ({
       // @ts-ignore
       const typedName = (custNameInput?.value || modalFiadoName?.value || '').trim();
       // @ts-ignore
-      const llevarName = currentOrderType === 'para_llevar' ? (llevarCustNameInput?.value || '').trim() : '';
+      const llevarName = (llevarCustNameInput?.value || '').trim();
+
+      const isMostradorType = currentOrderType === 'para_llevar' || currentOrderType === 'mostrador';
+      const tipoPedido = isMostradorType ? 'MOSTRADOR' : (currentOrderType === 'domicilio' ? 'DOMICILIO' : 'MESA');
+
+      let nombreCliente = '';
+      if (isMostradorType) {
+        nombreCliente = llevarName || typedName;
+      } else if (currentOrderType === 'domicilio') {
+        nombreCliente = typedName;
+      } else {
+        nombreCliente = typedName || (editingOpenOrder && editingOpenOrder.cliente_nombre ? editingOpenOrder.cliente_nombre.trim() : '') || mesaStr;
+      }
+
       const custPhone = typedPhone;
-      const custName = typedName
-        ? typedName
-        : currentOrderType === 'domicilio'
-        ? 'Cliente Domicilio'
-        : currentOrderType === 'para_llevar'
-        ? (llevarName || 'Para Llevar')
-        : (mesaStr || 'Cliente Mesa');
+      const custName = nombreCliente.trim() || (tipoPedido === 'MOSTRADOR' ? 'Mostrador' : (tipoPedido === 'MESA' ? (mesaStr || 'Mesa 1') : 'Cliente General'));
       // @ts-ignore
       const custAddress = (custAddressInput?.value || '').trim();
       // @ts-ignore
@@ -3836,6 +3843,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
         mesa: mesaStr || null,
         cliente_id: selectedCustomerId || null,
         cliente_nombre: custName,
+        customer_name: custName,
         cliente_telefono: custPhone || null,
         direccion: custAddress || null,
         barrio: custNeighborhood || null,
@@ -3923,7 +3931,34 @@ const searchableCatalog = allPosProducts.map((p) => ({
       btnSaveOpenOrder.innerHTML = '<span>Enviando a cocina y guardando...</span>';
 
       try {
+        const isMostrador = currentOrderType === 'para_llevar' || currentOrderType === 'mostrador';
+        const tipoPedido = isMostrador ? 'MOSTRADOR' : (currentOrderType === 'domicilio' ? 'DOMICILIO' : 'MESA');
+
+        // Captura directa y explícita del input de cliente para evitar pérdida de valor
+        // @ts-ignore
+        const rawInputCliente = (custNameInput?.value || '').trim();
+        // @ts-ignore
+        const rawLlevarCliente = (llevarCustNameInput?.value || '').trim();
+        // @ts-ignore
+        const rawFiadoCliente = (modalFiadoName?.value || '').trim();
+
+        let nombreCliente = '';
+        if (isMostrador) {
+          nombreCliente = rawLlevarCliente || rawInputCliente;
+        } else if (currentOrderType === 'domicilio') {
+          nombreCliente = rawInputCliente || rawFiadoCliente;
+        } else {
+          // @ts-ignore
+          nombreCliente = rawInputCliente || (editingOpenOrder?.cliente_nombre?.trim() || '') || (tableInput?.value || '').trim();
+        }
+
+        const clienteNombreFinal = nombreCliente.trim() || (tipoPedido === 'MOSTRADOR' ? 'Mostrador' : (tipoPedido === 'MESA' ? (tableInput?.value || 'Mesa 1').trim() : 'Cliente General'));
+
         const { payload, meta } = buildFastapiPedidoPayload('EN_PREPARACION');
+        payload.cliente_nombre = clienteNombreFinal;
+        payload.customer_name = clienteNombreFinal;
+        meta.custName = clienteNombreFinal;
+
         // @ts-ignore
         const wasOccupied = currentOrderType === 'mesa' && Boolean(getOccupiedTableOrder(tableInput?.value));
         let savedOrder = null;
@@ -3933,7 +3968,11 @@ const searchableCatalog = allPosProducts.map((p) => ({
           const putRes = await fetch(`/api/pedidos/${editingOpenOrder.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+              ...payload,
+              cliente_nombre: clienteNombreFinal,
+              customer_name: clienteNombreFinal
+            })
           });
           if (putRes.ok) {
             savedOrder = await putRes.json();
@@ -3944,7 +3983,11 @@ const searchableCatalog = allPosProducts.map((p) => ({
           const pedRes = await fetch('/api/pedidos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+              ...payload,
+              cliente_nombre: clienteNombreFinal,
+              customer_name: clienteNombreFinal
+            })
           });
           const pedData = await pedRes.json().catch(() => ({}));
           if (!pedRes.ok || !pedData.id) {
@@ -3960,7 +4003,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
           createdAt: savedOrder.fecha_hora || new Date().toISOString(),
           orderType: currentOrderType,
           table: meta.mesaStr,
-          customerName: meta.custName,
+          customerName: clienteNombreFinal,
           customerPhone: meta.custPhone,
           address: meta.custAddress,
           neighborhood: meta.custNeighborhood,

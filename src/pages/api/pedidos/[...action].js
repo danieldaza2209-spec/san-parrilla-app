@@ -43,6 +43,11 @@ export async function ALL({ request, params }) {
       const body = await cloned.json();
       if (body && typeof body === 'object' && (!action || Array.isArray(body.detalles))) {
         if (body.tipo === 'MESA') body.tipo = 'EN_MESA';
+        if (!body.cliente_nombre && body.customer_name) {
+          body.cliente_nombre = body.customer_name;
+        } else if (!body.customer_name && body.cliente_nombre) {
+          body.customer_name = body.cliente_nombre;
+        }
         if (Array.isArray(body.detalles)) {
           const platosMap = await resolvePlatosMap();
           for (const det of body.detalles) {

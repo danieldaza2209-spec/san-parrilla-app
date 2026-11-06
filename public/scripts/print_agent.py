@@ -184,7 +184,7 @@ def enviar_raw_spooler(printer_name: str, data: bytes, job_title: str = "SanParr
 
 def es_pedido_clinica(pedido: dict) -> bool:
     """Detecta si un pedido corresponde al convenio hospitalario Clínica Primero de Mayo."""
-    cli = str(pedido.get("cliente_nombre") or "").lower()
+    cli = str(pedido.get("cliente_nombre") or pedido.get("customer_name") or "").lower()
     if "clínica" in cli or "clinica" in cli or "hospital" in cli:
         return True
 
@@ -462,7 +462,8 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
 
     mesa_val = limpiar_texto(pedido.get("mesa") or "")
     es_mesa = ("MESA" in tipo) or bool(mesa_val)
-    cli_raw = limpiar_texto(pedido.get("cliente_nombre") or "").strip()
+    cli_val = pedido.get("cliente_nombre") or pedido.get("customer_name") or ""
+    cli_raw = limpiar_texto(cli_val).strip()
 
     if es_mesa:
         num_mesa = re.sub(r"(?i)^mesa\s*", "", mesa_val).strip()
@@ -482,10 +483,13 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
         b.extend(limpiar_texto(f"CLIENTE: {cli_mesa}\n").encode("cp850", errors="ignore"))
         b.extend(ESC_BOLD_OFF)
     else:
-        if not cli_raw or cli_raw.lower() in ("cliente", "none", "null", "mostrador", "general"):
-            cliente_str = "Mostrador / General"
-        else:
+        is_mostrador = ("LLEVAR" in tipo) or ("MOSTRADOR" in tipo)
+        if cli_raw and cli_raw.lower() not in ("cliente", "none", "null", "mostrador", "general"):
             cliente_str = cli_raw.upper()
+        elif is_mostrador:
+            cliente_str = "Mostrador"
+        else:
+            cliente_str = "Cliente General"
 
         b.extend(ESC_BOLD_ON)
         b.extend(limpiar_texto(f"CLIENTE: {cliente_str}\n").encode("cp850", errors="ignore"))
@@ -600,7 +604,7 @@ def construir_tirilla_caja(pedido: dict) -> bytes:
     if es_pedido_clinica(pedido):
         agrupado, ubicaciones, tot_raciones, tot_agua, tot_dom = procesar_estructura_clinica(pedido)
 
-        cliente = limpiar_texto(pedido.get("cliente_nombre") or "Clinica Primero de Mayo (Pacientes)")
+        cliente = limpiar_texto(pedido.get("cliente_nombre") or pedido.get("customer_name") or "Clinica Primero de Mayo (Pacientes)")
         direccion = limpiar_texto(pedido.get("direccion") or "Clinica Primero de Mayo - Hospitalizacion")
         metodo_pago = limpiar_texto(pedido.get("metodo_pago") or "FIADO / CARTERA")
 
@@ -736,7 +740,7 @@ def construir_tirilla_caja(pedido: dict) -> bytes:
     # ==============================================================
     # FORMATO: DOMICILIOS Y PARA LLEVAR (CUENTA / ENTREGA)
     # ==============================================================
-    cliente = limpiar_texto(pedido.get("cliente_nombre") or "Cliente")
+    cliente = limpiar_texto(pedido.get("cliente_nombre") or pedido.get("customer_name") or "Cliente")
     telefono = limpiar_texto(pedido.get("cliente_telefono") or "")
     direccion = limpiar_texto(pedido.get("direccion") or "")
     barrio = limpiar_texto(pedido.get("barrio") or "")
