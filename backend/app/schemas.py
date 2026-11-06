@@ -385,6 +385,7 @@ class PedidoOut(BaseModel):
     total: float
     notas: Optional[str] = None
     impreso_cocina: Optional[bool] = False
+    impreso_caja: Optional[bool] = False
     impreso_ticket: Optional[bool] = False
     detalles: List[DetallePedidoOut] = []
     payments: List[PaymentOut] = []
@@ -397,17 +398,24 @@ class PedidoOut(BaseModel):
 class ItemImpresionOut(BaseModel):
     id: int
     cantidad: int
+    nombre: str = ""
     plato_nombre: str
+    precio: float = 0.0
     precio_unitario: float = 0.0
     subtotal: float = 0.0
     sopa: Optional[str] = None
     principio: Optional[str] = None
+    principios: Optional[str] = None
     acompanamiento: Optional[str] = None
+    empaque: Optional[str] = None
+    ubicacion_hospitalaria: Optional[str] = None
+    notas: Optional[str] = None
     notas_item: Optional[str] = None
 
 
 class PedidoImpresionOut(BaseModel):
     id: int
+    codigo: str = ""
     codigo_pedido: str
     fecha_hora: datetime
     tipo: str
@@ -415,6 +423,10 @@ class PedidoImpresionOut(BaseModel):
     mesa: Optional[str] = None
     cliente_nombre: str
     cliente_telefono: Optional[str] = None
+    direccion: Optional[str] = None
+    barrio: Optional[str] = None
+    courier_name: Optional[str] = None
+    metodo_pago: Optional[str] = None
     creado_por: Optional[str] = None
     notas: Optional[str] = None
     packaging_fee: float = 0.0
@@ -422,6 +434,7 @@ class PedidoImpresionOut(BaseModel):
     subtotal: float = 0.0
     total: float = 0.0
     impreso_cocina: bool = False
+    impreso_caja: bool = False
     impreso_ticket: bool = False
     items: List[ItemImpresionOut] = []
     texto_comanda_sugerido: Optional[str] = None

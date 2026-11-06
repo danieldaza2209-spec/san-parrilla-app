@@ -2,34 +2,31 @@
 # -*- coding: utf-8 -*-
 """
 ==============================================================================
-   RESTAURANTE SAN PARRILLA - AGENTE DE IMPRESIÓN AUTOMÁTICA EN SEGUNDO PLANO
+   RESTAURANTE SAN PARRILLA - AGENTE DE IMPRESIÓN REMOTA AUTOMÁTICA (SAT Q22)
 ==============================================================================
-Este script se ejecuta localmente en el PC de caja de Windows conectado a la
-impresora térmica SAT Q22 (80mm).
+Ejecuta en segundo plano en el PC de caja (Windows) conectado a la impresora
+térmica SAT Q22 (80mm).
 
-Funcionamiento:
-1. Consulta cada 2 segundos los pedidos pendientes en /api/impresion/pendientes.
-2. Si detecta nuevos pedidos (de meseros, cajero, admin o web):
-   a) Formatea la comanda térmica en comandos ESC/POS estándar (80mm).
-   b) Envía el trabajo RAW al spooler de la impresora de Windows.
-   c) Envía el comando de corte automático de papel.
-   d) Notifica a /api/impresion/marcar-impreso/{id} para evitar reimpresiones.
+Flujo:
+1. Consulta cada POLL_INTERVAL (2.5s) a GET /api/impresion/pendientes.
+2. Por cada pedido nuevo (creado desde celular, tablet o PC):
+   a) Si IMPRIMIR_COCINA == True: imprime Tirilla de Cocina (80mm) y corta papel.
+   b) Si IMPRIMIR_CAJA == True: imprime Tirilla de Cuenta / Domicilio (80mm) y corta papel.
+   c) Notifica a POST /api/impresion/marcar-impreso/{pedido_id}.
 ==============================================================================
 """
 
 import os
 import sys
 import time
-import unicodedata
 from datetime import datetime
 
 try:
     import requests
 except ImportError:
-    print("[!] Error: 'requests' no está instalado. Ejecuta: pip install requests")
+    print("[!] Error: 'requests' no esta instalado. Ejecuta: pip install requests pywin32")
     sys.exit(1)
 
-# Intentar importar win32print (específico de Windows)
 try:
     import win32print
     HAS_WIN32PRINT = True
@@ -37,108 +34,142 @@ except ImportError:
     HAS_WIN32PRINT = False
 
 # ==============================================================================
-# CONFIGURACIÓN
+# CONFIGURACIÓN PRINCIPAL DEL AGENTE
 # ==============================================================================
-# URL del backend o dominio web de San Parrilla
-API_BASE_URL = os.environ.get("SP_API_URL", "https://www.sanparrilla.com").rstrip("/")
+BACKEND_URL = os.environ.get(
+    "SP_BACKEND_URL",
+    "https://san-parrilla-backend.onrender.com/api/impresion"
+).rstrip("/")
 
-# Nombre de la impresora térmica en Windows.
-# Si se deja en "SAT Q22", buscará una impresora con ese nombre o similar.
-# Si se deja vacío ("") o no se encuentra, usará la impresora PREDETERMINADA de Windows.
+FALLBACK_BACKEND_URL = os.environ.get(
+    "SP_FALLBACK_URL",
+    "https://www.sanparrilla.com/api/impresion"
+).rstrip("/")
+
+# Nombre de la impresora en Windows (busca automáticamente "SAT" o "Q22" o usa la predeterminada)
 PRINTER_NAME = os.environ.get("SP_PRINTER_NAME", "SAT Q22").strip()
 
-# Intervalo de sondeo en segundos (2 segundos según especificación)
-POLL_INTERVAL = float(os.environ.get("SP_POLL_INTERVAL", "2.0"))
+# Intervalo de consulta en segundos
+POLL_INTERVAL = float(os.environ.get("SP_POLL_INTERVAL", "2.5"))
 
-# Ancho de caracteres en papel térmico de 80mm (fuente estándar A = 42-48 cols)
-LINE_WIDTH = 42
+# Banderas de tirillas a imprimir por cada pedido
+IMPRIMIR_COCINA = os.environ.get("SP_IMPRIMIR_COCINA", "true").lower() in ("true", "1", "yes", "si")
+IMPRIMIR_CAJA = os.environ.get("SP_IMPRIMIR_CAJA", "true").lower() in ("true", "1", "yes", "si")
 
-# Comandos ESC/POS estándar
-ESC = b"\x1b"
-GS = b"\x1d"
+# Ancho estándar en papel térmico de 80mm (40-42 columnas)
+LINE_WIDTH = 40
 
-CMD_INIT = ESC + b"@"                  # Inicializar impresora
-CMD_ALIGN_LEFT = ESC + b"a\x00"        # Alinear a la izquierda
-CMD_ALIGN_CENTER = ESC + b"a\x01"      # Centrar
-CMD_ALIGN_RIGHT = ESC + b"a\x02"       # Alinear a la derecha
-CMD_BOLD_ON = ESC + b"E\x01"           # Negrita activada
-CMD_BOLD_OFF = ESC + b"E\x00"          # Negrita desactivada
-CMD_TEXT_NORMAL = GS + b"!\x00"        # Tamaño de texto normal
-CMD_TEXT_DOUBLE = GS + b"!\x11"        # Doble ancho y doble alto (título)
-CMD_TEXT_DOUBLE_H = GS + b"!\x01"      # Doble alto
-CMD_FEED_5 = ESC + b"d\x05"            # Avanzar 5 líneas de papel
-CMD_CUT_PAPER = GS + b"V\x41\x00"      # Corte de papel parcial / total
-CMD_CUT_FALLBACK = ESC + b"i"          # Comando alternativo de corte
+# ==============================================================================
+# SECUENCIAS ESC/POS ESTÁNDAR EN BYTES (80mm - SAT Q22)
+# ==============================================================================
+ESC_RESET = b"\x1b\x40"             # Inicializar / Reset impresora
+ESC_ALIGN_LEFT = b"\x1b\x61\x00"    # Alinear a la izquierda
+ESC_ALIGN_CENTER = b"\x1b\x61\x01"  # Centrado
+ESC_ALIGN_RIGHT = b"\x1b\x61\x02"   # Alinear a la derecha
+ESC_BOLD_ON = b"\x1b\x45\x01"       # Negrita ON
+ESC_BOLD_OFF = b"\x1b\x45\x00"      # Negrita OFF
+GS_NORMAL = b"\x1d\x21\x00"         # Tamaño normal
+GS_DOUBLE = b"\x1d\x21\x11"         # Doble ancho y doble alto (Mesa / Pedido)
+GS_DOUBLE_H = b"\x1d\x21\x01"       # Doble alto
+ESC_FEED_4 = b"\x1b\x64\x04"        # Avanzar 4 líneas antes del corte
+GS_CUT_FULL = b"\x1d\x56\x41\x00"   # Corte total de papel
 
 
-def normalizar_texto(texto: str) -> str:
-    """
-    Limpia tildes o caracteres especiales para garantizar compatibilidad
-    con cualquier juego de caracteres de la memoria interna de la impresora.
-    """
-    if not texto:
+def limpiar_texto(texto) -> str:
+    """Normaliza caracteres acentuados para compatibilidad con codificación térmica CP850/ASCII."""
+    if texto is None:
         return ""
-    # Mantiene la 'ñ' y reemplaza acentos comunes si es necesario
-    t = texto.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
-    t = t.replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U")
-    t = t.replace("ñ", "n").replace("Ñ", "N")
-    return t
+    s = str(texto)
+    reemplazos = {
+        "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
+        "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
+        "ñ": "n", "Ñ": "N", "ü": "u", "Ü": "U",
+        "—": "-", "–": "-", "•": "*", "°": "o",
+    }
+    for k, v in reemplazos.items():
+        s = s.replace(k, v)
+    return s
+
+
+def fmt_cop(valor) -> str:
+    """Formatea un número en pesos colombianos ($XX.XXX)."""
+    try:
+        num = int(round(float(valor or 0)))
+        return "$" + f"{num:,}".replace(",", ".")
+    except Exception:
+        return "$0"
+
+
+def extraer_hora(fecha_raw) -> str:
+    """Extrae la hora HH:MM del timestamp del pedido."""
+    if not fecha_raw:
+        return datetime.now().strftime("%H:%M")
+    try:
+        dt = datetime.fromisoformat(str(fecha_raw).replace("Z", "+00:00"))
+        return dt.strftime("%H:%M")
+    except Exception:
+        return datetime.now().strftime("%H:%M")
 
 
 def detectar_impresora() -> str:
     """
-    Detecta la impresora SAT Q22 o la predeterminada en Windows.
+    Busca automáticamente en Windows una impresora que contenga 'SAT' o 'Q22'
+    (o PRINTER_NAME), o usa la impresora predeterminada del sistema.
     """
     if not HAS_WIN32PRINT:
-        print("[AVISO] Entorno sin win32print (no-Windows o sin pywin32). Modo depuración consola.")
-        return "DEBUG_PRINTER"
+        print("[AVISO] win32print no disponible. Ejecutando en modo simulacion de consola.")
+        return "CONSOLA_DEBUG"
 
     try:
-        printers = [p[2] for p in win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS)]
-        print(f"[i] Impresoras instaladas en Windows ({len(printers)}):")
-        for p in printers:
-            print(f"    - {p}")
+        flags = win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
+        impresoras = [p[2] for p in win32print.EnumPrinters(flags)]
+        print(f"[i] Impresoras detectadas en Windows ({len(impresoras)}):")
+        for imp in impresoras:
+            print(f"    - {imp}")
 
-        default_printer = win32print.GetDefaultPrinter()
-        print(f"[i] Impresora predeterminada actual: '{default_printer}'")
-
+        # 1. Buscar coincidencia con PRINTER_NAME configurado
         if PRINTER_NAME:
-            # Búsqueda exacta o coincidencia parcial sensible / insensible
-            for p in printers:
-                if PRINTER_NAME.lower() in p.lower():
-                    print(f"[+] Coincidencia encontrada para '{PRINTER_NAME}': Usando '{p}'")
-                    return p
-            print(f"[!] No se encontró exactamente '{PRINTER_NAME}'. Usando predeterminada: '{default_printer}'")
+            for imp in impresoras:
+                if PRINTER_NAME.lower() in imp.lower():
+                    print(f"[+] Impresora seleccionada por nombre: '{imp}'")
+                    return imp
 
-        return default_printer
+        # 2. Buscar cualquier impresora que contenga 'SAT' o 'Q22' o 'POS-80'
+        for imp in impresoras:
+            low = imp.lower()
+            if "sat" in low or "q22" in low or "pos-80" in low or "80mm" in low:
+                print(f"[+] Impresora termica detectada automaticamente: '{imp}'")
+                return imp
+
+        # 3. Usar predeterminada de Windows
+        default_imp = win32print.GetDefaultPrinter()
+        print(f"[!] Usando impresora predeterminada de Windows: '{default_imp}'")
+        return default_imp
     except Exception as e:
-        print(f"[!] Error al listar impresoras: {e}")
+        print(f"[!] Error al enumerar impresoras ({e}). Intentando predeterminada...")
         try:
             return win32print.GetDefaultPrinter()
         except Exception:
             return "DEFAULT"
 
 
-def enviar_raw_a_impresora(printer_name: str, raw_bytes: bytes, doc_name: str = "Comanda San Parrilla"):
-    """
-    Envía bytes RAW directamente al spooler de la impresora de Windows.
-    """
-    if not HAS_WIN32PRINT or printer_name == "DEBUG_PRINTER":
-        # Simulación en consola para diagnóstico
-        print(f"\n--- [IMPRESIÓN SIMULADA: {doc_name}] ---")
+def enviar_raw_spooler(printer_name: str, data: bytes, job_title: str = "SanParrilla_POS") -> bool:
+    """Envía la secuencia RAW ESC/POS directamente a la cola de impresión de Windows."""
+    if not HAS_WIN32PRINT or printer_name == "CONSOLA_DEBUG":
+        print(f"\n>>> [SIMULACION IMPRESION: {job_title}] <<<")
         try:
-            print(raw_bytes.decode("cp850", errors="ignore"))
+            print(data.decode("cp850", errors="ignore"))
         except Exception:
-            print(raw_bytes)
-        print("--- [FIN IMPRESIÓN SIMULADA] ---\n")
+            print(data)
+        print(f">>> [FIN {job_title}] <<<\n")
         return True
 
     hprinter = win32print.OpenPrinter(printer_name)
     try:
-        hjob = win32print.StartDocPrinter(hprinter, 1, (doc_name, None, "RAW"))
+        win32print.StartDocPrinter(hprinter, 1, (job_title, None, "RAW"))
         try:
             win32print.StartPagePrinter(hprinter)
-            win32print.WritePrinter(hprinter, raw_bytes)
+            win32print.WritePrinter(hprinter, data)
             win32print.EndPagePrinter(hprinter)
         finally:
             win32print.EndDocPrinter(hprinter)
@@ -147,224 +178,340 @@ def enviar_raw_a_impresora(printer_name: str, raw_bytes: bytes, doc_name: str = 
         win32print.ClosePrinter(hprinter)
 
 
-def construir_comanda_escpos(pedido: dict) -> bytes:
+def construir_tirilla_cocina(pedido: dict) -> bytes:
     """
-    Construye la comanda de cocina con comandos ESC/POS para SAT Q22 (80mm).
+    Construye la Tirilla de Cocina (80mm) sin precios, con notas y ubicación destacadas:
+    ========================================
+            SAN PARRILLA - COCINA          
+    Pedido: #SP-XXXX | Tipo: MESA 3 / DOMI 
+    Hora: HH:MM                             
+    ----------------------------------------
+    [CANT] PRODUCTO                        
+      * Notas: Sin cebolla                  
+      * Sopa: Fideos | Ppio: Lentejas      
+      * Ubicación: Torre A                  
+    ========================================
     """
-    codigo = pedido.get("codigo_pedido", f"ID-{pedido.get('id')}")
-    ped_id = pedido.get("id", 0)
-    tipo_label = pedido.get("tipo_label", pedido.get("tipo", "GENERAL")).upper()
-    mesa = pedido.get("mesa")
-    cliente = pedido.get("cliente_nombre") or "Cliente"
-    telefono = pedido.get("cliente_telefono")
-    creado_por = pedido.get("creado_por") or "Personal"
-    notas = pedido.get("notas") or ""
-    items = pedido.get("items") or []
+    sep = ("=" * LINE_WIDTH + "\n").encode("cp850")
+    subsep = ("-" * LINE_WIDTH + "\n").encode("cp850")
 
-    # Fecha y hora local
-    fecha_raw = pedido.get("fecha_hora")
-    try:
-        if fecha_raw:
-            dt = datetime.fromisoformat(fecha_raw.replace("Z", "+00:00"))
-            fecha_str = dt.strftime("%d/%m/%Y %I:%M %p")
-        else:
-            fecha_str = datetime.now().strftime("%d/%m/%Y %I:%M %p")
-    except Exception:
-        fecha_str = datetime.now().strftime("%d/%m/%Y %I:%M %p")
+    raw_cod = str(pedido.get("codigo") or pedido.get("codigo_pedido") or f"SP-{pedido.get('id', 0)}")
+    codigo = raw_cod if raw_cod.startswith("#") else f"#{raw_cod}"
+    tipo = limpiar_texto(pedido.get("tipo_label") or pedido.get("tipo") or "MESA").upper()
+    hora = extraer_hora(pedido.get("fecha_hora"))
+    items = pedido.get("items") or []
+    notas_generales = limpiar_texto(pedido.get("notas") or "")
 
     b = bytearray()
+    b.extend(ESC_RESET)
 
-    # 1. Inicialización
-    b.extend(CMD_INIT)
+    # Encabezado Cocina
+    b.extend(ESC_ALIGN_CENTER)
+    b.extend(sep)
+    b.extend(ESC_BOLD_ON)
+    b.extend(GS_DOUBLE_H)
+    b.extend(b"SAN PARRILLA - COCINA\n")
+    b.extend(GS_NORMAL)
+    b.extend(ESC_BOLD_OFF)
 
-    # 2. Encabezado Centrado
-    b.extend(CMD_ALIGN_CENTER)
-    b.extend(CMD_BOLD_ON)
-    b.extend(CMD_TEXT_DOUBLE)
-    b.extend(b"SAN PARRILLA\n")
-    b.extend(CMD_TEXT_NORMAL)
-    b.extend(b"*** COMANDA DE COCINA ***\n")
-    b.extend(CMD_BOLD_OFF)
-    b.extend(b"=" * LINE_WIDTH + b"\n")
+    # Pedido y Tipo en tamaño grande destacado
+    b.extend(ESC_ALIGN_LEFT)
+    b.extend(ESC_BOLD_ON)
+    b.extend(GS_DOUBLE)
+    b.extend(limpiar_texto(f"{codigo} | {tipo}\n").encode("cp850", errors="ignore"))
+    b.extend(GS_NORMAL)
+    b.extend(limpiar_texto(f"Pedido: {codigo} | Tipo: {tipo}\n").encode("cp850", errors="ignore"))
+    b.extend(ESC_BOLD_OFF)
+    b.extend(limpiar_texto(f"Hora: {hora}\n").encode("cp850", errors="ignore"))
+    b.extend(subsep)
 
-    # 3. Tipo y Mesa en GRANDE y destacado
-    b.extend(CMD_ALIGN_CENTER)
-    b.extend(CMD_BOLD_ON)
-    b.extend(CMD_TEXT_DOUBLE)
-    if mesa:
-        b.extend(f"MESA: {mesa}\n".encode("cp850", errors="ignore"))
-    else:
-        b.extend(f"{tipo_label}\n".encode("cp850", errors="ignore"))
-    b.extend(CMD_TEXT_NORMAL)
-    b.extend(CMD_BOLD_OFF)
-    b.extend(b"=" * LINE_WIDTH + b"\n")
-
-    # 4. Datos del Pedido
-    b.extend(CMD_ALIGN_LEFT)
-    b.extend(f"Pedido: #{codigo} (ID: #{ped_id})\n".encode("cp850", errors="ignore"))
-    b.extend(f"Fecha : {fecha_str}\n".encode("cp850", errors="ignore"))
-    b.extend(f"Atiende: {creado_por}\n".encode("cp850", errors="ignore"))
-
-    if cliente and cliente.lower() != "cliente":
-        cli_info = f"Cliente: {cliente}"
-        if telefono:
-            cli_info += f" (Tel: {telefono})"
-        b.extend(f"{cli_info}\n".encode("cp850", errors="ignore"))
-
-    b.extend(b"-" * LINE_WIDTH + b"\n")
-
-    # 5. Lista de Platos y Especificaciones
-    b.extend(CMD_BOLD_ON)
-    b.extend(b"CANT  DESCRIPCION / ESPECIFICACION\n")
-    b.extend(CMD_BOLD_OFF)
-    b.extend(b"-" * LINE_WIDTH + b"\n")
-
+    # Detalle de platos para cocina
     for it in items:
         cant = it.get("cantidad", 1)
-        plato_nom = it.get("plato_nombre", "Plato").upper()
-        sopa = it.get("sopa")
-        principio = it.get("principio")
-        acomp = it.get("acompanamiento")
-        notas_item = it.get("notas_item")
+        nombre = limpiar_texto(it.get("nombre") or it.get("plato_nombre") or "PRODUCTO").upper()
+        notas_it = limpiar_texto(it.get("notas") or "")
+        notas_raw = limpiar_texto(it.get("notas_item") or "")
+        sopa = limpiar_texto(it.get("sopa") or "")
+        ppio = limpiar_texto(it.get("principios") or it.get("principio") or "")
+        acomp = limpiar_texto(it.get("acompanamiento") or "")
+        ubicacion = limpiar_texto(it.get("ubicacion_hospitalaria") or "")
+        empaque = limpiar_texto(it.get("empaque") or "")
 
-        # Nombre del plato en Negrita
-        b.extend(CMD_BOLD_ON)
-        b.extend(f"{cant}x  {plato_nom}\n".encode("cp850", errors="ignore"))
-        b.extend(CMD_BOLD_OFF)
+        # Línea principal del producto en negrita y doble alto
+        b.extend(ESC_BOLD_ON)
+        b.extend(GS_DOUBLE_H)
+        b.extend(f"[{cant}] {nombre}\n".encode("cp850", errors="ignore"))
+        b.extend(GS_NORMAL)
+        b.extend(ESC_BOLD_OFF)
 
-        # Detalles secundarios
+        # Guarniciones (Sopa / Principio / Acompañamiento)
+        partes_guarn = []
         if sopa:
-            b.extend(f"     > SOPA: {sopa}\n".encode("cp850", errors="ignore"))
-        if principio:
-            b.extend(f"     > PRINCIPIO: {principio}\n".encode("cp850", errors="ignore"))
+            partes_guarn.append(f"Sopa: {sopa}")
+        if ppio:
+            partes_guarn.append(f"Ppio: {ppio}")
         if acomp:
-            b.extend(f"     > ACOMP: {acomp}\n".encode("cp850", errors="ignore"))
-        if notas_item:
-            b.extend(CMD_BOLD_ON)
-            if any(k in notas_item.upper() for k in ["TORRE A", "TORRE B", "URGENCIAS"]):
-                b.extend(CMD_TEXT_DOUBLE_H)
-                b.extend(f"     >>> {notas_item} <<<\n".encode("cp850", errors="ignore"))
-                b.extend(CMD_TEXT_NORMAL)
-            else:
-                b.extend(f"     * NOTA: {notas_item}\n".encode("cp850", errors="ignore"))
-            b.extend(CMD_BOLD_OFF)
+            partes_guarn.append(f"Acomp: {acomp}")
+        if partes_guarn:
+            b.extend(f"  * {' | '.join(partes_guarn)}\n".encode("cp850", errors="ignore"))
 
-        b.extend(b"\n")
+        # Ubicación Hospitalaria (Torre A / Torre B / Urgencias) en negrita
+        if ubicacion:
+            b.extend(ESC_BOLD_ON)
+            b.extend(GS_DOUBLE_H)
+            b.extend(f"  * Ubicacion: {ubicacion}\n".encode("cp850", errors="ignore"))
+            b.extend(GS_NORMAL)
+            b.extend(ESC_BOLD_OFF)
 
-    b.extend(b"-" * LINE_WIDTH + b"\n")
+        # Empaque
+        if empaque:
+            b.extend(f"  * Empaque: {empaque}\n".encode("cp850", errors="ignore"))
 
-    # 6. Observaciones Generales del Pedido
-    if notas and notas.strip():
-        b.extend(CMD_BOLD_ON)
-        b.extend(b"OBSERVACIONES GENERALES:\n")
-        b.extend(CMD_BOLD_OFF)
-        b.extend(f"  {notas.strip()}\n".encode("cp850", errors="ignore"))
-        b.extend(b"-" * LINE_WIDTH + b"\n")
+        # Notas de preparación del ítem
+        if notas_it:
+            b.extend(ESC_BOLD_ON)
+            b.extend(f"  * Notas: {notas_it}\n".encode("cp850", errors="ignore"))
+            b.extend(ESC_BOLD_OFF)
+        elif notas_raw and not (sopa or ppio or acomp or ubicacion or empaque):
+            b.extend(ESC_BOLD_ON)
+            b.extend(f"  * Notas: {notas_raw}\n".encode("cp850", errors="ignore"))
+            b.extend(ESC_BOLD_OFF)
 
-    # 7. Total comanda y pie
-    total = pedido.get("total", 0)
-    b.extend(CMD_ALIGN_RIGHT)
-    b.extend(CMD_BOLD_ON)
-    b.extend(f"TOTAL: ${total:,.0f}\n".encode("cp850", errors="ignore"))
-    b.extend(CMD_BOLD_OFF)
+    if notas_generales:
+        b.extend(subsep)
+        b.extend(ESC_BOLD_ON)
+        b.extend(f"Obs: {notas_generales}\n".encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
 
-    b.extend(CMD_ALIGN_CENTER)
-    b.extend(b"\n*** LISTO PARA PREPARACION ***\n")
-
-    # 8. Avance de papel y corte
-    b.extend(CMD_FEED_5)
-    b.extend(CMD_CUT_PAPER)
-    b.extend(CMD_CUT_FALLBACK)
-
+    b.extend(sep)
+    b.extend(ESC_FEED_4)
+    b.extend(GS_CUT_FULL)
     return bytes(b)
 
 
-def ciclo_impresion(printer_target: str):
+def construir_tirilla_caja(pedido: dict) -> bytes:
     """
-    Bucle principal de consulta y despacho de impresión.
+    Construye la Tirilla de Cuenta / Domicilio (80mm) con precios, cliente y método de pago:
+    ========================================
+             RESTAURANTE SAN PARRILLA       
+              Barrancabermeja - POS         
+    ----------------------------------------
+    Pedido: #SP-XXXX | Tipo: DOMICILIO     
+    Cliente: Don Carlos | Tel: 302...      
+    Dirección: Cra 19 # 52-20 (Torcoroma)  
+    Mensajero: Lucely                      
+    ----------------------------------------
+    Items detallados con valor unitario     
+    Empaques: $X.000                       
+    Domicilio: $X.000                       
+    TOTAL A PAGAR: $XX.XXX                  
+    Método de Pago: EFECTIVO / NEQUI       
+    ========================================
     """
-    print(f"\n=======================================================")
-    print(f"  SAN PARRILLA POS - SERVICIO DE IMPRESIÓN ACTIVO")
-    print(f"  Backend: {API_BASE_URL}")
-    print(f"  Impresora Windows: '{printer_target}'")
-    print(f"  Intervalo de chequeo: cada {POLL_INTERVAL} segundos")
-    print(f"=======================================================\n")
-    print("[*] Esperando pedidos entrantes... (Presiona Ctrl + C para detener)\n")
+    sep = ("=" * LINE_WIDTH + "\n").encode("cp850")
+    subsep = ("-" * LINE_WIDTH + "\n").encode("cp850")
 
-    consecutive_errors = 0
+    raw_cod = str(pedido.get("codigo") or pedido.get("codigo_pedido") or f"SP-{pedido.get('id', 0)}")
+    codigo = raw_cod if raw_cod.startswith("#") else f"#{raw_cod}"
+    tipo = limpiar_texto(pedido.get("tipo_label") or pedido.get("tipo") or "MESA").upper()
+    hora = extraer_hora(pedido.get("fecha_hora"))
+    cliente = limpiar_texto(pedido.get("cliente_nombre") or "Cliente")
+    telefono = limpiar_texto(pedido.get("cliente_telefono") or "")
+    direccion = limpiar_texto(pedido.get("direccion") or "")
+    barrio = limpiar_texto(pedido.get("barrio") or "")
+    mensajero = limpiar_texto(pedido.get("courier_name") or "")
+    metodo_pago = limpiar_texto(pedido.get("metodo_pago") or "EFECTIVO")
+    packaging_fee = float(pedido.get("packaging_fee") or 0)
+    delivery_fee = float(pedido.get("delivery_fee") or 0)
+    total = float(pedido.get("total") or 0)
+    items = pedido.get("items") or []
+
+    b = bytearray()
+    b.extend(ESC_RESET)
+
+    # Encabezado Restaurante
+    b.extend(ESC_ALIGN_CENTER)
+    b.extend(sep)
+    b.extend(ESC_BOLD_ON)
+    b.extend(GS_DOUBLE_H)
+    b.extend(b"RESTAURANTE SAN PARRILLA\n")
+    b.extend(GS_NORMAL)
+    b.extend(ESC_BOLD_OFF)
+    b.extend(b"Barrancabermeja - POS\n")
+    b.extend(subsep)
+
+    # Datos del Pedido y Cliente
+    b.extend(ESC_ALIGN_LEFT)
+    b.extend(ESC_BOLD_ON)
+    b.extend(f"Pedido: {codigo} | Tipo: {tipo}\n".encode("cp850", errors="ignore"))
+    b.extend(ESC_BOLD_OFF)
+    b.extend(f"Hora: {hora}\n".encode("cp850", errors="ignore"))
+
+    cli_line = f"Cliente: {cliente}"
+    if telefono:
+        cli_line += f" | Tel: {telefono}"
+    b.extend(f"{cli_line}\n".encode("cp850", errors="ignore"))
+
+    if direccion:
+        dir_line = f"Direccion: {direccion}"
+        if barrio:
+            dir_line += f" ({barrio})"
+        b.extend(ESC_BOLD_ON)
+        b.extend(f"{dir_line}\n".encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
+
+    if mensajero:
+        b.extend(f"Mensajero: {mensajero}\n".encode("cp850", errors="ignore"))
+
+    b.extend(subsep)
+
+    # Lista de ítems con valor unitario y subtotal
+    for it in items:
+        cant = int(it.get("cantidad") or 1)
+        nombre = limpiar_texto(it.get("nombre") or it.get("plato_nombre") or "Plato")
+        unit = float(it.get("precio") or it.get("precio_unitario") or 0)
+        sub_it = float(it.get("subtotal") or (unit * cant))
+        ubicacion = limpiar_texto(it.get("ubicacion_hospitalaria") or "")
+
+        titulo_it = f"{cant}x {nombre}"
+        if ubicacion:
+            titulo_it += f" [{ubicacion.upper()}]"
+
+        precio_str = fmt_cop(sub_it)
+        b.extend(ESC_BOLD_ON)
+        b.extend(f"{titulo_it}\n".encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
+        b.extend(f"   ({fmt_cop(unit)} c/u) -> {precio_str}\n".encode("cp850", errors="ignore"))
+
+    b.extend(subsep)
+
+    # Totales
+    if packaging_fee > 0:
+        b.extend(f"Empaques: {fmt_cop(packaging_fee)}\n".encode("cp850", errors="ignore"))
+    if delivery_fee > 0:
+        b.extend(f"Domicilio: {fmt_cop(delivery_fee)}\n".encode("cp850", errors="ignore"))
+
+    b.extend(ESC_BOLD_ON)
+    b.extend(GS_DOUBLE_H)
+    b.extend(f"TOTAL A PAGAR: {fmt_cop(total)}\n".encode("cp850", errors="ignore"))
+    b.extend(GS_NORMAL)
+    b.extend(f"Metodo de Pago: {metodo_pago}\n".encode("cp850", errors="ignore"))
+    b.extend(ESC_BOLD_OFF)
+
+    b.extend(sep)
+    b.extend(ESC_FEED_4)
+    b.extend(GS_CUT_FULL)
+    return bytes(b)
+
+
+def obtener_url_base_impresion(url_config: str) -> str:
+    """Garantiza que la URL apunte a /api/impresion."""
+    u = url_config.rstrip("/")
+    if not u.endswith("/api/impresion"):
+        u = u + "/api/impresion"
+    return u
+
+
+def consultar_pendientes(session: requests.Session):
+    """Consulta la lista de pedidos pendientes en Render (con fallback a www.sanparrilla.com)."""
+    urls = [obtener_url_base_impresion(BACKEND_URL)]
+    fb = obtener_url_base_impresion(FALLBACK_BACKEND_URL)
+    if fb not in urls:
+        urls.append(fb)
+
+    last_exc = None
+    for base in urls:
+        try:
+            r = session.get(f"{base}/pendientes", timeout=10)
+            if r.status_code == 200:
+                return r.json(), base
+        except requests.RequestException as exc:
+            last_exc = exc
+            continue
+
+    if last_exc:
+        raise last_exc
+    return [], urls[0]
+
+
+def marcar_pedido_impreso(session: requests.Session, base_url: str, pedido_id: int) -> bool:
+    """Notifica al backend que el pedido ya fue impreso en cocina y caja."""
+    urls = [base_url, obtener_url_base_impresion(BACKEND_URL), obtener_url_base_impresion(FALLBACK_BACKEND_URL)]
+    vistos = set()
+    for b_url in urls:
+        if b_url in vistos:
+            continue
+        vistos.add(b_url)
+        try:
+            r = session.post(f"{b_url}/marcar-impreso/{pedido_id}", timeout=10)
+            if r.status_code == 200:
+                return True
+        except requests.RequestException:
+            continue
+    return False
+
+
+def iniciar_agente():
+    print("=" * 60)
+    print("  SAN PARRILLA OS - AGENTE DE IMPRESION AUTOMATICA SAT Q22")
+    print("=" * 60)
+    printer_target = detectar_impresora()
+    print(f"[i] Backend Primario : {obtener_url_base_impresion(BACKEND_URL)}")
+    print(f"[i] Impresora Destino: {printer_target}")
+    print(f"[i] Intervalo Sondeo : {POLL_INTERVAL}s")
+    print(f"[i] Tirilla Cocina   : {'ACTIVA' if IMPRIMIR_COCINA else 'DESACTIVADA'}")
+    print(f"[i] Tirilla Caja/Dom : {'ACTIVA' if IMPRIMIR_CAJA else 'DESACTIVADA'}")
+    print("=" * 60)
+    print("[*] Escuchando pedidos nuevos en segundo plano (Ctrl+C para detener)...\n")
+
+    http_session = requests.Session()
+    http_session.headers.update({"Accept": "application/json", "User-Agent": "SanParrillaPrintAgent/2.0"})
 
     while True:
         try:
-            url_pendientes = f"{API_BASE_URL}/api/impresion/pendientes"
-            resp = requests.get(url_pendientes, timeout=8)
+            pendientes, active_base = consultar_pendientes(http_session)
+            if isinstance(pendientes, list) and len(pendientes) > 0:
+                for ped in pendientes:
+                    ped_id = ped.get("id")
+                    cod = ped.get("codigo") or ped.get("codigo_pedido") or f"#{ped_id}"
+                    tipo = ped.get("tipo_label") or ped.get("tipo") or "PEDIDO"
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Nuevo pedido detectado: {cod} ({tipo})")
 
-            if resp.status_code == 200:
-                consecutive_errors = 0
-                pedidos = resp.json()
+                    exito_cocina = True
+                    exito_caja = True
 
-                if pedidos and len(pedidos) > 0:
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Se encontraron {len(pedidos)} comanda(s) pendiente(s) por imprimir.")
+                    if IMPRIMIR_COCINA:
+                        bytes_cocina = construir_tirilla_cocina(ped)
+                        exito_cocina = enviar_raw_spooler(printer_target, bytes_cocina, f"Cocina_{cod}")
+                        if exito_cocina:
+                            print(f"    [+] Tirilla de COCINA enviada a '{printer_target}'.")
 
-                    for ped in pedidos:
-                        ped_id = ped.get("id")
-                        codigo = ped.get("codigo_pedido", ped_id)
-                        mesa = ped.get("mesa", "")
-                        tipo = ped.get("tipo_label", ped.get("tipo", ""))
+                    if IMPRIMIR_CAJA:
+                        if IMPRIMIR_COCINA:
+                            time.sleep(0.4)
+                        bytes_caja = construir_tirilla_caja(ped)
+                        exito_caja = enviar_raw_spooler(printer_target, bytes_caja, f"Cuenta_{cod}")
+                        if exito_caja:
+                            print(f"    [+] Tirilla de CAJA/CUENTA enviada a '{printer_target}'.")
 
-                        print(f"  --> Imprimiendo Comanda #{codigo} ({tipo}{' - Mesa ' + mesa if mesa else ''})...")
-
-                        # Generar bytes ESC/POS
-                        raw_data = construir_comanda_escpos(ped)
-
-                        # Enviar a la impresora
-                        ok = enviar_raw_a_impresora(printer_target, raw_data, f"Comanda_{codigo}")
-
-                        if ok:
-                            # Notificar al servidor que ya fue impreso
-                            url_marcar = f"{API_BASE_URL}/api/impresion/marcar-impreso/{ped_id}"
-                            try:
-                                r_marcar = requests.post(url_marcar, timeout=8)
-                                if r_marcar.status_code == 200:
-                                    print(f"      [OK] Comanda #{codigo} impresa y confirmada en el servidor.")
-                                else:
-                                    print(f"      [!] Impreso localmente, pero el servidor devolvió {r_marcar.status_code} al marcar.")
-                            except Exception as em:
-                                print(f"      [!] Error notificando confirmación a servidor: {em}")
+                    if exito_cocina and exito_caja:
+                        if marcar_pedido_impreso(http_session, active_base, ped_id):
+                            print(f"    [OK] Pedido {cod} marcado como IMPRESO en Neon DB.\n")
                         else:
-                            print(f"      [X] Falló el envío al spooler de la impresora para el pedido #{codigo}.")
+                            print(f"    [!] Aviso: Se imprimio {cod}, pero fallo la confirmacion HTTP. Se reintentara.\n")
 
-            elif resp.status_code == 404:
-                # Si el endpoint en el backend está iniciando o no responde
-                consecutive_errors += 1
-                if consecutive_errors == 1:
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Aviso: Endpoint /api/impresion/pendientes no respondió (404). Reintentando...")
-            else:
-                consecutive_errors += 1
-                if consecutive_errors % 10 == 1:
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Respuesta inesperada del servidor: HTTP {resp.status_code}")
+            time.sleep(POLL_INTERVAL)
 
-        except requests.exceptions.RequestException as e:
-            consecutive_errors += 1
-            if consecutive_errors % 15 == 1:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] Conexión con servidor en espera ({e.__class__.__name__}). Reintentando...")
+        except requests.RequestException as net_err:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Red/Render] Conexion inestable ({net_err}). Reintentando en 3s...")
+            time.sleep(3.0)
         except KeyboardInterrupt:
-            print("\n[!] Servicio de impresión detenido por el usuario.")
+            print("\n[!] Agente detenido manualmente por el usuario.")
             break
-        except Exception as e:
-            print(f"[!] Error inesperado en el ciclo: {e}")
-
-        time.sleep(POLL_INTERVAL)
-
-
-def main():
-    print("=" * 60)
-    print("  Iniciando Agente de Impresión Térmica San Parrilla (SAT Q22)")
-    print("=" * 60)
-
-    # Detectar impresora
-    printer_target = detectar_impresora()
-    ciclo_impresion(printer_target)
+        except Exception as err:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Error] {err}. Continuando en 3s...")
+            time.sleep(3.0)
 
 
 if __name__ == "__main__":
-    main()
+    iniciar_agente()

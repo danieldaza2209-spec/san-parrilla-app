@@ -863,6 +863,15 @@ const searchableCatalog = allPosProducts.map((p) => ({
               <span>🛵 Mensajero</span>
             </button>
           </div>
+          <button
+            type="button"
+            id="btn-reprint-manual-screen"
+            class="w-full py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-300 text-[10px] font-bold text-slate-600 hover:text-parrilla-ivory transition flex items-center justify-center gap-1.5 cursor-pointer"
+            title="Plan de respaldo: Abrir ventana manual de impresión en pantalla"
+          >
+            <i data-lucide="printer" class="w-3 h-3"></i>
+            <span>Reimprimir manualmente en pantalla</span>
+          </button>
         </div>
 
       </div>
@@ -3730,7 +3739,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
         // Notificación Toast Silenciosa (Sin popup window.print)
         const orderCode = savedOrder.codigo_pedido || savedOrder.id || 'NUEVO';
-        showPosToast(`✅ Pedido #${orderCode} guardado y enviado a cocina / SAT Q22`);
+        showPosToast(`✅ Pedido registrado y enviado a impresora (#${orderCode})`);
       } catch (err) {
         alert('Error al guardar pedido abierto: ' + err.message);
       } finally {
@@ -3941,7 +3950,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
         // Notificación Toast Silenciosa en pantalla (Sin popup window.print en móviles/POS)
         const orderCode = (savedOrder && (savedOrder.codigo_pedido || savedOrder.id)) || 'NUEVO';
-        showPosToast(`✅ Pedido #${orderCode} cobrado y enviado a cocina / SAT Q22`);
+        showPosToast(`✅ Pedido registrado y enviado a impresora (#${orderCode})`);
       } catch (err) {
         alert('Ocurrió un error al cobrar: ' + err.message);
       } finally {
@@ -4465,6 +4474,11 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
     // BOTONES DE REIMPRESIÓN EN BARRA INFERIOR
     document.getElementById('btn-reprint-customer')?.addEventListener('click', () => {
+      const last = loadLastTicket();
+      if (last) printTicketType(last, 'customer', true);
+    });
+
+    document.getElementById('btn-reprint-manual-screen')?.addEventListener('click', () => {
       const last = loadLastTicket();
       if (last) printTicketType(last, 'customer', true);
     });

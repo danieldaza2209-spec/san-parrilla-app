@@ -49,6 +49,7 @@ def fix():
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS subtotal DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS delivery_fee DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS impreso_cocina BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS impreso_caja BOOLEAN DEFAULT FALSE;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS impreso_ticket BOOLEAN DEFAULT FALSE;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS packaging_fee DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS courier_name VARCHAR(100);",

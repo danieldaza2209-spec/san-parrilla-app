@@ -492,11 +492,12 @@ const navItems = [
           'echo  Cada vez que se prenda el computador arrancara solo.',
           'echo ============================================================',
           'echo.',
+          ':loop',
           'python print_agent.py',
-          'if %errorlevel% neq 0 (',
-          '    echo [!] El agente se detuvo. Presiona una tecla para cerrar.',
-          '    pause',
-          ')'
+          'echo.',
+          'echo [!] El agente se detuvo inesperadamente. Reiniciando en 3 segundos...',
+          'timeout /t 3 /nobreak >nul',
+          'goto loop'
         ];
         var blob = new Blob([batLines.join('\r\n') + '\r\n'], { type: 'application/octet-stream' });
         var url = URL.createObjectURL(blob);
