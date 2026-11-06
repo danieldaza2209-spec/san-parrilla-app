@@ -428,8 +428,34 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
     const fmt = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
     const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-    const COURIERS_STORAGE_KEY = 'sp_couriers_list';
-    const DEFAULT_COURIERS = ['Lucely', 'Mensajero 1', 'Mensajero 2'];
+    let activeCouriers = [];
+    const FALLBACK_COURIERS = [
+      { id: 1, nombre: 'Luseli', activo: true },
+      { id: 2, nombre: 'Freddy', activo: true },
+      { id: 3, nombre: 'Mauricio', activo: true },
+      { id: 4, nombre: 'Henry', activo: true },
+      { id: 5, nombre: 'Mensajería USA', activo: true },
+      { id: 6, nombre: 'Jefferson', activo: true },
+    ];
+
+    async function fetchCouriers() {
+      try {
+        const res = await fetch('/api/mensajeros', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            activeCouriers = data;
+            return activeCouriers;
+          }
+        }
+      } catch (e) {
+        console.warn('Error fetching mensajeros:', e);
+      }
+      if (!activeCouriers || activeCouriers.length === 0) {
+        activeCouriers = [...FALLBACK_COURIERS];
+      }
+      return activeCouriers;
+    }
 
     let allOrders = [];
     let activePayOrder = null;
@@ -456,40 +482,34 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
       if (sumBar) sumBar.style.display = 'none';
     }
 
-    function getSavedCouriers() {
-      try {
-        const raw = localStorage.getItem(COURIERS_STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            if (!parsed.some((c) => String(c).toLowerCase() === 'lucely')) {
-              parsed.unshift('Lucely');
-            }
-            return parsed;
-          }
-        }
-      } catch (e) {}
-      return [...DEFAULT_COURIERS];
-    }
-
-    function saveCouriersList(list) {
-      try {
-        localStorage.setItem(COURIERS_STORAGE_KEY, JSON.stringify(list));
-      } catch (e) {}
-    }
-
-    // Agregar nuevo mensajero a la lista
-    document.getElementById('btn-add-courier')?.addEventListener('click', () => {
+    // Agregar nuevo mensajero a la lista vía API
+    document.getElementById('btn-add-courier')?.addEventListener('click', async () => {
       const inp = document.getElementById('new-courier-input');
       const name = (inp?.value || '').trim();
       if (!name) return;
-      const list = getSavedCouriers();
-      if (!list.some((c) => c.toLowerCase() === name.toLowerCase())) {
-        list.push(name);
-        saveCouriersList(list);
+      const btn = document.getElementById('btn-add-courier');
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch('/api/mensajeros', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre: name }),
+        });
+        if (res.ok) {
+          const created = await res.json();
+          showBoardToast(`🛵 Mensajero "${created.nombre}" registrado`, true);
+          if (inp) inp.value = '';
+          await fetchCouriers();
+          renderDeliveriesSection();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showBoardToast(`❌ ${err.detail || 'Error al registrar mensajero'}`, false);
+        }
+      } catch (e) {
+        showBoardToast('❌ Error de conexión al registrar mensajero', false);
+      } finally {
+        if (btn) btn.disabled = false;
       }
-      if (inp) inp.value = '';
-      renderBoard();
     });
 
     // Calcula minutos transcurridos desde fecha_hora
@@ -547,16 +567,9 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
         if (!res.ok) return;
         const data = await res.json();
         allOrders = Array.isArray(data) ? data : [];
-        // Incluir en la lista de mensajeros cualquier courier_name que ya venga en BD
-        const couriers = getSavedCouriers();
-        let updated = false;
-        for (const o of allOrders) {
-          if (o.courier_name && !couriers.some((c) => c.toLowerCase() === o.courier_name.toLowerCase())) {
-            couriers.push(o.courier_name);
-            updated = true;
-          }
+        if (!activeCouriers || activeCouriers.length === 0) {
+          await fetchCouriers();
         }
-        if (updated) saveCouriersList(couriers);
         renderBoard();
       } catch (err) {
         console.error('Error cargando pedidos en vivo:', err);
@@ -810,7 +823,7 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
       const pillsContainer = document.getElementById('couriers-summary-pills');
       if (!container) return;
 
-      const couriersList = getSavedCouriers();
+      const couriersList = (activeCouriers && activeCouriers.length > 0) ? activeCouriers : FALLBACK_COURIERS;
 
       // Filtro ESTRICTO de activos: solo pedidos PENDIENTE, EN_PREPARACION o EN_CAMINO
       const activeDeliveryOrders = allOrders.filter((o) => {
@@ -836,7 +849,7 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
         const todayDeliveries = allOrders.filter((o) => o.tipo === 'DOMICILIO' && o.estado !== 'CANCELADO' && isOrderFromToday(o));
         const courierStats = {};
         for (const d of todayDeliveries) {
-          const cName = d.courier_name || 'Sin asignar';
+          const cName = d.mensajero_nombre || d.courier_name || 'Sin asignar';
           if (!courierStats[cName]) courierStats[cName] = { count: 0, fees: 0 };
           courierStats[cName].count += 1;
           courierStats[cName].fees += Number(d.delivery_fee || 0);
@@ -882,9 +895,12 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
 
           const courierOptionsHtml = [
             `<option value="">-- Sin Mensajero Asignado --</option>`,
-            ...couriersList.map(
-              (c) => `<option value="${escapeHtml(c)}" ${o.courier_name === c ? 'selected' : ''}>🛵 ${escapeHtml(c)}</option>`
-            )
+            ...couriersList.map((c) => {
+              const isSelected = (o.mensajero_id && Number(o.mensajero_id) === Number(c.id)) ||
+                (o.mensajero_nombre && String(o.mensajero_nombre).toLowerCase() === String(c.nombre).toLowerCase()) ||
+                (o.courier_name && String(o.courier_name).toLowerCase() === String(c.nombre).toLowerCase());
+              return `<option value="${c.id}" data-name="${escapeHtml(c.nombre)}" ${isSelected ? 'selected' : ''}>🛵 ${escapeHtml(c.nombre)}</option>`;
+            })
           ].join('');
 
           const itemsList = (o.detalles || []).map((d) => `
@@ -1044,27 +1060,45 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
       const sel = e.target.closest('.courier-select');
       if (sel) {
         const pedidoId = Number(sel.getAttribute('data-id'));
-        const courierName = sel.value;
+        const mensajeroId = sel.value ? Number(sel.value) : null;
+        const selectedOpt = sel.options[sel.selectedIndex];
+        const mensajeroNombre = selectedOpt && sel.value
+          ? (selectedOpt.getAttribute('data-name') || selectedOpt.text.replace(/^🛵\s*/, ''))
+          : null;
+
         sel.disabled = true;
         try {
-          const res = await fetch(`/api/pedidos/${pedidoId}/assign-courier`, {
+          const res = await fetch(`/api/pedidos/${pedidoId}/asignar-mensajero`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              courier_name: courierName || null,
-              estado: courierName ? 'EN_CAMINO' : undefined
+              mensajero_id: mensajeroId,
+              mensajero_nombre: mensajeroNombre,
             })
           });
           if (res.ok) {
             const updated = await res.json();
             const idx = allOrders.findIndex((o) => o.id === pedidoId);
-            if (idx !== -1) allOrders[idx] = updated;
-            renderBoard();
+            if (idx !== -1) {
+              allOrders[idx] = {
+                ...allOrders[idx],
+                ...updated,
+                mensajero_id: mensajeroId,
+                mensajero_nombre: mensajeroNombre,
+                courier_name: mensajeroNombre,
+              };
+            }
+            if (mensajeroNombre) {
+              showBoardToast(`🛵 Mensajero ${mensajeroNombre} asignado`, true);
+            } else {
+              showBoardToast(`🛵 Mensajero desasignado`, true);
+            }
+            renderDeliveriesSection();
           } else {
-            alert('No se pudo asignar el mensajero. Intenta de nuevo.');
+            showBoardToast('❌ No se pudo asignar el mensajero', false);
           }
         } catch (err) {
-          alert('Error asignando mensajero: ' + err.message);
+          showBoardToast('❌ Error de conexión al asignar mensajero', false);
         } finally {
           sel.disabled = false;
         }
@@ -1482,9 +1516,10 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
       });
     }, 10000);
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       renderTablesGrid();
-      fetchOrders();
+      await fetchCouriers();
+      await fetchOrders();
       setInterval(fetchOrders, 10000);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') fetchOrders();

@@ -26,6 +26,10 @@ const formatPrice = (val) => {
       </div>
 
       <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        <button id="btn-open-mensajeros-modal-header" type="button" class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-parrilla-ivory font-bold text-xs px-4 py-2.5 rounded-xl border border-parrilla-border shadow-sm transition cursor-pointer" title="Gestionar Mensajeros y Domiciliarios">
+          <span class="text-sm">🛵</span>
+          <span>Gestionar Mensajeros</span>
+        </button>
         <a href="/caja" class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-parrilla-ivory font-bold text-xs px-4 py-2.5 rounded-xl border border-parrilla-border shadow-sm transition" title="Ir al panel de Caja y Arqueo">
           <i data-lucide="vault" class="w-4 h-4 text-emerald-600"></i>
           <span>Caja & Arqueo</span>
@@ -213,21 +217,14 @@ const formatPrice = (val) => {
           >
             <span>🏠 Mesa / Para Llevar</span>
           </button>
-          <button
-            type="button"
-            data-courier="Lucely"
-            class="audit-courier-btn px-3 py-1.5 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-blue-500 transition flex items-center gap-1.5"
-          >
-            <span>🛵 Lucely</span>
-          </button>
         </div>
         <button
           type="button"
-          id="btn-admin-add-courier"
-          class="px-2.5 py-1.5 rounded-xl border border-dashed border-parrilla-border text-[11px] font-bold text-parrilla-muted hover:text-parrilla-gold hover:border-parrilla-gold transition"
-          title="Agregar nuevo mensajero a la lista"
+          id="btn-admin-manage-couriers"
+          class="px-3 py-1.5 rounded-xl border border-blue-400 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+          title="Gestionar Mensajeros y Turnos Activos"
         >
-          + Agregar Mensajero
+          <span>🛵 Gestionar Mensajeros</span>
         </button>
       </div>
 
@@ -238,7 +235,7 @@ const formatPrice = (val) => {
             <span class="text-xl">🛵</span>
             <div>
               <h3 class="font-display font-black text-base text-parrilla-ivory">
-                Liquidación de Mensajero: <span id="settlement-courier-name" class="text-blue-700">Lucely</span>
+                Liquidación de Mensajero: <span id="settlement-courier-name" class="text-blue-700">Mensajero</span>
               </h3>
               <p class="text-[11px] text-parrilla-muted">Resumen exacto de domicilios entregados, efectivo recogido y fletes del turno</p>
             </div>
@@ -938,6 +935,70 @@ const formatPrice = (val) => {
             <button type="submit" id="btn-save-cliente-modal" class="flex-1 py-2.5 px-4 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs shadow-md cursor-pointer">💾 Guardar Cliente</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- MODAL PARA GESTIONAR MENSAJEROS / DOMICILIARIOS EN NEON -->
+    <div id="modal-admin-mensajeros" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div class="bg-white rounded-2xl border border-parrilla-border shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between border-b border-parrilla-border pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🛵</span>
+            <div>
+              <h3 class="font-display font-black text-lg text-parrilla-ivory">Gestión de Mensajeros</h3>
+              <p class="text-[11px] text-parrilla-muted">Domiciliarios registrados en Neon para despachos y liquidación de fletes</p>
+            </div>
+          </div>
+          <button type="button" id="btn-close-mensajeros-modal" class="text-parrilla-muted hover:text-red-500 font-bold text-lg cursor-pointer">✕</button>
+        </div>
+
+        <!-- Formulario para agregar nuevo mensajero -->
+        <form id="form-create-mensajero" class="p-3.5 bg-slate-50 border border-parrilla-border rounded-xl space-y-2.5">
+          <span class="block text-xs font-bold text-parrilla-ivory uppercase tracking-wider">Nuevo Domiciliario</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-bold text-parrilla-muted uppercase mb-1">Nombre Completo *</label>
+              <input
+                type="text"
+                id="new-mensajero-name"
+                required
+                placeholder="Ej. Jefferson"
+                class="w-full px-3 py-2 rounded-xl border border-parrilla-border text-xs font-bold bg-white focus:border-parrilla-gold outline-none"
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-parrilla-muted uppercase mb-1">Teléfono (opcional)</label>
+              <input
+                type="tel"
+                id="new-mensajero-phone"
+                placeholder="Ej. 3181234567"
+                class="w-full px-3 py-2 rounded-xl border border-parrilla-border text-xs bg-white focus:border-parrilla-gold outline-none font-mono"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            id="btn-submit-mensajero"
+            class="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>+ Guardar Mensajero en Neon</span>
+          </button>
+        </form>
+
+        <!-- Lista de Mensajeros -->
+        <div class="flex-1 overflow-y-auto space-y-2 pr-1 max-h-72" id="mensajeros-list-container">
+          <div class="py-6 text-center text-xs text-parrilla-muted">Cargando mensajeros...</div>
+        </div>
+
+        <div class="flex justify-end pt-3 border-t border-parrilla-border">
+          <button
+            type="button"
+            id="btn-done-mensajeros-modal"
+            class="px-5 py-2 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs shadow-md cursor-pointer"
+          >
+            Listo / Cerrar
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1805,36 +1866,49 @@ const formatPrice = (val) => {
     let currentCourierFilter = 'ALL';
     let currentSearchQuery = '';
 
-    const COURIERS_STORAGE_KEY = 'sp_couriers_list';
-    const DEFAULT_ADMIN_COURIERS = ['Lucely', 'Mensajero 1', 'Mensajero 2'];
+    let allAdminCouriers = [];
+    const FALLBACK_ADMIN_COURIERS = ['Luseli', 'Freddy', 'Mauricio', 'Henry', 'Mensajería USA', 'Jefferson'];
 
-    function getAdminCouriersList() {
-      const set = new Set(DEFAULT_ADMIN_COURIERS);
+    async function loadAdminCouriers(includeInactive = false) {
       try {
-        const raw = localStorage.getItem(COURIERS_STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            parsed.forEach(c => { if (c && String(c).trim()) set.add(String(c).trim()); });
+        const url = includeInactive ? '/api/mensajeros?incluir_inactivos=true' : '/api/mensajeros';
+        const res = await fetch(url, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            allAdminCouriers = data;
+            return allAdminCouriers;
           }
         }
-      } catch (_) {}
+      } catch (err) {
+        console.warn('Error fetching /api/mensajeros in admin:', err);
+      }
+      if (allAdminCouriers.length === 0) {
+        allAdminCouriers = FALLBACK_ADMIN_COURIERS.map((nombre, idx) => ({
+          id: idx + 1,
+          nombre,
+          telefono: null,
+          activo: true
+        }));
+      }
+      return allAdminCouriers;
+    }
+
+    function getAdminActiveCouriersList() {
+      const set = new Set();
+      allAdminCouriers.filter(c => c.activo !== false).forEach(c => {
+        if (c.nombre && c.nombre.trim()) set.add(c.nombre.trim());
+      });
+      if (set.size === 0) {
+        FALLBACK_ADMIN_COURIERS.forEach(n => set.add(n));
+      }
       for (const p of allAuditOrders) {
-        if (p.courier_name && String(p.courier_name).trim()) {
-          set.add(String(p.courier_name).trim());
+        const cName = p.mensajero_nombre || p.courier_name;
+        if (cName && String(cName).trim()) {
+          set.add(String(cName).trim());
         }
       }
       return Array.from(set);
-    }
-
-    function saveAdminCourier(name) {
-      const clean = (name || '').trim();
-      if (!clean) return;
-      const list = getAdminCouriersList();
-      if (!list.includes(clean)) list.push(clean);
-      try {
-        localStorage.setItem(COURIERS_STORAGE_KEY, JSON.stringify(list));
-      } catch (_) {}
     }
 
     const METHOD_LABELS = {
@@ -1876,7 +1950,7 @@ const formatPrice = (val) => {
     function renderCourierFilterButtons() {
       const container = document.getElementById('audit-courier-tabs');
       if (!container) return;
-      const couriers = getAdminCouriersList();
+      const couriers = getAdminActiveCouriersList();
 
       const baseButtons = [
         { key: 'ALL', label: '👥 Todos' },
@@ -1901,13 +1975,132 @@ const formatPrice = (val) => {
       });
     }
 
-    document.getElementById('btn-admin-add-courier')?.addEventListener('click', () => {
-      const name = prompt('Ingresa el nombre del mensajero (ej. Lucely, Carlos):');
-      if (name && name.trim()) {
-        saveAdminCourier(name.trim());
-        currentCourierFilter = name.trim();
+    function renderMensajerosModalList() {
+      const container = document.getElementById('mensajeros-list-container');
+      if (!container) return;
+
+      if (!allAdminCouriers || allAdminCouriers.length === 0) {
+        container.innerHTML = `
+          <div class="py-8 text-center text-xs text-parrilla-muted italic">
+            No hay mensajeros registrados aún. Agrega uno arriba.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = allAdminCouriers.map(m => {
+        const isActivo = m.activo !== false;
+        const statusBadge = isActivo
+          ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">Activo en Turno</span>`
+          : `<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">Inactivo</span>`;
+
+        const btnToggleCls = isActivo
+          ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+          : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100';
+        const btnToggleText = isActivo ? 'Desactivar Turno' : 'Activar Turno';
+
+        return `
+          <div class="flex items-center justify-between p-3 rounded-xl border border-parrilla-border bg-white shadow-xs">
+            <div class="flex items-center gap-2.5">
+              <span class="text-lg">🛵</span>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-sm text-parrilla-ivory">${m.nombre}</span>
+                  ${statusBadge}
+                </div>
+                ${m.telefono ? `<span class="text-[11px] text-parrilla-muted font-mono block">📞 ${m.telefono}</span>` : ''}
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn-toggle-mensajero px-3 py-1.5 rounded-xl border font-bold text-xs transition cursor-pointer ${btnToggleCls}"
+              data-id="${m.id}"
+            >
+              ${btnToggleText}
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.btn-toggle-mensajero').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = Number(btn.getAttribute('data-id'));
+          const origText = btn.textContent;
+          btn.textContent = '...';
+          try {
+            const res = await fetch(`/api/mensajeros/${id}/toggle`, { method: 'PATCH' });
+            if (!res.ok) throw new Error('Error al actualizar estado del mensajero');
+            const updated = await res.json();
+            const target = allAdminCouriers.find(c => c.id === id);
+            if (target) target.activo = updated.activo;
+            renderMensajerosModalList();
+            renderCourierFilterButtons();
+            showAuditToast(`✓ Estado de mensajero ${target ? target.nombre : ''} actualizado.`);
+          } catch (err) {
+            alert('Error: ' + (err.message || err));
+          } finally {
+            btn.textContent = origText;
+          }
+        });
+      });
+    }
+
+    async function openMensajerosModal() {
+      const modal = document.getElementById('modal-admin-mensajeros');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+      await loadAdminCouriers(true);
+      renderMensajerosModalList();
+    }
+
+    function closeMensajerosModal() {
+      const modal = document.getElementById('modal-admin-mensajeros');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    document.getElementById('btn-open-mensajeros-modal-header')?.addEventListener('click', openMensajerosModal);
+    document.getElementById('btn-admin-manage-couriers')?.addEventListener('click', openMensajerosModal);
+    document.getElementById('btn-close-mensajeros-modal')?.addEventListener('click', closeMensajerosModal);
+    document.getElementById('btn-done-mensajeros-modal')?.addEventListener('click', closeMensajerosModal);
+
+    document.getElementById('form-create-mensajero')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      // @ts-ignore
+      const nameInput = document.getElementById('new-mensajero-name');
+      // @ts-ignore
+      const phoneInput = document.getElementById('new-mensajero-phone');
+      const btn = document.getElementById('btn-submit-mensajero');
+
+      const nombre = (nameInput?.value || '').trim();
+      const telefono = (phoneInput?.value || '').trim() || null;
+      if (!nombre) return;
+
+      if (btn) btn.textContent = 'Guardando...';
+      try {
+        const res = await fetch('/api/mensajeros', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, telefono, activo: true })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Error al crear mensajero');
+        }
+        if (nameInput) nameInput.value = '';
+        if (phoneInput) phoneInput.value = '';
+        showAuditToast(`🛵 Mensajero "${nombre}" registrado exitosamente en Neon.`);
+        await loadAdminCouriers(true);
+        renderMensajerosModalList();
         renderCourierFilterButtons();
-        updateAuditTabsAndRender();
+      } catch (err) {
+        alert('Error: ' + (err.message || err));
+      } finally {
+        if (btn) btn.textContent = '+ Guardar Mensajero en Neon';
       }
     });
 
@@ -1916,7 +2109,8 @@ const formatPrice = (val) => {
       if (currentCourierFilter === 'MESA_LLEVAR') {
         return p.tipo !== 'DOMICILIO';
       }
-      return p.tipo === 'DOMICILIO' && String(p.courier_name || '').trim().toLowerCase() === currentCourierFilter.toLowerCase();
+      const courier = (p.mensajero_nombre || p.courier_name || '').trim().toLowerCase();
+      return p.tipo === 'DOMICILIO' && courier === currentCourierFilter.toLowerCase();
     }
 
     function updateCourierSettlementCard() {
@@ -1932,7 +2126,7 @@ const formatPrice = (val) => {
       const courierOrders = allAuditOrders.filter(p =>
         p.estado !== 'CANCELADO' &&
         p.tipo === 'DOMICILIO' &&
-        String(p.courier_name || '').trim().toLowerCase() === currentCourierFilter.toLowerCase()
+        (p.mensajero_nombre || p.courier_name || '').trim().toLowerCase() === currentCourierFilter.toLowerCase()
       );
 
       let cashCollected = 0;
@@ -2020,6 +2214,7 @@ const formatPrice = (val) => {
             p.cliente_nombre || '',
             p.cliente_telefono || '',
             p.mesa || '',
+            p.mensajero_nombre || '',
             p.courier_name || '',
             p.tipo || '',
             method
@@ -2066,8 +2261,9 @@ const formatPrice = (val) => {
           return `${d.cantidad}x ${n}`;
         }).join(', ') || 'Sin detalles';
 
-        const courierHtml = (p.tipo === 'DOMICILIO' && p.courier_name)
-          ? `<span class="block text-[11px] font-bold text-blue-700 mt-0.5">🛵 Mensajero: ${p.courier_name}</span>`
+        const cName = p.mensajero_nombre || p.courier_name;
+        const courierHtml = (p.tipo === 'DOMICILIO' && cName)
+          ? `<span class="block text-[11px] font-bold text-blue-700 mt-0.5">🛵 Mensajero: ${cName}</span>`
           : (p.tipo === 'DOMICILIO' ? `<span class="block text-[10px] text-parrilla-muted mt-0.5">🛵 Sin mensajero asignado</span>` : '');
 
         const dirHtml = (p.tipo === 'DOMICILIO' && p.mesa)
@@ -2208,7 +2404,7 @@ const formatPrice = (val) => {
       if (clienteInput) clienteInput.value = order.cliente_nombre || '';
       if (telInput) telInput.value = order.cliente_telefono || '';
       if (mesaInput) mesaInput.value = order.mesa || '';
-      if (courierInput) courierInput.value = order.courier_name || '';
+      if (courierInput) courierInput.value = order.mensajero_nombre || order.courier_name || '';
       if (feeInput) feeInput.value = String(order.delivery_fee || 0);
       if (estadoSelect) estadoSelect.value = order.estado || 'PAGADO';
       if (notasInput) notasInput.value = order.notas || '';
@@ -2270,16 +2466,22 @@ const formatPrice = (val) => {
       if (submitBtn) submitBtn.textContent = 'Guardando...';
 
       try {
-        await changeOrderPaymentMethodAndDetails(orderId, {
+        const payload = {
           payment_method,
           cliente_nombre,
           cliente_telefono,
           mesa,
           courier_name,
+          mensajero_nombre: courier_name,
           delivery_fee,
           estado,
           notas
-        });
+        };
+        const matchedCourier = allAdminCouriers.find(c => c.nombre && c.nombre.toLowerCase() === courier_name.toLowerCase());
+        if (matchedCourier) {
+          payload.mensajero_id = matchedCourier.id;
+        }
+        await changeOrderPaymentMethodAndDetails(orderId, payload);
         closeEditOrderModal();
         showAuditToast(`✓ Pedido #SP-${orderId} actualizado (${METHOD_LABELS[payment_method] || payment_method}) y Caja recalculada.`);
         await loadLiveAdminMetrics();
@@ -3186,16 +3388,21 @@ const formatPrice = (val) => {
 
     async function loadLiveAdminMetrics() {
       try {
-        const [cajaRes, pedRes, dashRes, cliRes] = await Promise.all([
+        const [cajaRes, pedRes, dashRes, cliRes, msgRes] = await Promise.all([
           fetch('/api/caja/active', { cache: 'no-store' }),
           fetch('/api/pedidos?limit=500', { cache: 'no-store' }),
           fetch('/api/pedidos/stats/dashboard', { cache: 'no-store' }).catch(() => null),
-          fetch('/api/clientes', { cache: 'no-store' }).catch(() => null)
+          fetch('/api/clientes', { cache: 'no-store' }).catch(() => null),
+          fetch('/api/mensajeros?incluir_inactivos=true', { cache: 'no-store' }).catch(() => null)
         ]);
 
         const caja = (cajaRes && cajaRes.ok) ? await cajaRes.json() : null;
         const pedidos = (pedRes && pedRes.ok) ? await pedRes.json() : [];
         const clientesData = (cliRes && cliRes.ok) ? await cliRes.json() : [];
+        const mensajerosData = (msgRes && msgRes.ok) ? await msgRes.json() : [];
+        if (Array.isArray(mensajerosData) && mensajerosData.length > 0) {
+          allAdminCouriers = mensajerosData;
+        }
         const listaPedidos = Array.isArray(pedidos) ? pedidos : [];
 
         allHistoricalOrders = listaPedidos;

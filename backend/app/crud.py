@@ -1121,7 +1121,15 @@ def asignar_mensajero_pedido(
         raise LookupError("Pedido no encontrado.")
 
     if data.courier_name is not None:
-        pedido.courier_name = data.courier_name.strip() or None
+        c_name = data.courier_name.strip() or None
+        pedido.courier_name = c_name
+        pedido.mensajero_nombre = c_name
+        if c_name:
+            m = db.query(models.Mensajero).filter(func.lower(models.Mensajero.nombre) == c_name.lower()).first()
+            if m:
+                pedido.mensajero_id = m.id
+        else:
+            pedido.mensajero_id = None
     if data.estado is not None:
         pedido.estado = data.estado
 
@@ -1147,8 +1155,14 @@ def actualizar_pedido(
         pedido.mesa = data.mesa
     if data.tipo is not None:
         pedido.tipo = data.tipo
-    if data.courier_name is not None:
+    if getattr(data, "mensajero_id", None) is not None:
+        pedido.mensajero_id = data.mensajero_id
+    if getattr(data, "mensajero_nombre", None) is not None:
+        pedido.mensajero_nombre = data.mensajero_nombre.strip() or None
+        pedido.courier_name = pedido.mensajero_nombre
+    elif data.courier_name is not None:
         pedido.courier_name = data.courier_name.strip() or None
+        pedido.mensajero_nombre = pedido.courier_name
     if data.creado_por is not None and data.creado_por.strip():
         pedido.creado_por = data.creado_por.strip()
     if data.cantidad_domicilios is not None:
@@ -1284,8 +1298,14 @@ def cambiar_metodo_pago_pedido(
         pedido.cliente_telefono = data.cliente_telefono
     if data.mesa is not None:
         pedido.mesa = data.mesa
-    if data.courier_name is not None:
+    if getattr(data, "mensajero_id", None) is not None:
+        pedido.mensajero_id = data.mensajero_id
+    if getattr(data, "mensajero_nombre", None) is not None:
+        pedido.mensajero_nombre = data.mensajero_nombre.strip() or None
+        pedido.courier_name = pedido.mensajero_nombre
+    elif data.courier_name is not None:
         pedido.courier_name = data.courier_name.strip() or None
+        pedido.mensajero_nombre = pedido.courier_name
     if data.delivery_fee is not None:
         pedido.delivery_fee = float(data.delivery_fee)
     if data.packaging_fee is not None:
@@ -2112,3 +2132,92 @@ def update_daily_specials_config(
     db.commit()
     db.refresh(row)
     return _format_daily_specials_out(row)
+
+
+# --- CRUD MENSAJEROS / DOMICILIARIOS ---
+
+def list_mensajeros(db: Session, incluir_inactivos: bool = False) -> List[models.Mensajero]:
+    query = db.query(models.Mensajero)
+    if not incluir_inactivos:
+        query = query.filter(models.Mensajero.activo == True)
+    return query.order_by(models.Mensajero.id.asc()).all()
+
+
+def get_mensajero(db: Session, mensajero_id: int) -> Optional[models.Mensajero]:
+    return db.query(models.Mensajero).filter(models.Mensajero.id == mensajero_id).first()
+
+
+def create_mensajero(db: Session, data: schemas.MensajeroCreate) -> models.Mensajero:
+    clean_nombre = (data.nombre or "").strip()
+    if not clean_nombre:
+        raise ValueError("El nombre del mensajero es obligatorio.")
+    clean_tel = (data.telefono or "").strip() or None
+
+    existente = db.query(models.Mensajero).filter(func.lower(models.Mensajero.nombre) == clean_nombre.lower()).first()
+    if existente:
+        if not existente.activo:
+            existente.activo = True
+            if clean_tel:
+                existente.telefono = clean_tel
+            db.commit()
+            db.refresh(existente)
+            return existente
+        raise ValueError(f"Ya existe un mensajero registrado con el nombre '{clean_nombre}'.")
+
+    mensajero = models.Mensajero(
+        nombre=clean_nombre,
+        telefono=clean_tel,
+        activo=True,
+    )
+    db.add(mensajero)
+    db.commit()
+    db.refresh(mensajero)
+    return mensajero
+
+
+def toggle_mensajero(db: Session, mensajero_id: int) -> models.Mensajero:
+    mensajero = get_mensajero(db, mensajero_id)
+    if not mensajero:
+        raise LookupError(f"Mensajero #{mensajero_id} no encontrado.")
+    mensajero.activo = not mensajero.activo
+    db.commit()
+    db.refresh(mensajero)
+    return mensajero
+
+
+def asignar_mensajero_directo(
+    db: Session,
+    pedido_id: int,
+    mensajero_id: Optional[int] = None,
+    mensajero_nombre: Optional[str] = None,
+) -> models.Pedido:
+    pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
+    if not pedido:
+        raise LookupError("Pedido no encontrado.")
+
+    if mensajero_id and int(mensajero_id) > 0:
+        mensajero = get_mensajero(db, int(mensajero_id))
+        if not mensajero:
+            raise LookupError(f"Mensajero #{mensajero_id} no encontrado.")
+        pedido.mensajero_id = mensajero.id
+        pedido.mensajero_nombre = mensajero.nombre
+        pedido.courier_name = mensajero.nombre
+    elif mensajero_nombre and mensajero_nombre.strip():
+        nombre_clean = mensajero_nombre.strip()
+        mensajero = db.query(models.Mensajero).filter(func.lower(models.Mensajero.nombre) == nombre_clean.lower()).first()
+        if mensajero:
+            pedido.mensajero_id = mensajero.id
+            pedido.mensajero_nombre = mensajero.nombre
+            pedido.courier_name = mensajero.nombre
+        else:
+            pedido.mensajero_id = None
+            pedido.mensajero_nombre = nombre_clean
+            pedido.courier_name = nombre_clean
+    else:
+        pedido.mensajero_id = None
+        pedido.mensajero_nombre = None
+        pedido.courier_name = None
+
+    db.commit()
+    db.refresh(pedido)
+    return pedido

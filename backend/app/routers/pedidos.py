@@ -264,6 +264,30 @@ def asignar_mensajero_pedido(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.patch("/{pedido_id}/asignar-mensajero", response_model=schemas.PedidoOut)
+@router.post("/{pedido_id}/asignar-mensajero", response_model=schemas.PedidoOut)
+def asignar_mensajero_oficial(
+    pedido_id: int,
+    payload: schemas.AsignarMensajeroIn,
+    db: Session = Depends(get_db),
+):
+    """
+    Asocia un pedido de domicilio a un mensajero formal registrado en Neon.
+    Actualiza mensajero_id, mensajero_nombre y courier_name.
+    """
+    try:
+        return crud.asignar_mensajero_directo(
+            db,
+            pedido_id,
+            mensajero_id=payload.mensajero_id,
+            mensajero_nombre=payload.mensajero_nombre,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.patch("/{pedido_id}/payment-method", response_model=schemas.PedidoOut)
 @router.post("/{pedido_id}/payment-method", response_model=schemas.PedidoOut)
 def cambiar_metodo_pago_pedido(

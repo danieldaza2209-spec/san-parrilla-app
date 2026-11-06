@@ -78,6 +78,18 @@ class Cliente(Base):
     pedidos = relationship("Pedido", back_populates="cliente")
 
 
+class Mensajero(Base):
+    __tablename__ = "mensajeros"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), nullable=False, index=True)
+    telefono = Column(String(30), nullable=True)
+    activo = Column(Boolean, default=True, server_default="true", nullable=False)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    pedidos = relationship("Pedido", back_populates="mensajero")
+
+
 class Categoria(Base):
     __tablename__ = "categorias"
 
@@ -192,6 +204,8 @@ class Pedido(Base):
     delivery_fee = Column(Float, default=0.0)
     packaging_fee = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
+    mensajero_id = Column(Integer, ForeignKey("mensajeros.id"), nullable=True, index=True)
+    mensajero_nombre = Column(String(100), nullable=True)
     courier_name = Column(String(100), nullable=True)
     creado_por = Column(String(100), nullable=True)
     cantidad_domicilios = Column(Integer, default=0, nullable=True)
@@ -201,6 +215,7 @@ class Pedido(Base):
     impreso_ticket = Column(Boolean, default=False, server_default="false", nullable=False)
 
     cliente = relationship("Cliente", back_populates="pedidos")
+    mensajero = relationship("Mensajero", back_populates="pedidos")
     detalles = relationship("DetallePedido", back_populates="pedido", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="pedido", cascade="all, delete-orphan")
 

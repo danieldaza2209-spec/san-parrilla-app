@@ -346,6 +346,8 @@ class PedidoApprove(BaseModel):
     cliente_telefono: Optional[str] = None
     mesa: Optional[str] = None
     tipo: Optional[TipoPedido] = None
+    mensajero_id: Optional[int] = None
+    mensajero_nombre: Optional[str] = None
     courier_name: Optional[str] = None
     creado_por: Optional[str] = None
     cantidad_domicilios: Optional[int] = None
@@ -356,6 +358,8 @@ class PedidoApprove(BaseModel):
 
 
 class PedidoAssignCourier(BaseModel):
+    mensajero_id: Optional[int] = None
+    mensajero_nombre: Optional[str] = None
     courier_name: Optional[str] = None
     estado: Optional[EstadoPedido] = None
 
@@ -367,6 +371,8 @@ class PedidoUpdatePaymentMethod(BaseModel):
     cliente_nombre: Optional[str] = None
     cliente_telefono: Optional[str] = None
     mesa: Optional[str] = None
+    mensajero_id: Optional[int] = None
+    mensajero_nombre: Optional[str] = None
     courier_name: Optional[str] = None
     creado_por: Optional[str] = None
     cantidad_domicilios: Optional[int] = None
@@ -393,6 +399,8 @@ class PedidoUpdate(BaseModel):
     mesa: Optional[str] = None
     tipo: Optional[TipoPedido] = None
     estado: Optional[EstadoPedido] = None
+    mensajero_id: Optional[int] = None
+    mensajero_nombre: Optional[str] = None
     courier_name: Optional[str] = None
     creado_por: Optional[str] = None
     cantidad_domicilios: Optional[int] = None
@@ -431,6 +439,8 @@ class PedidoOut(BaseModel):
     status: Optional[str] = "success"
     pedido_id: Optional[int] = None
     mesa_liberada: Optional[bool] = True
+    mensajero_id: Optional[int] = None
+    mensajero_nombre: Optional[str] = None
     courier_name: Optional[str] = None
     creado_por: Optional[str] = None
     cantidad_domicilios: Optional[int] = 0
@@ -655,3 +665,37 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     usuario: UsuarioOut
+
+
+# --- MENSAJEROS / DOMICILIARIOS ---
+
+class MensajeroBase(BaseModel):
+    nombre: str
+    telefono: Optional[str] = None
+    activo: bool = True
+
+
+class MensajeroCreate(BaseModel):
+    nombre: str
+    telefono: Optional[str] = None
+
+
+class MensajeroUpdate(BaseModel):
+    nombre: Optional[str] = None
+    telefono: Optional[str] = None
+    activo: Optional[bool] = None
+
+
+class MensajeroOut(BaseModel):
+    id: int
+    nombre: str
+    telefono: Optional[str] = None
+    activo: bool
+    creado_en: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AsignarMensajeroIn(BaseModel):
+    mensajero_id: Optional[int] = None
+    mensajero_nombre: Optional[str] = None
