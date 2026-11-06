@@ -31,18 +31,19 @@ export function getSanitizedFastapiUrl() {
 
 const FASTAPI_URL = getSanitizedFastapiUrl();
 
-async function fetchWithRetry(url, options, maxRetries = 2) {
+async function fetchWithRetry(url, options = {}, maxRetries = 2) {
+  const timeoutMs = options.timeoutMs || 45000;
   let lastError = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       const res = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timeoutId);
 
       // Si Render está despertando y devuelve 502/503/504, reintentar
       if ([502, 503, 504].includes(res.status) && attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, 1200));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         continue;
       }
       return res;

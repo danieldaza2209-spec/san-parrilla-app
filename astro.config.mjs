@@ -11,6 +11,7 @@ export default defineConfig({
     inlineStylesheets: 'always',
   },
   adapter: vercel({
+    maxDuration: 60,
     webAnalytics: {
       enabled: true,
     },
