@@ -234,6 +234,7 @@ class PedidoPayRequest(BaseModel):
     payments: List[PaymentCreate]
     creado_por: Optional[str] = None
     cantidad_domicilios: Optional[int] = None
+    estado: Optional[EstadoPedido] = None
 
 
 # --- PEDIDOS & DETALLES ---

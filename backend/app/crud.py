@@ -1461,6 +1461,7 @@ def pagar_pedido(
     pagos_in: List[schemas.PaymentCreate],
     creado_por: Optional[str] = None,
     cantidad_domicilios: Optional[int] = None,
+    nuevo_estado: Optional[models.EstadoPedido] = None,
 ) -> models.Pedido:
     pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
     if not pedido:
@@ -1530,7 +1531,12 @@ def pagar_pedido(
         )
         db.add(nuevo_pago)
 
-    pedido.estado = models.EstadoPedido.PAGADO
+    if nuevo_estado:
+        pedido.estado = nuevo_estado
+    elif pedido.tipo == models.TipoPedido.DOMICILIO:
+        pedido.estado = models.EstadoPedido.ENTREGADO
+    else:
+        pedido.estado = models.EstadoPedido.PAGADO
     db.flush()
 
     # Actualizar acumulados en la sesión de caja activa

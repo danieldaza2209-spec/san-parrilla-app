@@ -130,10 +130,12 @@ def pagar_pedido_en_caja(
     """
     creado_por_val = None
     cant_dom_val = None
+    estado_val = None
     if isinstance(payload, schemas.PedidoPayRequest):
         pagos_lista = payload.payments
         creado_por_val = payload.creado_por
         cant_dom_val = payload.cantidad_domicilios
+        estado_val = payload.estado
     elif isinstance(payload, list):
         pagos_lista = payload
     else:
@@ -146,6 +148,7 @@ def pagar_pedido_en_caja(
             pagos_lista,
             creado_por=creado_por_val,
             cantidad_domicilios=cant_dom_val,
+            nuevo_estado=estado_val,
         )
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))

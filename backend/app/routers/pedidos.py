@@ -149,10 +149,12 @@ def pagar_pedido(
     """
     creado_por_val = None
     cant_dom_val = None
+    estado_val = None
     if isinstance(payload, schemas.PedidoPayRequest):
         pagos_lista = payload.payments
         creado_por_val = payload.creado_por
         cant_dom_val = payload.cantidad_domicilios
+        estado_val = payload.estado
     elif isinstance(payload, list):
         pagos_lista = payload
     else:
@@ -164,6 +166,7 @@ def pagar_pedido(
             pagos_lista,
             creado_por=creado_por_val,
             cantidad_domicilios=cant_dom_val,
+            nuevo_estado=estado_val,
         )
         return pedido
     except LookupError as e:
@@ -230,6 +233,8 @@ def actualizar_pedido(
 
 
 @router.patch("/{pedido_id}/estado", response_model=schemas.PedidoOut)
+@router.put("/{pedido_id}/estado", response_model=schemas.PedidoOut)
+@router.post("/{pedido_id}/estado", response_model=schemas.PedidoOut)
 def cambiar_estado_pedido(
     pedido_id: int,
     nuevo_estado: Optional[models.EstadoPedido] = Query(default=None),

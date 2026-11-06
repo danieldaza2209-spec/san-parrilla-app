@@ -182,11 +182,6 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
             </button>
           </div>
 
-          <label class="inline-flex items-center gap-1.5 text-xs font-bold text-parrilla-muted cursor-pointer select-none px-2">
-            <input type="checkbox" id="chk-show-all-deliveries" checked class="rounded text-emerald-600 focus:ring-0 cursor-pointer" />
-            <span>Ver todos los del día</span>
-          </label>
-
           <a
             href="/pos?tipo=domicilio"
             class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center gap-1 shadow-xs"
@@ -214,10 +209,26 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
         </div>
       </div>
 
-      <!-- Tarjetas de Domicilios -->
+      <!-- Tarjetas de Domicilios Activos -->
       <div id="deliveries-list-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <!-- Inyectado dinámicamente por JS -->
       </div>
+
+      <!-- Acordeón de Domicilios Finalizados / Entregados de Hoy -->
+      <details id="details-completed-deliveries" class="bg-white rounded-2xl border border-parrilla-border shadow-xs overflow-hidden transition mt-2">
+        <summary class="px-4 py-3 bg-slate-50 hover:bg-slate-100 cursor-pointer font-extrabold text-xs text-parrilla-muted hover:text-parrilla-ivory flex items-center justify-between transition select-none">
+          <span class="flex items-center gap-2">
+            <span>📦</span>
+            <span id="label-completed-deliveries">Ver Domicilios Finalizados de Hoy (0)</span>
+          </span>
+          <span class="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Histórico Solo Lectura</span>
+        </summary>
+        <div class="p-4 bg-slate-50/50 border-t border-parrilla-border">
+          <div id="completed-deliveries-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <!-- Inyectado dinámicamente por JS -->
+          </div>
+        </div>
+      </details>
     </section>
 
   </div>
@@ -720,24 +731,33 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
     // =========================================================================
     function renderDeliveriesSection() {
       const container = document.getElementById('deliveries-list-container');
+      const completedContainer = document.getElementById('completed-deliveries-container');
+      const completedLabel = document.getElementById('label-completed-deliveries');
       const badge = document.getElementById('badge-count-delivery');
       const statEl = document.getElementById('stat-active-delivery');
       const pillsContainer = document.getElementById('couriers-summary-pills');
-      const showAllToday = document.getElementById('chk-show-all-deliveries')?.checked ?? true;
       if (!container) return;
 
       const couriersList = getSavedCouriers();
 
-      const deliveryOrders = allOrders.filter((o) => {
+      // Filtro ESTRICTO de activos: solo pedidos PENDIENTE, EN_PREPARACION o EN_CAMINO
+      const activeDeliveryOrders = allOrders.filter((o) => {
         if (o.tipo !== 'DOMICILIO' || o.estado === 'CANCELADO' || o.estado === 'BORRADOR_WEB') return false;
-        if (isOrderOpen(o)) return true;
-        if (showAllToday && isOrderFromToday(o)) return true;
-        return false;
+        return ['PENDIENTE', 'EN_PREPARACION', 'EN_CAMINO'].includes(o.estado);
       });
 
-      const activeDeliveries = allOrders.filter((o) => o.tipo === 'DOMICILIO' && isOrderOpen(o)).length;
-      if (badge) badge.textContent = `${activeDeliveries} activo(s)`;
-      if (statEl) statEl.textContent = String(activeDeliveries);
+      // Domicilios finalizados/entregados de hoy para el acordeón histórico
+      const completedDeliveryOrders = allOrders.filter((o) => {
+        if (o.tipo !== 'DOMICILIO') return false;
+        return ['ENTREGADO', 'FINALIZADO', 'PAGADO'].includes(o.estado) && isOrderFromToday(o);
+      });
+
+      const activeCount = activeDeliveryOrders.length;
+      if (badge) badge.textContent = `${activeCount} activo(s)`;
+      if (statEl) statEl.textContent = String(activeCount);
+      if (completedLabel) {
+        completedLabel.textContent = `Ver Domicilios Finalizados de Hoy (${completedDeliveryOrders.length})`;
+      }
 
       // Calcular liquidación de domicilios del día por mensajero
       if (pillsContainer) {
@@ -761,154 +781,183 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
         }
       }
 
-      if (deliveryOrders.length === 0) {
+      // Renderizar Domicilios Activos
+      if (activeDeliveryOrders.length === 0) {
         container.innerHTML = `
           <div class="col-span-full py-10 text-center text-xs text-parrilla-muted bg-slate-50 rounded-xl border border-dashed border-parrilla-border">
             No hay domicilios activos en este momento.
           </div>
         `;
-        return;
-      }
+      } else {
+        container.innerHTML = activeDeliveryOrders.map((o) => {
+          const mins = getElapsedMinutes(o.fecha_hora);
+          const elapsedStr = formatElapsed(o.fecha_hora);
+          const addressStr = extractAddress(o);
 
-      container.innerHTML = deliveryOrders.map((o) => {
-        const isOpen = isOrderOpen(o);
-        const mins = getElapsedMinutes(o.fecha_hora);
-        const elapsedStr = formatElapsed(o.fecha_hora);
-        const addressStr = extractAddress(o);
+          // Semáforo visual (<15m verde, 15-30m amarillo, >30m rojo)
+          let semaphoreClass = 'bg-emerald-600 text-white';
+          let cardBorderClass = 'border-emerald-400 bg-white';
+          let semaphoreIcon = '🟢';
+          if (mins >= 30) {
+            semaphoreClass = 'bg-red-600 text-white animate-pulse';
+            cardBorderClass = 'border-2 border-red-500 bg-red-50/20';
+            semaphoreIcon = '🔴';
+          } else if (mins >= 15) {
+            semaphoreClass = 'bg-amber-500 text-white';
+            cardBorderClass = 'border-2 border-amber-400 bg-amber-50/20';
+            semaphoreIcon = '🟡';
+          }
 
-        // Semáforo visual (<15m verde, 15-30m amarillo, >30m rojo)
-        let semaphoreClass = 'bg-emerald-600 text-white';
-        let cardBorderClass = isOpen ? 'border-emerald-400 bg-white' : 'border-parrilla-border bg-slate-50/70';
-        let semaphoreIcon = '🟢';
-        if (mins >= 30 && isOpen) {
-          semaphoreClass = 'bg-red-600 text-white animate-pulse';
-          cardBorderClass = 'border-2 border-red-500 bg-red-50/20';
-          semaphoreIcon = '🔴';
-        } else if (mins >= 15 && isOpen) {
-          semaphoreClass = 'bg-amber-500 text-white';
-          cardBorderClass = 'border-2 border-amber-400 bg-amber-50/20';
-          semaphoreIcon = '🟡';
-        }
+          const courierOptionsHtml = [
+            `<option value="">-- Sin Mensajero Asignado --</option>`,
+            ...couriersList.map(
+              (c) => `<option value="${escapeHtml(c)}" ${o.courier_name === c ? 'selected' : ''}>🛵 ${escapeHtml(c)}</option>`
+            )
+          ].join('');
 
-        const courierOptionsHtml = [
-          `<option value="">-- Sin Mensajero Asignado --</option>`,
-          ...couriersList.map(
-            (c) => `<option value="${escapeHtml(c)}" ${o.courier_name === c ? 'selected' : ''}>🛵 ${escapeHtml(c)}</option>`
-          )
-        ].join('');
-
-        const itemsList = (o.detalles || []).map((d) => `
-          <div class="flex justify-between text-xs py-1 border-b border-slate-100">
-            <div>
-              <span class="font-bold text-parrilla-ivory">${d.cantidad}x ${escapeHtml(d.plato?.nombre || 'Plato')}</span>
-              ${d.notas_item ? `<span class="block text-[10px] text-parrilla-muted italic">${escapeHtml(d.notas_item)}</span>` : ''}
+          const itemsList = (o.detalles || []).map((d) => `
+            <div class="flex justify-between text-xs py-1 border-b border-slate-100">
+              <div>
+                <span class="font-bold text-parrilla-ivory">${d.cantidad}x ${escapeHtml(d.plato?.nombre || 'Plato')}</span>
+                ${d.notas_item ? `<span class="block text-[10px] text-parrilla-muted italic">${escapeHtml(d.notas_item)}</span>` : ''}
+              </div>
+              <span class="font-mono font-semibold text-parrilla-ivory">${fmt(d.precio_unitario * d.cantidad)}</span>
             </div>
-            <span class="font-mono font-semibold text-parrilla-ivory">${fmt(d.precio_unitario * d.cantidad)}</span>
-          </div>
-        `).join('');
+          `).join('');
 
-        return `
-          <div class="rounded-2xl border ${cardBorderClass} p-4 shadow-sm flex flex-col justify-between gap-3 transition">
-            <div class="space-y-2.5">
-              <!-- Cabecera: Código + Semáforo Cronómetro -->
-              <div class="flex items-center justify-between gap-2 pb-2 border-b border-parrilla-border">
-                <div class="flex items-center gap-2">
-                  <span class="font-mono font-black text-xs px-2 py-0.5 rounded bg-slate-100 text-parrilla-ivory border border-parrilla-border">
-                    ${escapeHtml(o.codigo_pedido)}
+          return `
+            <div id="delivery-card-${o.id}" class="rounded-2xl border ${cardBorderClass} p-4 shadow-sm flex flex-col justify-between gap-3 transition">
+              <div class="space-y-2.5">
+                <!-- Cabecera: Código + Semáforo Cronómetro -->
+                <div class="flex items-center justify-between gap-2 pb-2 border-b border-parrilla-border">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono font-black text-xs px-2 py-0.5 rounded bg-slate-100 text-parrilla-ivory border border-parrilla-border">
+                      ${escapeHtml(o.codigo_pedido)}
+                    </span>
+                    ${getPaymentBadge(o)}
+                  </div>
+                  <span class="live-timer px-2.5 py-0.5 rounded-full text-[11px] font-extrabold font-mono ${semaphoreClass}" data-created="${o.fecha_hora}" data-semaphore="true">
+                    ${semaphoreIcon} ⏱️ ${elapsedStr}
                   </span>
-                  ${getPaymentBadge(o)}
                 </div>
-                <span class="live-timer px-2.5 py-0.5 rounded-full text-[11px] font-extrabold font-mono ${semaphoreClass}" data-created="${o.fecha_hora}" data-semaphore="true">
-                  ${semaphoreIcon} ⏱️ ${elapsedStr}
-                </span>
-              </div>
 
-              <!-- Datos del Cliente y Dirección Destacada -->
-              <div class="bg-slate-50 p-3 rounded-xl border border-parrilla-border space-y-1">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="font-display font-black text-sm text-parrilla-ivory">${escapeHtml(o.cliente_nombre || 'Cliente Domicilio')}</span>
-                  <a href="tel:${escapeHtml(o.cliente_telefono || '')}" class="font-mono font-black text-xs text-emerald-700 hover:underline">
-                    📞 ${escapeHtml(o.cliente_telefono || 'Sin tel')}
-                  </a>
+                <!-- Datos del Cliente y Dirección Destacada -->
+                <div class="bg-slate-50 p-3 rounded-xl border border-parrilla-border space-y-1">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="font-display font-black text-sm text-parrilla-ivory">${escapeHtml(o.cliente_nombre || 'Cliente Domicilio')}</span>
+                    <a href="tel:${escapeHtml(o.cliente_telefono || '')}" class="font-mono font-black text-xs text-emerald-700 hover:underline">
+                      📞 ${escapeHtml(o.cliente_telefono || 'Sin tel')}
+                    </a>
+                  </div>
+                  <div class="text-xs font-extrabold text-parrilla-gold leading-snug">
+                    📍 ${escapeHtml(addressStr)}
+                  </div>
                 </div>
-                <div class="text-xs font-extrabold text-parrilla-gold leading-snug">
-                  📍 ${escapeHtml(addressStr)}
+
+                <!-- Selector de Mensajero en 1 Clic -->
+                <div class="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200">
+                  <label class="block text-[10px] font-extrabold uppercase text-emerald-900 mb-1">
+                    🛵 Mensajero Asignado:
+                  </label>
+                  <select
+                    class="courier-select w-full px-3 py-2 bg-white rounded-lg border border-emerald-300 text-xs font-extrabold text-parrilla-ivory focus:border-emerald-600 outline-none cursor-pointer"
+                    data-id="${o.id}"
+                  >
+                    ${courierOptionsHtml}
+                  </select>
+                </div>
+
+                <!-- Platos -->
+                <div class="space-y-0.5 max-h-36 overflow-y-auto pr-1">
+                  ${itemsList}
                 </div>
               </div>
 
-              <!-- Selector de Mensajero en 1 Clic -->
-              <div class="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200">
-                <label class="block text-[10px] font-extrabold uppercase text-emerald-900 mb-1">
-                  🛵 Mensajero Asignado:
-                </label>
-                <select
-                  class="courier-select w-full px-3 py-2 bg-white rounded-lg border border-emerald-300 text-xs font-extrabold text-parrilla-ivory focus:border-emerald-600 outline-none cursor-pointer"
-                  data-id="${o.id}"
-                >
-                  ${courierOptionsHtml}
-                </select>
-              </div>
+              <!-- Totales y Botones Operativos -->
+              <div class="pt-3 border-t border-parrilla-border space-y-2.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-parrilla-muted font-bold">
+                    Envío: <strong class="text-emerald-700 font-mono">${fmt(o.delivery_fee || 0)}</strong>
+                  </span>
+                  <span class="font-display font-black text-lg text-parrilla-gold font-mono">
+                    Total: ${fmt(o.total)}
+                  </span>
+                </div>
 
-              <!-- Platos -->
-              <div class="space-y-0.5 max-h-36 overflow-y-auto pr-1">
-                ${itemsList}
-              </div>
-            </div>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    class="btn-print-courier-board py-2 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-extrabold transition cursor-pointer flex items-center justify-center gap-1"
+                    data-id="${o.id}"
+                    title="Imprimir Guía de Mensajero 80mm"
+                  >
+                    <span>🛵 Ticket</span>
+                  </button>
 
-            <!-- Totales y Botones Operativos -->
-            <div class="pt-3 border-t border-parrilla-border space-y-2.5">
-              <div class="flex items-center justify-between text-xs">
-                <span class="text-parrilla-muted font-bold">
-                  Envío: <strong class="text-emerald-700 font-mono">${fmt(o.delivery_fee || 0)}</strong>
-                </span>
-                <span class="font-display font-black text-lg text-parrilla-gold font-mono">
-                  Total: ${fmt(o.total)}
-                </span>
-              </div>
+                  <button
+                    type="button"
+                    class="btn-print-kitchen-board py-2 px-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300 text-[11px] font-extrabold transition cursor-pointer flex items-center justify-center gap-1"
+                    data-id="${o.id}"
+                    title="Imprimir Comanda de Cocina 80mm"
+                  >
+                    <span>🍳 Cocina</span>
+                  </button>
 
-              <div class="grid grid-cols-3 gap-1.5">
-                <button
-                  type="button"
-                  class="btn-print-courier-board py-2 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-extrabold transition cursor-pointer flex items-center justify-center gap-1"
-                  data-id="${o.id}"
-                  title="Imprimir Guía de Mensajero 80mm"
-                >
-                  <span>🛵 Ticket</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="btn-print-kitchen-board py-2 px-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300 text-[11px] font-extrabold transition cursor-pointer flex items-center justify-center gap-1"
-                  data-id="${o.id}"
-                  title="Imprimir Comanda de Cocina 80mm"
-                >
-                  <span>🍳 Cocina</span>
-                </button>
-
-                ${
-                  isOpen
-                    ? `
                   <button
                     type="button"
                     class="btn-open-pay-modal py-2 px-2 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-display font-black text-[11px] shadow-xs transition cursor-pointer flex items-center justify-center gap-1"
                     data-id="${o.id}"
                   >
-                    <span>💰 Cobrar</span>
-                  </button>`
-                    : `
+                    <span>💰 Cobrar / Entregado</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Renderizar Acordeón de Domicilios Finalizados / Entregados (Solo Lectura)
+      if (completedContainer) {
+        if (completedDeliveryOrders.length === 0) {
+          completedContainer.innerHTML = `
+            <div class="col-span-full py-6 text-center text-xs text-parrilla-muted">
+              No hay domicilios entregados o finalizados hoy todavía.
+            </div>
+          `;
+        } else {
+          completedContainer.innerHTML = completedDeliveryOrders.map((o) => {
+            const addressStr = extractAddress(o);
+            return `
+              <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs opacity-85 space-y-2">
+                <div class="flex items-center justify-between gap-1 text-xs">
+                  <span class="font-mono font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    ${escapeHtml(o.codigo_pedido)}
+                  </span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    ✅ Entregado
+                  </span>
+                </div>
+                <div class="text-xs">
+                  <div class="font-bold text-slate-800">${escapeHtml(o.cliente_nombre || 'Cliente')}</div>
+                  <div class="text-[11px] text-slate-500 truncate">📍 ${escapeHtml(addressStr)}</div>
+                  <div class="text-[11px] font-bold text-emerald-800 mt-1">🛵 ${escapeHtml(o.courier_name || 'Sin mensajero')}</div>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                  <span class="font-mono font-bold text-slate-800">Total: ${fmt(o.total)}</span>
                   <button
                     type="button"
-                    class="btn-print-customer-board py-2 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-parrilla-ivory border border-parrilla-border text-[11px] font-bold transition cursor-pointer flex items-center justify-center gap-1"
+                    class="btn-print-customer-board px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] border border-slate-300 transition cursor-pointer flex items-center gap-1"
                     data-id="${o.id}"
                   >
                     <span>🧾 Recibo</span>
-                  </button>`
-                }
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        `;
-      }).join('');
+            `;
+          }).join('');
+        }
+      }
     }
 
     function renderBoard() {
@@ -1090,22 +1139,47 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
           }).catch(() => {});
         }
 
+        const payPayload = {
+          payments: [{
+            method: selectedPayMethod,
+            amount: total,
+            change_given: change
+          }],
+          creado_por: window.__SP_STAFF_NAME__ || activePayOrder.creado_por || 'Colaborador',
+          cantidad_domicilios: cantDom,
+        };
+        if (activePayOrder.tipo === 'DOMICILIO') {
+          payPayload.estado = 'ENTREGADO';
+        }
+
         const res = await fetch(`/api/caja/pay/${activePayOrder.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            payments: [{
-              method: selectedPayMethod,
-              amount: total,
-              change_given: change
-            }],
-            creado_por: window.__SP_STAFF_NAME__ || activePayOrder.creado_por || 'Colaborador',
-            cantidad_domicilios: cantDom,
-          })
+          body: JSON.stringify(payPayload)
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(data.detail || data.error || `Error HTTP ${res.status} al cobrar el pedido.`);
+        }
+
+        // Si es domicilio, asegurar transición de estado a ENTREGADO en backend y remoción instantánea en UI
+        if (activePayOrder.tipo === 'DOMICILIO') {
+          fetch(`/api/pedidos/${activePayOrder.id}/estado`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nuevo_estado: 'ENTREGADO' })
+          }).catch(() => {});
+
+          const cardEl = document.getElementById(`delivery-card-${activePayOrder.id}`);
+          if (cardEl) {
+            cardEl.style.transition = 'all 0.3s ease-out';
+            cardEl.style.opacity = '0';
+            cardEl.style.transform = 'scale(0.95)';
+            setTimeout(() => cardEl.remove(), 300);
+          }
+          activePayOrder.estado = 'ENTREGADO';
+          const oIdx = allOrders.findIndex((o) => o.id === activePayOrder.id);
+          if (oIdx !== -1) allOrders[oIdx].estado = 'ENTREGADO';
         }
 
         const wantReceipt = document.getElementById('chk-board-print-receipt')?.checked ?? true;
