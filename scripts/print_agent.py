@@ -19,6 +19,7 @@ Flujo:
 import os
 import sys
 import time
+import re
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime
@@ -181,6 +182,150 @@ def enviar_raw_spooler(printer_name: str, data: bytes, job_title: str = "SanParr
         win32print.ClosePrinter(hprinter)
 
 
+def es_pedido_clinica(pedido: dict) -> bool:
+    """Detecta si un pedido corresponde al convenio hospitalario Clínica Primero de Mayo."""
+    cli = str(pedido.get("cliente_nombre") or "").lower()
+    if "clínica" in cli or "clinica" in cli or "hospital" in cli:
+        return True
+
+    notas_ped = str(pedido.get("notas") or "").lower()
+    if "clínica" in notas_ped or "clinica" in notas_ped or "domicilios_clinica" in notas_ped:
+        return True
+
+    items = pedido.get("items") or []
+    for it in items:
+        nom = str(it.get("nombre") or it.get("plato_nombre") or "").lower()
+        ubic = str(it.get("ubicacion_hospitalaria") or "").strip()
+        notas_it = str(it.get("notas") or it.get("notas_item") or "").lower()
+        if ubic:
+            return True
+        if "torre a" in notas_it or "torre b" in notas_it or "urgencias" in notas_it:
+            return True
+        if "dieta" in nom or "clínica" in nom or "clinica" in nom:
+            return True
+    return False
+
+
+def normalizar_ubicacion_clinica(ubic_raw: str, notas_raw: str = "") -> str:
+    """Estandariza la ubicación a TORRE A, TORRE B, URGENCIAS u otra."""
+    texto = f"{ubic_raw} {notas_raw}".upper()
+    if "TORRE B" in texto or "TORRE_B" in texto:
+        return "TORRE B"
+    elif "URGENCIAS" in texto or "URGENCIA" in texto:
+        return "URGENCIAS"
+    elif "TORRE A" in texto or "TORRE_A" in texto:
+        return "TORRE A"
+    elif ubic_raw and ubic_raw.strip():
+        return ubic_raw.strip().upper()
+    return "TORRE A"
+
+
+def extraer_tipo_dieta(nombre_plato: str) -> str:
+    """Extrae el tipo de dieta en mayúsculas (ej. 'NORMAL', 'HIPOSÓDICA', 'LÍQUIDA', 'HIPERPROTEICA', 'BLANDA')."""
+    nom = str(nombre_plato or "").strip()
+    if "Dieta" in nom:
+        return nom.split("Dieta", 1)[1].strip().upper()
+    elif "dieta" in nom.lower():
+        idx = nom.lower().find("dieta")
+        return nom[idx + 5:].strip(" -:").upper()
+    clean = re.sub(r"^(Desayuno|Almuerzo|Cena)\s+Cl[íi]nica\s*-\s*", "", nom, flags=re.IGNORECASE)
+    clean = re.sub(r"^Cl[íi]nica\s*-\s*", "", clean, flags=re.IGNORECASE)
+    return clean.strip().upper() or "NORMAL"
+
+
+def es_item_agua_auto(nombre_plato: str) -> bool:
+    """Detecta si el ítem es una botella de agua automática del convenio."""
+    nom = str(nombre_plato or "").lower()
+    return "botella con agua" in nom or "agua (dieta hipo" in nom or "agua clinica" in nom
+
+
+def es_dieta_hipo(nombre_plato: str) -> bool:
+    """Detecta si la dieta es hiposódica o hipoglúcida y por ende amerita agua automática."""
+    nom = str(nombre_plato or "").lower()
+    if es_item_agua_auto(nom):
+        return False
+    return "hiposódica" in nom or "hiposodica" in nom or "hipoglúcida" in nom or "hipoglucida" in nom
+
+
+def extraer_cantidad_domicilios_clinica(pedido: dict) -> int:
+    """Extrae la cantidad de domicilios / carreras registradas para el servicio."""
+    cant = pedido.get("cantidad_domicilios")
+    if cant is not None and int(cant) > 0:
+        return int(cant)
+    notas = str(pedido.get("notas") or "")
+    m = re.search(r"\[DOMICILIOS_CLINICA:(\d+)\]", notas, flags=re.IGNORECASE)
+    if m:
+        return int(m.group(1))
+    df = float(pedido.get("delivery_fee") or 0)
+    if df > 0:
+        return max(1, int(round(df / 3000.0)))
+    tipo = str(pedido.get("tipo") or pedido.get("tipo_label") or "").upper()
+    if "DOMICILIO" in tipo:
+        return 1
+    return 0
+
+
+def procesar_estructura_clinica(pedido: dict):
+    """
+    Agrupa los ítems de un pedido de clínica:
+    1. Por Ubicación (TORRE A, TORRE B, URGENCIAS, etc.)
+    2. Dentro de cada ubicación, por Tipo de Dieta (NORMAL, LÍQUIDA, BLANDA, etc.)
+    Calcula totales:
+    - total_raciones: suma de raciones de comida
+    - total_agua_auto: botellas de agua automáticas
+    - total_domicilios: carreras registradas
+    """
+    items = pedido.get("items") or []
+    agrupado = {}
+    orden_ubicaciones = ["TORRE A", "TORRE B", "URGENCIAS"]
+    total_raciones = 0
+    total_agua_items = 0
+    total_dietas_hipo = 0
+
+    for it in items:
+        cant = int(it.get("cantidad") or 1)
+        nombre = str(it.get("nombre") or it.get("plato_nombre") or "").strip()
+        unit = float(it.get("precio") or it.get("precio_unitario") or 0)
+        sub_it = float(it.get("subtotal") or (unit * cant))
+        ubic_raw = str(it.get("ubicacion_hospitalaria") or "")
+        notas_it = str(it.get("notas") or it.get("notas_item") or "")
+
+        if es_item_agua_auto(nombre):
+            total_agua_items += cant
+            continue
+
+        total_raciones += cant
+        if es_dieta_hipo(nombre):
+            total_dietas_hipo += cant
+
+        ubic = normalizar_ubicacion_clinica(ubic_raw, notas_it)
+        dieta = extraer_tipo_dieta(nombre)
+
+        if ubic not in agrupado:
+            agrupado[ubic] = {}
+
+        if dieta not in agrupado[ubic]:
+            agrupado[ubic][dieta] = {
+                "cantidad": 0,
+                "precio_total": 0.0,
+                "precio_unit": unit,
+                "notas": [],
+            }
+
+        agrupado[ubic][dieta]["cantidad"] += cant
+        agrupado[ubic][dieta]["precio_total"] += sub_it
+        if notas_it:
+            clean_n = re.sub(r"\[.*?(TORRE\s*A|TORRE\s*B|URGENCIAS).*?\]", "", notas_it, flags=re.IGNORECASE).strip(" |")
+            if clean_n and clean_n not in agrupado[ubic][dieta]["notas"]:
+                agrupado[ubic][dieta]["notas"].append(clean_n)
+
+    total_agua_final = max(total_agua_items, total_dietas_hipo)
+    total_domicilios = extraer_cantidad_domicilios_clinica(pedido)
+
+    ubicaciones_ordenadas = [u for u in orden_ubicaciones if u in agrupado] + [u for u in sorted(agrupado.keys()) if u not in orden_ubicaciones]
+    return agrupado, ubicaciones_ordenadas, total_raciones, total_agua_final, total_domicilios
+
+
 def construir_tirilla_cocina(pedido: dict) -> bytes:
     """
     Construye la Comanda de Cocina (80mm) con diseno visual exacto:
@@ -215,6 +360,72 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
 
     b = bytearray()
     b.extend(ESC_RESET)
+
+    # 0. MANEJO ESPECIAL AGRUPADO PARA CONVENIO CLÍNICA
+    if es_pedido_clinica(pedido):
+        agrupado, ubicaciones, tot_raciones, tot_agua, tot_dom = procesar_estructura_clinica(pedido)
+
+        b.extend(ESC_ALIGN_CENTER)
+        b.extend(sep)
+        b.extend(ESC_BOLD_ON)
+        b.extend(b"        SAN PARRILLA - COCINA          \n")
+        b.extend(b"   CONVENIO CLINICA PRIMERO DE MAYO    \n")
+        b.extend(ESC_BOLD_OFF)
+        b.extend(sep)
+
+        b.extend(ESC_ALIGN_LEFT)
+        b.extend(ESC_BOLD_ON)
+        b.extend(limpiar_texto(f"PEDIDO: {codigo}\n").encode("cp850", errors="ignore"))
+        b.extend(limpiar_texto(f"TIPO: {tipo} (PACIENTES)\n").encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
+        b.extend(limpiar_texto(f"HORA: {hora}\n").encode("cp850", errors="ignore"))
+        b.extend(limpiar_texto(f"ATENDIDO POR: {creado_por}\n").encode("cp850", errors="ignore"))
+        b.extend(subsep)
+
+        b.extend(ESC_ALIGN_CENTER)
+        b.extend(ESC_BOLD_ON)
+        b.extend(b">>> DISTRIBUCION POR PABELLON Y DIETA <<<\n")
+        b.extend(ESC_BOLD_OFF)
+        b.extend(subsep)
+        b.extend(ESC_ALIGN_LEFT)
+
+        for ubic in ubicaciones:
+            b.extend(ESC_BOLD_ON)
+            b.extend(GS_DOUBLE_H)
+            b.extend(f"[UBICACION: {ubic}]\n".encode("cp850", errors="ignore"))
+            b.extend(GS_NORMAL)
+            b.extend(ESC_BOLD_OFF)
+
+            dietas_map = agrupado[ubic]
+            for dieta_nom, data_d in sorted(dietas_map.items()):
+                cant_d = data_d["cantidad"]
+                b.extend(ESC_BOLD_ON)
+                b.extend(f"  {cant_d:2d}X {limpiar_texto(dieta_nom)}\n".encode("cp850", errors="ignore"))
+                b.extend(ESC_BOLD_OFF)
+                for nota in data_d["notas"]:
+                    b.extend(f"     * {limpiar_texto(nota)}\n".encode("cp850", errors="ignore"))
+            b.extend(b"\n")
+
+        b.extend(subsep)
+        b.extend(ESC_ALIGN_CENTER)
+        b.extend(ESC_BOLD_ON)
+        b.extend(b"CONSOLIDADO GENERAL DEL SERVICIO\n")
+        b.extend(ESC_BOLD_OFF)
+        b.extend(ESC_ALIGN_LEFT)
+        b.extend(ESC_BOLD_ON)
+        b.extend(limpiar_texto(f"  TOTAL RACIONES ENTREGADAS   : {tot_raciones}\n").encode("cp850", errors="ignore"))
+        b.extend(limpiar_texto(f"  TOTAL BOTELLAS AGUA AUTO    : {tot_agua}\n").encode("cp850", errors="ignore"))
+        b.extend(limpiar_texto(f"  CANTIDAD DOMICILIOS/CARRERAS: {tot_dom}\n").encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
+
+        if notas_generales:
+            b.extend(subsep)
+            b.extend(limpiar_texto(f"  * NOTA PEDIDO: {notas_generales}\n").encode("cp850", errors="ignore"))
+
+        b.extend(sep)
+        b.extend(ESC_FEED_4)
+        b.extend(GS_CUT_FULL)
+        return bytes(b)
 
     # 1. ENCABEZADO CENTRADO OFICIAL
     b.extend(ESC_ALIGN_CENTER)
@@ -344,6 +555,86 @@ def construir_tirilla_caja(pedido: dict) -> bytes:
 
     b = bytearray()
     b.extend(ESC_RESET)
+
+    # 0. MANEJO ESPECIAL AGRUPADO PARA CONVENIO CLÍNICA
+    if es_pedido_clinica(pedido):
+        agrupado, ubicaciones, tot_raciones, tot_agua, tot_dom = procesar_estructura_clinica(pedido)
+
+        cliente = limpiar_texto(pedido.get("cliente_nombre") or "Clinica Primero de Mayo (Pacientes)")
+        direccion = limpiar_texto(pedido.get("direccion") or "Clinica Primero de Mayo - Hospitalizacion")
+        metodo_pago = limpiar_texto(pedido.get("metodo_pago") or "FIADO / CARTERA")
+
+        b.extend(ESC_ALIGN_CENTER)
+        b.extend(sep)
+        b.extend(ESC_BOLD_ON)
+        b.extend(GS_DOUBLE_H)
+        b.extend(b"RESTAURANTE SAN PARRILLA\n")
+        b.extend(GS_NORMAL)
+        b.extend(ESC_BOLD_OFF)
+        b.extend(b"TICKET ENTREGA / CUENTA CONVENIO\n")
+        b.extend(subsep)
+
+        b.extend(ESC_ALIGN_LEFT)
+        b.extend(ESC_BOLD_ON)
+        b.extend(limpiar_texto(f"Pedido: {codigo} | Tipo: {tipo_str}\n").encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
+        b.extend(limpiar_texto(f"Hora: {hora} | Atendido: {creado_por}\n").encode("cp850", errors="ignore"))
+        b.extend(limpiar_texto(f"Cliente: {cliente}\n").encode("cp850", errors="ignore"))
+        if direccion:
+            b.extend(limpiar_texto(f"Entrega: {direccion}\n").encode("cp850", errors="ignore"))
+        b.extend(subsep)
+
+        b.extend(ESC_ALIGN_CENTER)
+        b.extend(ESC_BOLD_ON)
+        b.extend(b">>> DISTRIBUCION POR PABELLON Y DIETA <<<\n")
+        b.extend(ESC_BOLD_OFF)
+        b.extend(subsep)
+        b.extend(ESC_ALIGN_LEFT)
+
+        for ubic in ubicaciones:
+            b.extend(ESC_BOLD_ON)
+            b.extend(f"[UBICACION: {ubic}]\n".encode("cp850", errors="ignore"))
+            b.extend(ESC_BOLD_OFF)
+
+            dietas_map = agrupado[ubic]
+            for dieta_nom, data_d in sorted(dietas_map.items()):
+                cant_d = data_d["cantidad"]
+                sub_d = data_d["precio_total"]
+                linea = alinear_linea(f"  {cant_d:2d}X {limpiar_texto(dieta_nom)}", fmt_cop(sub_d))
+                b.extend(linea.encode("cp850", errors="ignore"))
+            b.extend(b"\n")
+
+        # CONSOLIDADO GENERAL AL PIE
+        b.extend(subsep)
+        b.extend(ESC_ALIGN_CENTER)
+        b.extend(ESC_BOLD_ON)
+        b.extend(b"CONSOLIDADO GENERAL DEL SERVICIO\n")
+        b.extend(ESC_BOLD_OFF)
+        b.extend(ESC_ALIGN_LEFT)
+        b.extend(ESC_BOLD_ON)
+        b.extend(limpiar_texto(f"  TOTAL RACIONES ENTREGADAS   : {tot_raciones}\n").encode("cp850", errors="ignore"))
+        b.extend(limpiar_texto(f"  TOTAL BOTELLAS AGUA AUTO    : {tot_agua} ($0)\n").encode("cp850", errors="ignore"))
+        b.extend(limpiar_texto(f"  CANTIDAD DOMICILIOS/CARRERAS: {tot_dom}\n").encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
+        b.extend(subsep)
+
+        # Totales financieros
+        if packaging_fee > 0:
+            b.extend(alinear_linea("Empaques:", fmt_cop(packaging_fee)).encode("cp850", errors="ignore"))
+        if delivery_fee > 0:
+            b.extend(alinear_linea(f"Domicilios ({tot_dom} carreras):", fmt_cop(delivery_fee)).encode("cp850", errors="ignore"))
+
+        b.extend(ESC_BOLD_ON)
+        b.extend(GS_DOUBLE_H)
+        b.extend(alinear_linea("TOTAL A PAGAR:", fmt_cop(total)).encode("cp850", errors="ignore"))
+        b.extend(GS_NORMAL)
+        b.extend(limpiar_texto(f"Metodo de Pago: {metodo_pago}\n").encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
+
+        b.extend(sep)
+        b.extend(ESC_FEED_4)
+        b.extend(GS_CUT_FULL)
+        return bytes(b)
 
     if es_mesa:
         # ==============================================================

@@ -2745,7 +2745,10 @@ const searchableCatalog = allPosProducts.map((p) => ({
           const item = cart.find((it) => it.uid === uid);
           if (!item) return;
 
-          if (item.isCustomizable || item.isRapidasFood || item.isJuice || item.isHospitalDiet) {
+          if (item.isHospitalDiet) {
+            item.quantity += 1;
+            item.notes = buildPlateNotes(item);
+          } else if (item.isCustomizable || item.isRapidasFood || item.isJuice) {
             // Duplica el plato/producto como un nuevo plato independiente para poder personalizarlo
             const cloned = {
               ...item,
@@ -2781,7 +2784,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
         });
       });
 
-      // Listeners directos de cajitas en la comanda (Sopa, Principio, Acomp., Ensalada, Empaque)
+      // Listeners directos de cajitas en la comanda (Sopa, Principio, Acomp., Ensalada, Empaque, Ubicación)
       document.querySelectorAll('.pos-inline-select').forEach((sel) => {
         sel.addEventListener('change', (e) => {
           // @ts-ignore
@@ -2791,7 +2794,20 @@ const searchableCatalog = allPosProducts.map((p) => ({
           const item = cart.find((it) => it.uid === uid);
           if (item && field) {
             item[field] = target.value;
+            if (field === 'hospitalLocation') {
+              // Si ya existe otro renglón con la misma dieta y la misma ubicación destino, unificarlos
+              const mergeTarget = cart.find(
+                (it) => it.uid !== uid && it.isHospitalDiet && it.name === item.name && (it.hospitalLocation || 'Torre A') === target.value && (it.extraNotes || '') === (item.extraNotes || '')
+              );
+              if (mergeTarget) {
+                mergeTarget.quantity += item.quantity;
+                const idx = cart.indexOf(item);
+                if (idx !== -1) cart.splice(idx, 1);
+              }
+            }
             item.notes = buildPlateNotes(item);
+            syncHospitalHipoWaterInCart();
+            renderCart();
           }
         });
       });
@@ -2886,6 +2902,22 @@ const searchableCatalog = allPosProducts.map((p) => ({
     }
     clinicaDomiciliosCountInput?.addEventListener('input', syncClinicaDomiciliosBadge);
     clinicaDomicilioUnitFeeInput?.addEventListener('input', syncClinicaDomiciliosBadge);
+
+    // Botones de selección de Pabellón / Ubicación para Raciones Hospitalarias
+    document.querySelectorAll('.btn-hosp-loc-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const loc = btn.getAttribute('data-loc') || 'Torre A';
+        currentActiveHospitalLocation = loc;
+        document.querySelectorAll('.btn-hosp-loc-tab').forEach((b) => {
+          const isSel = b.getAttribute('data-loc') === loc;
+          if (isSel) {
+            b.className = 'btn-hosp-loc-tab px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer bg-emerald-700 text-white shadow-xs';
+          } else {
+            b.className = 'btn-hosp-loc-tab px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer bg-white text-emerald-900 border border-emerald-300 hover:bg-emerald-100';
+          }
+        });
+      });
+    });
 
     // Botones de selección rápida de los 6 Clientes Institucionales / Convenios
     document.querySelectorAll('.btn-select-corporate-client').forEach((btn) => {
@@ -4450,6 +4482,136 @@ const searchableCatalog = allPosProducts.map((p) => ({
       const dateStr = new Date(t.createdAt || Date.now()).toLocaleDateString('es-CO');
       const codeStr = (t.id && (t.id.toString().startsWith('#') || t.id.toString().startsWith('SP-'))) ? t.id : '#' + (t.id || '001');
 
+      const isClinica = (t.customerName && /cl[íi]nica/i.test(t.customerName)) ||
+                        (t.items || []).some(it => it.isHospitalDiet || /TORRE A|TORRE B|URGENCIAS/i.test(it.notes || '') || /dieta/i.test(it.name || ''));
+
+      if (isClinica) {
+        const ubicMap = {};
+        let totalRaciones = 0;
+        let totalAguaItems = 0;
+        let totalDietasHipo = 0;
+
+        (t.items || []).forEach(it => {
+          const cant = Number(it.quantity || 1);
+          const rawName = String(it.name || '');
+          const isAgua = /botella con agua|agua\s*\(dieta hipo/i.test(rawName);
+
+          if (isAgua) {
+            totalAguaItems += cant;
+            return;
+          }
+
+          totalRaciones += cant;
+          const isHipo = /hipos[oó]dic|hipogl[uú]cid/i.test(rawName);
+          if (isHipo) totalDietasHipo += cant;
+
+          let loc = it.hospitalLocation || 'Torre A';
+          if (/TORRE B/i.test(it.notes || '')) loc = 'Torre B';
+          else if (/URGENCIAS/i.test(it.notes || '')) loc = 'Urgencias';
+          else if (/TORRE A/i.test(it.notes || '')) loc = 'Torre A';
+          const locUpper = loc.toUpperCase();
+
+          if (!ubicMap[locUpper]) ubicMap[locUpper] = {};
+
+          let dietType = rawName.includes('Dieta')
+            ? rawName.split(/Dieta/i)[1].trim().toUpperCase()
+            : rawName.replace(/^(Desayuno|Almuerzo|Cena)\s+Cl[íi]nica\s*-\s*/i, '').trim().toUpperCase();
+          if (!dietType) dietType = 'NORMAL';
+
+          if (!ubicMap[locUpper][dietType]) {
+            ubicMap[locUpper][dietType] = { cantidad: 0, notes: [] };
+          }
+          ubicMap[locUpper][dietType].cantidad += cant;
+          if (it.notes) {
+            const cleanNote = it.notes.replace(/\[.*?(TORRE A|TORRE B|URGENCIAS).*?\]/gi, '').trim();
+            if (cleanNote && !ubicMap[locUpper][dietType].notes.includes(cleanNote)) {
+              ubicMap[locUpper][dietType].notes.push(cleanNote);
+            }
+          }
+        });
+
+        const totalAguaFinal = Math.max(totalAguaItems, totalDietasHipo);
+        const totalDom = t.cantidad_domicilios || (t.deliveryFee ? Math.max(1, Math.round(t.deliveryFee / 3000)) : 1);
+
+        const ordenPabellones = ['TORRE A', 'TORRE B', 'URGENCIAS'];
+        const pabellones = [...ordenPabellones.filter(p => ubicMap[p]), ...Object.keys(ubicMap).filter(p => !ordenPabellones.includes(p))];
+
+        const groupedHtml = pabellones.map(pab => {
+          const diets = ubicMap[pab];
+          const linesHtml = Object.entries(diets).map(([dName, dData]) => `
+            <div style="display: flex; align-items: baseline; gap: 2.5mm; margin: 1.5mm 0;">
+              <span style="font-size: 16pt; font-weight: 900; min-width: 48px; border: 1.5px solid #000; text-align: center; padding: 1mm 0;">
+                ${dData.cantidad}X
+              </span>
+              <span style="font-size: 13pt; font-weight: 900; text-transform: uppercase;">${dName}</span>
+            </div>
+            ${dData.notes.map(n => `<div style="font-size: 9.5pt; font-weight: bold; margin-left: 14mm; color: #333;">* ${n}</div>`).join('')}
+          `).join('');
+
+          return `
+            <div style="margin-bottom: 3.5mm; border: 2px solid #000; border-radius: 4px; padding: 2.5mm;">
+              <div style="font-size: 13pt; font-weight: 900; background: #000; color: #fff; padding: 1.5mm 2.5mm; text-align: center; margin-bottom: 2mm; letter-spacing: 0.5px;">
+                🏢 UBICACIÓN: ${pab}
+              </div>
+              ${linesHtml}
+            </div>
+          `;
+        }).join('');
+
+        let packagingBanner = '';
+        if (t.orderType !== 'mesa' || (t.packagingFee && t.packagingFee > 0)) {
+          packagingBanner = `
+            <div style="border: 2px solid #000; padding: 1.5mm 3mm; margin: 1.5mm 0; text-align: center; background: #fff;">
+              <div style="font-size: 13pt; font-weight: 900; letter-spacing: 0.5px;">
+                📦 EMPACAR EN: ${(t.packagingType || 'CAJA').toUpperCase()} (${t.packagingQty || totalRaciones} EMPAQUES)
+              </div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="ticket-header" style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 2mm; margin-bottom: 2.5mm;">
+            <div style="display: inline-block; border: 2.5px solid #000; padding: 1.5mm 4mm; font-size: 13pt; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 1.5mm;">
+              🍳 COMANDA COCINA · CONVENIO CLÍNICA
+            </div>
+            <div style="font-size: 13pt; font-weight: 900; margin: 1mm 0;">
+              CLÍNICA PRIMERO DE MAYO (PACIENTES)
+            </div>
+            ${packagingBanner}
+            <div style="font-size: 9.5pt; font-family: monospace; margin-top: 1mm;">
+              <span>Orden: <strong>${codeStr}</strong></span> | <span>Hora: <strong>${timeStr}</strong></span>
+            </div>
+          </div>
+
+          <div style="margin: 2mm 0;">
+            ${groupedHtml}
+          </div>
+
+          <!-- CONSOLIDADO GENERAL AL PIE -->
+          <div style="border-top: 2.5px dashed #000; padding-top: 2mm; margin-top: 3mm; background: #fdfdfd;">
+            <div style="font-size: 11pt; font-weight: 900; text-align: center; margin-bottom: 2mm; text-decoration: underline;">
+              CONSOLIDADO GENERAL DEL SERVICIO
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12pt; font-weight: 900; margin-bottom: 1mm;">
+              <span>TOTAL RACIONES ENTREGADAS:</span>
+              <span style="font-size: 14pt;">${totalRaciones}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10.5pt; font-weight: bold; margin-bottom: 1mm;">
+              <span>TOTAL BOTELLAS AGUA AUTO:</span>
+              <span>${totalAguaFinal} ($0)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10.5pt; font-weight: bold;">
+              <span>CANTIDAD DOMICILIOS / CARRERAS:</span>
+              <span>${totalDom}</span>
+            </div>
+          </div>
+
+          <div class="ticket-footer" style="text-align: center; border-top: 1.5px dashed #000; padding-top: 1.5mm; margin-top: 3mm; font-size: 9pt; font-weight: bold;">
+            *** PREPARAR Y ENTREGAR CON REVISIÓN DE DIETAS ***
+          </div>
+        `;
+      }
+
       let ubicacionStr = 'MESA 1';
       if (t.orderType === 'mesa') {
         ubicacionStr = `UBICACIÓN: ${t.table || 'MESA'}`.toUpperCase();
@@ -4536,6 +4698,141 @@ const searchableCatalog = allPosProducts.map((p) => ({
     function renderCourierTicketHTML(t) {
       const timeStr = new Date(t.createdAt || Date.now()).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
       const codeStr = (t.id && (t.id.toString().startsWith('#') || t.id.toString().startsWith('SP-'))) ? t.id : '#' + (t.id || '001');
+
+      const isClinica = (t.customerName && /cl[íi]nica/i.test(t.customerName)) ||
+                        (t.items || []).some(it => it.isHospitalDiet || /TORRE A|TORRE B|URGENCIAS/i.test(it.notes || '') || /dieta/i.test(it.name || ''));
+
+      if (isClinica) {
+        const ubicMap = {};
+        let totalRaciones = 0;
+        let totalAguaItems = 0;
+        let totalDietasHipo = 0;
+
+        (t.items || []).forEach(it => {
+          const cant = Number(it.quantity || 1);
+          const rawName = String(it.name || '');
+          const isAgua = /botella con agua|agua\s*\(dieta hipo/i.test(rawName);
+
+          if (isAgua) {
+            totalAguaItems += cant;
+            return;
+          }
+
+          totalRaciones += cant;
+          const isHipo = /hipos[oó]dic|hipogl[uú]cid/i.test(rawName);
+          if (isHipo) totalDietasHipo += cant;
+
+          let loc = it.hospitalLocation || 'Torre A';
+          if (/TORRE B/i.test(it.notes || '')) loc = 'Torre B';
+          else if (/URGENCIAS/i.test(it.notes || '')) loc = 'Urgencias';
+          else if (/TORRE A/i.test(it.notes || '')) loc = 'Torre A';
+          const locUpper = loc.toUpperCase();
+
+          if (!ubicMap[locUpper]) ubicMap[locUpper] = {};
+
+          let dietType = rawName.includes('Dieta')
+            ? rawName.split(/Dieta/i)[1].trim().toUpperCase()
+            : rawName.replace(/^(Desayuno|Almuerzo|Cena)\s+Cl[íi]nica\s*-\s*/i, '').trim().toUpperCase();
+          if (!dietType) dietType = 'NORMAL';
+
+          if (!ubicMap[locUpper][dietType]) {
+            ubicMap[locUpper][dietType] = 0;
+          }
+          ubicMap[locUpper][dietType] += cant;
+        });
+
+        const totalAguaFinal = Math.max(totalAguaItems, totalDietasHipo);
+        const totalDom = t.cantidad_domicilios || (t.deliveryFee ? Math.max(1, Math.round(t.deliveryFee / 3000)) : 1);
+
+        const ordenPabellones = ['TORRE A', 'TORRE B', 'URGENCIAS'];
+        const pabellones = [...ordenPabellones.filter(p => ubicMap[p]), ...Object.keys(ubicMap).filter(p => !ordenPabellones.includes(p))];
+
+        const groupedSummaryHtml = pabellones.map(pab => {
+          const diets = ubicMap[pab];
+          const lines = Object.entries(diets).map(([dName, count]) => `
+            <div style="font-size: 10pt; padding: 0.5mm 0; margin-left: 3mm;">
+              • <strong>${count}X</strong> ${dName}
+            </div>
+          `).join('');
+          return `
+            <div style="margin-bottom: 2mm;">
+              <div style="font-size: 10.5pt; font-weight: 900; background: #eee; padding: 0.5mm 2mm; border-left: 3px solid #000;">
+                🏢 ${pab}
+              </div>
+              ${lines}
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="ticket-header" style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 2mm; margin-bottom: 2mm;">
+            <h1 class="restaurant-name" style="font-size: 16pt; font-weight: 900; margin: 0;">SAN PARRILLA</h1>
+            <div style="display: inline-block; border: 2px solid #000; padding: 1mm 3mm; font-size: 12pt; font-weight: 900; margin: 1.5mm 0;">
+              🛵 GUÍA ENTREGA · CONVENIO CLÍNICA
+            </div>
+            <div style="font-size: 9pt; font-family: monospace;">
+              <span>Pedido: <strong>${codeStr}</strong></span> | <span>Hora: <strong>${timeStr}</strong></span>
+            </div>
+          </div>
+
+          <!-- DATOS DEL CLIENTE EN GRANDE -->
+          <div class="delivery-banner" style="border: 2px solid #000; padding: 2.5mm; margin: 2mm 0; background: #fff;">
+            <div style="font-size: 9pt; font-weight: bold; text-transform: uppercase;">CLIENTE:</div>
+            <div style="font-size: 14pt; font-weight: 900; text-transform: uppercase; margin-bottom: 2mm;">
+              ${t.customerName || 'Clínica Primero de Mayo (Pacientes)'}
+            </div>
+
+            <div style="font-size: 9pt; font-weight: bold; text-transform: uppercase;">DIRECCIÓN DE ENTREGA:</div>
+            <div class="delivery-address" style="font-size: 13pt; font-weight: 900; line-height: 1.25;">
+              📍 ${t.address || 'Clínica Primero de Mayo - Hospitalización'}
+            </div>
+            ${t.neighborhood ? `<div style="font-size: 10.5pt; font-weight: bold; font-style: italic; margin-top: 1mm;">Ref: ${t.neighborhood}</div>` : ''}
+          </div>
+
+          <!-- FLETE DEL MENSAJERO -->
+          <div style="display: flex; justify-content: space-between; font-size: 11pt; font-weight: bold; border-bottom: 1.5px dashed #000; padding: 1.5mm 0; margin: 2mm 0;">
+            <span>DOMICILIOS / CARRERAS (${totalDom} envíos):</span>
+            <span style="font-size: 13pt; font-weight: 900;">${fmt(t.deliveryFee)}</span>
+          </div>
+
+          <!-- RESUMEN DEL PAQUETE AGRUPADO POR PABELLÓN -->
+          <div style="margin: 2.5mm 0; border-bottom: 1.5px dashed #000; padding-bottom: 2mm;">
+            <div style="font-size: 10pt; font-weight: 900; text-transform: uppercase; margin-bottom: 1.5mm;">
+              DISTRIBUCIÓN POR PABELLÓN:
+            </div>
+            ${groupedSummaryHtml}
+            ${t.packagingFee ? `
+              <div style="font-size: 10pt; font-weight: 900; margin-top: 1.5mm; padding-top: 1mm; border-top: 1px dotted #000;">
+                📦 Empaques: ${t.packagingQty || totalRaciones}x (${t.packagingType || 'Caja'}) - ${fmt(t.packagingFee)}
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- CONSOLIDADO GENERAL AL PIE -->
+          <div style="border-bottom: 1.5px dashed #000; padding-bottom: 2mm; margin-bottom: 2mm;">
+            <div style="font-size: 10pt; font-weight: 900; text-transform: uppercase; margin-bottom: 1mm; text-align: center;">
+              CONSOLIDADO GENERAL DEL SERVICIO:
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11pt; font-weight: 900;">
+              <span>TOTAL RACIONES ENTREGADAS:</span>
+              <span>${totalRaciones}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10pt; font-weight: bold;">
+              <span>TOTAL BOTELLAS AGUA AUTO:</span>
+              <span>${totalAguaFinal} ($0)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10pt; font-weight: bold;">
+              <span>CANTIDAD DOMICILIOS / CARRERAS:</span>
+              <span>${totalDom}</span>
+            </div>
+          </div>
+
+          <!-- TOTAL A COBRAR O RECORDATORIO DE FIADO -->
+          <div style="font-size: 12pt; font-weight: 900; text-align: center; border: 2px solid #000; padding: 2mm; margin-top: 2mm;">
+            CUENTA INSTITUCIONAL / CARTERA CONVENIO
+          </div>
+        `;
+      }
 
       const isCash = (t.paymentMethod === 'efectivo' || t.paymentMethod === 'CASH');
       const hasChange = isCash && t.cashPaid > t.total;
