@@ -19,6 +19,8 @@ Flujo:
 import os
 import sys
 import time
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime
 
 try:
@@ -36,9 +38,10 @@ except ImportError:
 # ==============================================================================
 # CONFIGURACIÓN PRINCIPAL DEL AGENTE
 # ==============================================================================
-BACKEND_URL = os.environ.get(
-    "SP_BACKEND_URL",
-    "https://san-parrilla-backend.onrender.com/api/impresion"
+BACKEND_URL = (
+    os.environ.get("SP_BACKEND_URL")
+    or os.environ.get("SP_API_URL")
+    or "https://san-parrilla-backend.onrender.com/api/impresion"
 ).rstrip("/")
 
 FALLBACK_BACKEND_URL = os.environ.get(
@@ -528,15 +531,48 @@ def marcar_pedido_impreso(session: requests.Session, base_url: str, pedido_id: i
     return False
 
 
+def iniciar_servidor_estado_local(printer_target: str):
+    """Expone http://127.0.0.1:8765/status para que el navegador detecte que el agente Python ESC/POS esta activo."""
+    class StatusHandler(BaseHTTPRequestHandler):
+        def do_OPTIONS(self):
+            self.send_response(200)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "*")
+            self.end_headers()
+
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            payload = f'{{"ok": true, "agent": "python-escpos", "printer": "{limpiar_texto(printer_target)}"}}'
+            self.wfile.write(payload.encode("utf-8"))
+
+        def log_message(self, format, *args):
+            return
+
+    def _serve():
+        try:
+            srv = HTTPServer(("127.0.0.1", 8765), StatusHandler)
+            srv.serve_forever()
+        except Exception:
+            pass
+
+    t = threading.Thread(target=_serve, daemon=True)
+    t.start()
+
+
 def iniciar_agente():
     print("=" * 60)
     print("  SAN PARRILLA OS - AGENTE DE IMPRESION AUTOMATICA SAT Q22")
     print("=" * 60)
     printer_target = detectar_impresora()
+    iniciar_servidor_estado_local(printer_target)
     print(f"[i] Backend Primario : {obtener_url_base_impresion(BACKEND_URL)}")
     print(f"[i] Impresora Destino: {printer_target}")
     print(f"[i] Intervalo Sondeo : {POLL_INTERVAL}s")
-    print(f"[i] Modo Operativo   : AUTOMATICO (SOLO COCINA) | CUENTAS (BAJO DEMANDA)")
+    print(f"[i] Modo Operativo   : AUTOMATICO (SOLO COCINA) | CUENTAS Y TESTS (BAJO DEMANDA)")
     print("=" * 60)
     print("[*] Escuchando comandas nuevas en segundo plano (Ctrl+C para detener)...\n")
 
@@ -565,16 +601,16 @@ def iniciar_agente():
                             else:
                                 print(f"    [!] Aviso: Se imprimio Cocina {cod}, pero fallo confirmacion HTTP.\n")
 
-                    elif tipo_trabajo == "CUENTA":
+                    elif tipo_trabajo in ("CUENTA", "TEST"):
                         bytes_caja = construir_tirilla_caja(ped)
-                        job_label = f"PreCuenta_{cod}" if ("MESA" in str(tipo).upper() or ped.get("mesa")) else f"Cuenta_{cod}"
+                        job_label = f"Test_{cod}" if tipo_trabajo == "TEST" else (f"PreCuenta_{cod}" if ("MESA" in str(tipo).upper() or ped.get("mesa")) else f"Cuenta_{cod}")
                         exito = enviar_raw_spooler(printer_target, bytes_caja, job_label)
                         if exito:
-                            print(f"    [+] Tirilla de CUENTA / PRE-CUENTA impresa en '{printer_target}'.")
-                            if marcar_pedido_impreso(http_session, active_base, ped_id, tipo="CUENTA"):
-                                print(f"    [OK] Pedido {cod} confirmado en Neon DB como impreso en Cuenta.\n")
+                            print(f"    [+] Tirilla de {tipo_trabajo} impresa en '{printer_target}'.")
+                            if marcar_pedido_impreso(http_session, active_base, ped_id, tipo=tipo_trabajo):
+                                print(f"    [OK] Trabajo {cod} ({tipo_trabajo}) confirmado como impreso.\n")
                             else:
-                                print(f"    [!] Aviso: Se imprimio Cuenta {cod}, pero fallo confirmacion HTTP.\n")
+                                print(f"    [!] Aviso: Se imprimio {tipo_trabajo} {cod}, pero fallo confirmacion HTTP.\n")
 
             time.sleep(POLL_INTERVAL)
 

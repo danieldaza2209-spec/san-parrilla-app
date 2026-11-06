@@ -1307,8 +1307,8 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
 
         await fetchOrders();
 
-        if (wantReceipt) {
-          printOrderTicket(orderToPrint, 'customer', normalizedMethod, paidCash);
+        if (wantReceipt && orderToPrint && orderToPrint.id) {
+          sendRemotePrintJob(orderToPrint.id, 'CUENTA', orderToPrint.mesa || orderToPrint.cliente_nombre || `Pedido #${orderToPrint.id}`);
         }
       } catch (err) {
         alert('No se pudo cobrar: ' + err.message);
@@ -1319,133 +1319,13 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
     });
 
     // =========================================================================
-    // IMPRESIÓN TÉRMICA 80MM DESDE /pedidos (COCINA, MENSAJERO, CLIENTE)
+    // IMPRESIÓN REMOTA 80MM DESDE /pedidos HACIA LA COLA SAT Q22 EN CAJA
     // =========================================================================
-    function printOrderTicket(order, type = 'customer', payMethodOverride = null, cashPaid = 0) {
-      const printable = document.getElementById('printable-ticket');
-      if (!printable || !order) return;
-
-      const timeStr = new Date(order.fecha_hora || Date.now()).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
-      const dateStr = new Date(order.fecha_hora || Date.now()).toLocaleDateString('es-CO');
-      const codeStr = order.codigo_pedido || ('#' + order.id);
-      const addrStr = extractAddress(order);
-      const payMethod = payMethodOverride || (order.payments && order.payments[0]?.method) || (order.estado === 'PAGADO' ? 'PAGADO' : 'PENDIENTE / EFECTIVO');
-
-      let html = '';
-      if (type === 'kitchen') {
-        const ubicacion = order.tipo === 'EN_MESA'
-          ? (order.mesa || 'MESA')
-          : (order.tipo === 'DOMICILIO' ? `🛵 DOMICILIO - ${order.cliente_nombre}` : `📦 PARA LLEVAR - ${order.cliente_nombre}`);
-
-        const itemsHtml = (order.detalles || []).map((d) => {
-          const notes = d.notas_item || '';
-          const hasHospLoc = /TORRE A|TORRE B|URGENCIAS/i.test(notes);
-          return `
-            <div style="border-bottom: 1.5px dashed #000; padding: 2.5mm 0;">
-              <div style="display: flex; align-items: flex-start; gap: 2.5mm;">
-                <span style="font-size: 16pt; font-weight: 900; border: 1.5px solid #000; padding: 1mm 2mm;">${d.cantidad}X</span>
-                <div>
-                  <div style="font-size: 13pt; font-weight: 900; text-transform: uppercase;">${escapeHtml(d.plato?.nombre || 'Plato')}</div>
-                  ${hasHospLoc ? `
-                    <div style="font-size: 11pt; font-weight: 900; background: #000; color: #fff; padding: 1mm 2mm; margin-top: 1mm; display: inline-block;">
-                      🏥 ${escapeHtml(notes)}
-                    </div>
-                  ` : (notes ? `<div style="font-size: 10pt; font-weight: bold; margin-top: 1mm;">└ ${escapeHtml(notes)}</div>` : '')}
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('');
-
-        html = `
-          <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 2mm;">
-            <div style="border: 2px solid #000; padding: 1mm 3mm; font-size: 13pt; font-weight: 900; display: inline-block;">🍳 COMANDA DE COCINA</div>
-            <div style="font-size: 13pt; font-weight: 900; margin-top: 1.5mm;">${escapeHtml(ubicacion)}</div>
-            <div style="font-size: 9pt; font-family: monospace;">Orden: <strong>${escapeHtml(codeStr)}</strong> | Hora: <strong>${timeStr}</strong></div>
-          </div>
-          <div style="margin: 2mm 0;">${itemsHtml}</div>
-        `;
-      } else if (type === 'courier') {
-        const isPaid = order.estado === 'PAGADO' && payMethod !== 'CASH';
-        const itemsSummary = (order.detalles || []).map((d) => `
-          <div style="font-size: 10pt; padding: 0.5mm 0;">• <strong>${d.cantidad}x</strong> ${escapeHtml(d.plato?.nombre || 'Plato')}</div>
-        `).join('');
-
-        html = `
-          <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 2mm;">
-            <h1 style="font-size: 15pt; font-weight: 900; margin: 0;">SAN PARRILLA</h1>
-            <div style="border: 2px solid #000; padding: 1mm 3mm; font-size: 11pt; font-weight: 900; margin: 1mm 0; display: inline-block;">
-              🛵 GUÍA DOMICILIO ${order.courier_name ? '• ' + escapeHtml(order.courier_name.toUpperCase()) : ''}
-            </div>
-            <div style="font-size: 9pt; font-family: monospace;">Pedido: <strong>${escapeHtml(codeStr)}</strong> | Hora: <strong>${timeStr}</strong></div>
-          </div>
-          <div style="border: 2px solid #000; padding: 2.5mm; margin: 2mm 0;">
-            <div style="font-size: 9pt; font-weight: bold;">CLIENTE:</div>
-            <div style="font-size: 13pt; font-weight: 900;">${escapeHtml(order.cliente_nombre || 'Cliente')}</div>
-            <div style="font-size: 9pt; font-weight: bold; margin-top: 1.5mm;">TELÉFONO:</div>
-            <div style="font-size: 16pt; font-weight: 900; font-family: monospace;">📞 ${escapeHtml(order.cliente_telefono || 'Sin tel')}</div>
-            <div style="font-size: 9pt; font-weight: bold; margin-top: 1.5mm;">DIRECCIÓN:</div>
-            <div style="font-size: 12pt; font-weight: 900;">📍 ${escapeHtml(addrStr)}</div>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 11pt; font-weight: 900; border-bottom: 1.5px dashed #000; padding: 1.5mm 0;">
-            <span>FLETE MENSAJERO:</span>
-            <span>${fmt(order.delivery_fee || 0)}</span>
-          </div>
-          <div style="margin: 2mm 0;">${itemsSummary}</div>
-          <div style="border: 3px solid #000; padding: 2.5mm; text-align: center; margin-top: 2mm;">
-            <div style="font-size: 12pt; font-weight: 900;">${isPaid ? '✅ PAGADO POR TRANSFERENCIA (NO COBRAR)' : '⚠️ COBRAR AL CLIENTE'}</div>
-            <div style="font-size: 17pt; font-weight: 900; margin-top: 1mm;">TOTAL: ${fmt(order.total)}</div>
-          </div>
-        `;
-      } else {
-        const rows = (order.detalles || []).map((d) => `
-          <tr style="border-bottom: 1px solid #ddd;">
-            <td style="padding: 1.5mm 0; font-weight: 900;">${d.cantidad}</td>
-            <td style="padding: 1.5mm 1mm; font-weight: bold;">${escapeHtml(d.plato?.nombre || 'Plato')}</td>
-            <td style="padding: 1.5mm 0; text-align: right; font-weight: bold;">${fmt(d.precio_unitario * d.cantidad)}</td>
-          </tr>
-        `).join('');
-
-        html = `
-          <div style="text-align: center; border-bottom: 1.5px dashed #000; padding-bottom: 2mm;">
-            <h1 style="font-size: 16pt; font-weight: 900; margin: 0;">SAN PARRILLA</h1>
-            <p style="margin: 1mm 0; font-size: 9pt;">Fogón, Carbón & Sazón Casero</p>
-            <div style="border: 2px solid #000; padding: 1mm 3mm; font-size: 11pt; font-weight: bold; display: inline-block; margin: 1.5mm 0;">
-              ${escapeHtml(order.mesa || order.tipo)}
-            </div>
-            <div style="font-size: 8.5pt; font-family: monospace;">Pedido: <strong>${escapeHtml(codeStr)}</strong> | ${dateStr} ${timeStr}</div>
-          </div>
-          <table style="width: 100%; border-collapse: collapse; margin: 2mm 0; font-size: 9.5pt;">
-            <thead>
-              <tr style="border-bottom: 1px dashed #000;">
-                <th style="text-align: left;">CANT</th>
-                <th style="text-align: left;">PLATO</th>
-                <th style="text-align: right;">TOTAL</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-          <div style="border-top: 1.5px dashed #000; padding-top: 2mm;">
-            ${order.packaging_fee ? `<div style="display:flex;justify-content:space-between;font-size:10pt;"><span>Empaques:</span><span>${fmt(order.packaging_fee)}</span></div>` : ''}
-            ${order.delivery_fee ? `<div style="display:flex;justify-content:space-between;font-size:10pt;"><span>Domicilio:</span><span>${fmt(order.delivery_fee)}</span></div>` : ''}
-            <div style="display:flex;justify-content:space-between;font-size:14pt;font-weight:900;border-top:1.5px solid #000;border-bottom:2px solid #000;padding:1.5mm 0;margin:1.5mm 0;">
-              <span>TOTAL:</span>
-              <span>${fmt(order.total)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:10pt;font-weight:bold;">
-              <span>ESTADO / PAGO:</span>
-              <span>${escapeHtml(payMethod)}</span>
-            </div>
-          </div>
-        `;
-      }
-
-      printable.innerHTML = html;
-      printable.classList.remove('hidden');
-      setTimeout(() => {
-        window.print();
-        setTimeout(() => printable.classList.add('hidden'), 900);
-      }, 80);
+    function printOrderTicket(order, type = 'customer', _payMethodOverride = null, _cashPaid = 0) {
+      if (!order || !order.id) return;
+      const tipoBackend = type === 'kitchen' ? 'COCINA' : 'CUENTA';
+      const label = order.mesa || order.cliente_nombre || (order.codigo_pedido ? `#${order.codigo_pedido}` : `Pedido #${order.id}`);
+      sendRemotePrintJob(order.id, tipoBackend, label);
     }
 
     function openTablePrintMenu(order, mesaName) {
@@ -1467,7 +1347,7 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
 
     async function sendRemotePrintJob(pedidoId, tipo = 'CUENTA', mesaLabel = 'Mesa') {
       try {
-        const res = await fetch(`/api/impresion/reimprimir/${pedidoId}?tipo=${encodeURIComponent(tipo)}`, {
+        const res = await fetch(`/api/impresion/reimprimir/${encodeURIComponent(String(pedidoId))}?tipo=${encodeURIComponent(tipo)}`, {
           method: 'POST'
         });
         const data = await res.json().catch(() => ({}));
@@ -1475,9 +1355,9 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
           throw new Error(data.detail || `Error HTTP ${res.status}`);
         }
         if (tipo === 'COCINA') {
-          showBoardToast(`✅ Comanda de ${mesaLabel} reenviada a Cocina (SAT Q22)`);
+          showBoardToast(`✅ Enviado a impresora SAT Q22 en Caja (Comanda ${mesaLabel})`);
         } else {
-          showBoardToast(`✅ Cuenta de ${mesaLabel} enviada a la impresora SAT Q22`);
+          showBoardToast(`✅ Enviado a impresora SAT Q22 en Caja (Cuenta ${mesaLabel})`);
         }
       } catch (err) {
         showBoardToast(`❌ Error al imprimir en SAT Q22: ${err.message}`, false);

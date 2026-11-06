@@ -74,39 +74,41 @@ const navItems = [
   </script>
 
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-parrilla-border no-print">
-    <div class="max-w-[1600px] mx-auto px-2 sm:px-4 h-14 flex items-center justify-between gap-1.5 sm:gap-3 w-full">
+    <div class="max-w-[1600px] mx-auto px-2 sm:px-4 min-h-14 py-1.5 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2.5 w-full">
 
-      <div class="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
-        <img src="/logo.png" alt="San Parrilla" class="h-8 sm:h-9 w-auto rounded-full ring-2 ring-parrilla-gold/30 shrink-0" />
+      <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
+        <img src="/logo.png" alt="San Parrilla" class="h-7 sm:h-9 w-auto rounded-full ring-2 ring-parrilla-gold/30 shrink-0" />
         <nav class="flex items-center gap-0.5 sm:gap-1 bg-slate-100/90 p-1 rounded-full border border-parrilla-border text-xs sm:text-sm overflow-x-auto scrollbar-none shrink min-w-0">
           {navItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const navId = item.adminOnly ? 'nav-admin-link' : item.cashierOrAdmin ? 'nav-caja-link' : undefined;
+            const shortLabel = item.href === '/pos' ? 'POS' : item.href === '/pedidos' ? 'Pedidos' : item.href === '/caja' ? 'Caja' : 'Admin';
             return (
               <a
                 href={item.href}
                 id={navId}
                 class:list={[
-                  'px-2.5 sm:px-4 py-1.5 rounded-full font-semibold transition items-center gap-1 sm:gap-1.5 shrink-0 text-xs sm:text-sm',
+                  'px-2 sm:px-3 lg:px-4 py-1.5 rounded-full font-semibold transition items-center gap-1 sm:gap-1.5 shrink-0 text-xs sm:text-sm',
                   item.adminOnly && !isAdmin ? 'hidden' : 'inline-flex',
                   active
                     ? 'bg-parrilla-gold text-white shadow-sm'
                     : 'text-parrilla-ivory hover:text-parrilla-gold hover:bg-white',
                 ]}
               >
-                <i data-lucide={item.icon} class="w-3.5 sm:w-4 h-3.5 sm:h-4"></i>
-                <span class="hidden sm:inline">{item.label}</span>
+                <i data-lucide={item.icon} class="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0"></i>
+                <span class="hidden lg:inline">{item.label}</span>
+                <span class="hidden sm:inline lg:hidden">{shortLabel}</span>
               </a>
             );
           })}
         </nav>
       </div>
 
-      <div class="flex items-center gap-1 sm:gap-2.5 shrink-0">
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
         <span
           id="header-cash-badge"
           class:list={[
-            'hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border',
+            'hidden xl:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shrink-0',
             cashOpen
               ? 'bg-green-50 text-parrilla-accent border-green-200'
               : 'bg-red-50 text-red-600 border-red-200',
@@ -119,36 +121,37 @@ const navItems = [
         <button
           id="btn-global-print-agent"
           type="button"
-          class="inline-flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-sm transition cursor-pointer shrink-0"
-          title="Instalar Agente de Impresión Automática SAT Q22 en Windows"
-          aria-label="Instalador Impresor SAT Q22"
+          class="inline-flex items-center justify-center gap-1 px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-black shadow-sm transition cursor-pointer shrink-0"
+          title="Configurar Estación Impresora SAT Q22 o Instalar Agente"
+          aria-label="Impresor SAT Q22"
         >
-          <i data-lucide="printer" class="w-4 h-4 text-white shrink-0"></i>
-          <span class="hidden sm:inline">🖨️ Impresor SAT Q22</span>
+          <span id="print-server-nav-dot" class="hidden w-2 h-2 rounded-full bg-lime-300 animate-ping shrink-0"></span>
+          <span class="text-xs leading-none">🖨️</span>
+          <span id="print-server-nav-label" class="hidden sm:inline whitespace-nowrap">Impresor</span>
         </button>
 
         <button
           id="btn-switch-role-modal"
           type="button"
-          class="inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold transition shrink-0 max-w-[125px] sm:max-w-none"
+          class="inline-flex items-center gap-1 px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[11px] sm:text-xs font-semibold transition shrink-0 max-w-[110px] sm:max-w-[180px] md:max-w-none"
           title="Cambiar de Colaborador o Rol con PIN"
         >
-          <i data-lucide="user-round" class="w-3.5 h-3.5 text-amber-700 shrink-0"></i>
-          <span id="staff-role-label-full" class="hidden sm:inline truncate">{user ? `${ROLE_LABELS[user.role]}: ${user.name}` : 'Personal'}</span>
-          <span id="staff-role-label-short" class="sm:hidden truncate">{user ? `${user.name.split(' ')[0]}` : 'Personal'}</span>
+          <i data-lucide="user-round" class="w-3.5 h-3.5 text-amber-700 shrink-0 hidden sm:inline"></i>
+          <span id="staff-role-label-full" class="hidden md:inline truncate">{user ? `${ROLE_LABELS[user.role]}: ${user.name}` : 'Personal'}</span>
+          <span id="staff-role-label-short" class="md:hidden truncate">{user ? `${user.name.split(' ')[0]}` : 'Personal'}</span>
           <span id="staff-role-label" class="sr-only">{user ? `${ROLE_LABELS[user.role]}: ${user.name}` : 'Personal'}</span>
-          <span class="text-[10px] text-amber-700 underline ml-0.5 hidden sm:inline">Cambiar</span>
+          <span class="text-[10px] text-amber-700 underline ml-0.5 hidden lg:inline">Cambiar</span>
         </button>
 
         <button
           id="btn-staff-logout"
           type="button"
-          class="inline-flex items-center justify-center gap-1 text-xs font-bold p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border transition shrink-0"
+          class="inline-flex items-center justify-center gap-1 text-xs font-bold px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-red-50 text-parrilla-muted hover:text-red-500 border border-parrilla-border transition shrink-0"
           title="Cerrar sesión"
           aria-label="Cerrar sesión"
         >
-          <i data-lucide="log-out" class="w-4 h-4 shrink-0"></i>
-          <span class="hidden sm:inline">Salir</span>
+          <i data-lucide="log-out" class="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0"></i>
+          <span class="hidden md:inline">Salir</span>
         </button>
       </div>
     </div>
@@ -193,81 +196,127 @@ const navItems = [
     </div>
   </div>
 
-  <!-- Modal de Instalación del Agente de Impresión SAT Q22 -->
+  <!-- Modal de Configuración y Estación de Impresión SAT Q22 -->
   <div id="modal-print-agent-help" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4 no-print">
-    <div class="bg-white rounded-2xl border border-parrilla-border shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in duration-150">
-      <div class="px-5 py-4 bg-emerald-700 text-white flex items-center justify-between">
+    <div class="bg-white rounded-2xl border border-parrilla-border shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in duration-150 max-h-[92vh] flex flex-col">
+      <div class="px-5 py-4 bg-emerald-700 text-white flex items-center justify-between shrink-0">
         <div class="flex items-center gap-2.5">
           <span class="text-2xl">🖨️</span>
           <div>
-            <h3 class="font-display font-black text-base">Instalación Impresora SAT Q22 (80mm)</h3>
-            <p class="text-[11px] text-emerald-100">Impresión automática silenciosa para el PC del restaurante</p>
+            <h3 class="font-display font-black text-base">Estación de Impresión SAT Q22 (80mm)</h3>
+            <p class="text-[11px] text-emerald-100">Cola remota en tiempo real para celulares y PC de Caja</p>
           </div>
         </div>
         <button type="button" id="btn-close-print-modal" class="text-white hover:text-emerald-200 text-xl font-bold px-2 cursor-pointer">✕</button>
       </div>
 
-      <div class="p-5 space-y-4 text-xs text-slate-700">
-        <div class="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-950 space-y-1">
-          <p class="font-black text-sm text-emerald-900 flex items-center gap-1.5">
-            <span>✅</span> ¡Instalación Automática en 1 Paso!
+      <div class="p-5 space-y-4 text-xs text-slate-700 overflow-y-auto">
+        <!-- Modo PC Receptor en Vivo -->
+        <div id="print-server-card" class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50 transition-all space-y-3">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <span id="print-server-status-pill" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-200 text-slate-700 mb-1">
+                📱 Modo Dispositivo Remoto (Celular / Tablet)
+              </span>
+              <h4 class="font-black text-sm text-slate-900">🖥️ Este PC es la Estación Impresora SAT Q22</h4>
+              <p class="text-[11px] text-slate-600 leading-relaxed mt-0.5">
+                Activa esta opción <strong>únicamente en el computador de Caja</strong> donde está conectada la impresora SAT Q22 por USB. Recibirá e imprimirá automáticamente todos los pedidos enviados desde cualquier celular cada 2.5 segundos.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="button"
+              id="btn-toggle-print-server"
+              class="flex-1 min-w-[200px] py-2.5 px-4 rounded-xl font-black text-xs shadow transition cursor-pointer flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
+            >
+              <span id="btn-toggle-print-server-icon">🔌</span>
+              <span id="btn-toggle-print-server-text">Activar Modo Estación Impresora en este PC</span>
+            </button>
+            <button
+              type="button"
+              id="btn-modal-test-print"
+              class="py-2.5 px-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-black text-xs transition cursor-pointer flex items-center gap-1.5"
+              title="Encola un ticket de prueba hacia la SAT Q22"
+            >
+              <span>⚡ Probar SAT Q22</span>
+            </button>
+          </div>
+          <p id="print-station-live-log" class="text-[11px] font-bold text-emerald-800 hidden"></p>
+        </div>
+
+        <!-- Agente Python Silencioso (ESC/POS directo sin diálogo de navegador) -->
+        <div class="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200 text-emerald-950 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <p class="font-black text-xs text-emerald-900 flex items-center gap-1.5">
+              <span>🚀</span> Impresión 100% Silenciosa (Agente Python ESC/POS)
+            </p>
+            <span id="python-agent-detect-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-emerald-800">
+              Recomendado en Windows
+            </span>
+          </div>
+          <p class="text-[11px] leading-relaxed text-slate-700">
+            Para que la SAT Q22 imprima directo por USB <strong>sin abrir ventanas de confirmación</strong> e inicie sola al prender el PC, descarga y ejecuta una sola vez <code>Iniciar_Impresor_SAT_Q22.bat</code>:
           </p>
-          <p class="text-[11px] leading-relaxed">
-            Se ha descargado el archivo <strong>Iniciar_Impresor_SAT_Q22.bat</strong> en tu computador.
+          <div class="pt-1 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="btn-download-print-agent-again"
+              class="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs shadow-sm transition cursor-pointer flex items-center gap-1.5"
+            >
+              <span>📥 Descargar Instalador Automático (.bat)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-2 text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <p class="font-bold text-slate-800">¿Cómo funciona desde los celulares?</p>
+          <p>
+            Cuando un mesero o cajero presiona <strong>Guardar / Enviar a Cocina</strong>, <strong>Cobrar e Imprimir</strong>, <strong>Solo Comanda Cocina</strong> o <strong>Reimprimir Cliente/Cocina</strong> en su celular, el teléfono <strong>NO abre PDF</strong>: envía la orden a la cola en la nube y el PC de Caja la imprime al instante en la SAT Q22.
           </p>
         </div>
 
-        <div class="space-y-3">
-          <div class="flex items-start gap-2.5">
-            <span class="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-[11px] shrink-0">1</span>
-            <div>
-              <strong class="text-slate-900 block text-xs">Abre el archivo descargado:</strong>
-              <span class="text-slate-600 text-[11px]">Dale <strong>Doble Clic</strong> al archivo <code>Iniciar_Impresor_SAT_Q22.bat</code> en la barra inferior de descargas o en la carpeta Descargas.</span>
-            </div>
-          </div>
-
-          <div class="flex items-start gap-2.5">
-            <span class="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-[11px] shrink-0">2</span>
-            <div>
-              <strong class="text-slate-900 block text-xs">Se autoconfigura solo:</strong>
-              <span class="text-slate-600 text-[11px]">Se abrirá una ventana negra que conecta la impresora y la deja lista. ¡Déjala abierta en segundo plano!</span>
-            </div>
-          </div>
-
-          <div class="flex items-start gap-2.5">
-            <span class="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-[11px] shrink-0">3</span>
-            <div>
-              <strong class="text-slate-900 block text-xs">¿Toca hacer algo cada vez que se prenda el PC?</strong>
-              <div class="p-2.5 mt-1 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
-                <strong>¡NO! Solo se hace UNA SOLA VEZ.</strong> El instalador se agrega automáticamente a la carpeta de inicio de Windows (<code>shell:startup</code>). Cuando prendas el computador por la mañana, <strong>se iniciará automáticamente en segundo plano</strong> sin que tengas que tocar nada.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between pt-3 border-t border-slate-200 gap-3">
-          <button
-            type="button"
-            id="btn-download-print-agent-again"
-            class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
-          >
-            <span>📥 Descargar de nuevo (.bat)</span>
-          </button>
+        <div class="flex items-center justify-end pt-2 border-t border-slate-200 gap-3">
           <button
             type="button"
             id="btn-ok-print-modal"
-            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow transition cursor-pointer"
+            class="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow transition cursor-pointer"
           >
-            Entendido, ¡Listo!
+            Cerrar
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <main class="flex-1">
+  <!-- Contenedor global para impresión automática cuando este PC es Estación Impresora y no corre print_agent.py -->
+  <div id="global-print-station-ticket" class="hidden"></div>
+
+  <main id="staff-main-content" class="flex-1">
     <slot />
   </main>
+
+  <style is:global>
+    @media print {
+      body.sp-station-printing #staff-main-content,
+      body.sp-station-printing .no-print {
+        display: none !important;
+      }
+      body.sp-station-printing #global-print-station-ticket {
+        display: block !important;
+        width: 72mm !important;
+        max-width: 72mm !important;
+        margin: 0 !important;
+        padding: 2mm 1mm !important;
+        font-family: 'Courier New', Courier, monospace !important;
+        font-size: 12px !important;
+        line-height: 1.25 !important;
+        color: #000 !important;
+        background: #fff !important;
+      }
+    }
+  </style>
 
   <script is:inline>
     (function () {
@@ -461,7 +510,24 @@ const navItems = [
         });
       }
 
-      // Agente de Impresión SAT Q22
+      // ============================================================
+      // ESTACIÓN IMPRESORA SAT Q22 Y AGENTE REMOTO
+      // ============================================================
+      function isPrintServerEnabled() {
+        try {
+          return localStorage.getItem('sanparrilla_is_print_server') === 'true';
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function setPrintServerEnabled(val) {
+        try {
+          localStorage.setItem('sanparrilla_is_print_server', val ? 'true' : 'false');
+        } catch (e) {}
+        updatePrintServerUI();
+      }
+
       function downloadPrintAgentBat() {
         var origin = window.location.origin;
         var batLines = [
@@ -497,6 +563,7 @@ const navItems = [
           'echo [*] Descargando script print_agent.py actualizado...',
           'curl -s -o print_agent.py "' + origin + '/scripts/print_agent.py" || powershell -Command "Invoke-WebRequest -Uri \'' + origin + '/scripts/print_agent.py\' -OutFile \'print_agent.py\'"',
           'set "SP_API_URL=' + origin + '"',
+          'set "SP_BACKEND_URL=' + origin + '"',
           'set "SP_PRINTER_NAME=SAT Q22"',
           'echo.',
           'echo ============================================================',
@@ -528,9 +595,46 @@ const navItems = [
       var closePrintModalBtn = document.getElementById('btn-close-print-modal');
       var okPrintModalBtn = document.getElementById('btn-ok-print-modal');
       var downloadAgainBtn = document.getElementById('btn-download-print-agent-again');
+      var toggleServerBtn = document.getElementById('btn-toggle-print-server');
+      var toggleServerText = document.getElementById('btn-toggle-print-server-text');
+      var toggleServerIcon = document.getElementById('btn-toggle-print-server-icon');
+      var serverCard = document.getElementById('print-server-card');
+      var serverStatusPill = document.getElementById('print-server-status-pill');
+      var liveLogEl = document.getElementById('print-station-live-log');
+      var modalTestPrintBtn = document.getElementById('btn-modal-test-print');
+
+      function updatePrintServerUI() {
+        var active = isPrintServerEnabled();
+        if (globalPrintBtn) {
+          if (active) {
+            globalPrintBtn.className = 'inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white border border-emerald-300 text-[10px] sm:text-[11px] font-black shadow-sm transition cursor-pointer ring-2 ring-emerald-300/60';
+            globalPrintBtn.innerHTML = '<span>🖨️</span><span class="hidden sm:inline">Estación SAT Q22</span>';
+          } else {
+            globalPrintBtn.className = 'inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 text-[10px] sm:text-[11px] font-black shadow-sm transition cursor-pointer';
+            globalPrintBtn.innerHTML = '<span>🖨️</span><span class="hidden sm:inline">Impresor</span>';
+          }
+        }
+        if (serverCard && serverStatusPill && toggleServerBtn && toggleServerText && toggleServerIcon) {
+          if (active) {
+            serverCard.className = 'p-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50/70 transition-all space-y-3';
+            serverStatusPill.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-600 text-white mb-1';
+            serverStatusPill.textContent = '🟢 ESTACIÓN IMPRESORA ACTIVA EN ESTE PC (Escuchando cada 2.5s)';
+            toggleServerBtn.className = 'flex-1 min-w-[200px] py-2.5 px-4 rounded-xl font-black text-xs shadow transition cursor-pointer flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white';
+            toggleServerIcon.textContent = '⏹️';
+            toggleServerText.textContent = 'Desactivar Modo Estación en este Dispositivo';
+          } else {
+            serverCard.className = 'p-4 rounded-2xl border-2 border-slate-200 bg-slate-50 transition-all space-y-3';
+            serverStatusPill.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-200 text-slate-700 mb-1';
+            serverStatusPill.textContent = '📱 Modo Dispositivo Remoto (Envía impresiones a Caja)';
+            toggleServerBtn.className = 'flex-1 min-w-[200px] py-2.5 px-4 rounded-xl font-black text-xs shadow transition cursor-pointer flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white';
+            toggleServerIcon.textContent = '🔌';
+            toggleServerText.textContent = 'Activar Modo Estación Impresora en este PC';
+          }
+        }
+      }
 
       function openPrintAgentModal() {
-        downloadPrintAgentBat();
+        updatePrintServerUI();
         if (printModal) {
           printModal.classList.remove('hidden');
           printModal.classList.add('flex');
@@ -548,6 +652,206 @@ const navItems = [
       if (closePrintModalBtn) closePrintModalBtn.addEventListener('click', closePrintAgentModal);
       if (okPrintModalBtn) okPrintModalBtn.addEventListener('click', closePrintAgentModal);
       if (downloadAgainBtn) downloadAgainBtn.addEventListener('click', downloadPrintAgentBat);
+
+      if (toggleServerBtn) {
+        toggleServerBtn.addEventListener('click', function () {
+          var nextState = !isPrintServerEnabled();
+          setPrintServerEnabled(nextState);
+          if (liveLogEl) {
+            liveLogEl.classList.remove('hidden');
+            liveLogEl.textContent = nextState
+              ? '✅ Este PC ahora recibe e imprime los tickets enviados desde cualquier celular.'
+              : 'ℹ️ Modo Estación desactivado. Las impresiones se enviarán remotamente al PC de Caja.';
+          }
+          if (nextState) {
+            pollRemotePrintQueue();
+          }
+        });
+      }
+
+      if (modalTestPrintBtn) {
+        modalTestPrintBtn.addEventListener('click', function () {
+          modalTestPrintBtn.disabled = true;
+          var origHtml = modalTestPrintBtn.innerHTML;
+          modalTestPrintBtn.innerHTML = '<span>⏳ Enviando...</span>';
+          fetch('/api/impresion/test', { method: 'POST' })
+            .then(function (r) { return r.json(); })
+            .then(function () {
+              if (liveLogEl) {
+                liveLogEl.classList.remove('hidden');
+                liveLogEl.textContent = '✅ Ticket de prueba enviado a la cola de la impresora SAT Q22.';
+              }
+              if (isPrintServerEnabled()) {
+                setTimeout(pollRemotePrintQueue, 400);
+              }
+            })
+            .catch(function () {
+              if (liveLogEl) {
+                liveLogEl.classList.remove('hidden');
+                liveLogEl.textContent = '⚠️ Error al conectar con el servidor de impresión.';
+              }
+            })
+            .finally(function () {
+              modalTestPrintBtn.disabled = false;
+              modalTestPrintBtn.innerHTML = origHtml;
+            });
+        });
+      }
+
+      // Helper global para enviar reimpresión remota desde cualquier página
+      window.spSendRemotePrint = function (pedidoIdOrCode, tipo) {
+        var t = (tipo || 'CUENTA').toUpperCase();
+        return fetch('/api/impresion/reimprimir/' + encodeURIComponent(String(pedidoIdOrCode)) + '?tipo=' + encodeURIComponent(t), {
+          method: 'POST',
+        }).then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          if (isPrintServerEnabled()) {
+            setTimeout(pollRemotePrintQueue, 350);
+          }
+          return res.json();
+        });
+      };
+
+      window.spSendRemoteTestPrint = function () {
+        return fetch('/api/impresion/test', { method: 'POST' }).then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          if (isPrintServerEnabled()) {
+            setTimeout(pollRemotePrintQueue, 350);
+          }
+          return res.json();
+        });
+      };
+
+      // Formateador HTML para recibo de 80mm cuando este PC imprime desde el navegador
+      function formatCopStation(n) {
+        return '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
+      }
+
+      function buildStationTicketHtml(job) {
+        var tipoJob = (job.tipo_trabajo || 'COCINA').toUpperCase();
+        var codigo = job.codigo_pedido || ('#' + job.id);
+        var fecha = job.fecha ? new Date(job.fecha).toLocaleString('es-CO', { hour12: true }) : new Date().toLocaleString('es-CO', { hour12: true });
+        var mesa = job.mesa || (job.tipo === 'DOMICILIO' ? 'DOMICILIO' : 'MOSTRADOR');
+        var cliente = job.cliente_nombre || 'Cliente General';
+        var items = Array.isArray(job.items) ? job.items : [];
+
+        if (tipoJob === 'COCINA') {
+          var itemsHtml = items.map(function (it) {
+            var nota = it.notas ? '<div style="font-size:12px;font-weight:bold;margin-left:10px;">* NOTA: ' + it.notas + '</div>' : '';
+            return '<div style="margin:4px 0;font-size:15px;font-weight:900;">' + (it.cantidad || 1) + 'x ' + (it.nombre || '') + nota + '</div>';
+          }).join('');
+          var notaGen = job.notas ? '<hr style="border-top:1px dashed #000;margin:6px 0;"/><div style="font-size:12px;font-weight:bold;">OBS: ' + job.notas + '</div>' : '';
+          return (
+            '<div style="text-align:center;font-weight:900;font-size:16px;">*** COMANDA DE COCINA ***</div>' +
+            '<div style="text-align:center;font-weight:900;font-size:15px;margin-top:2px;">[' + (job.tipo || 'MESA') + '] ' + mesa + '</div>' +
+            '<div style="font-size:11px;margin-top:4px;">Orden: ' + codigo + '<br/>Fecha: ' + fecha + '<br/>Cliente: ' + cliente + '</div>' +
+            '<hr style="border-top:2px dashed #000;margin:6px 0;"/>' +
+            itemsHtml +
+            notaGen +
+            '<hr style="border-top:2px dashed #000;margin:6px 0;"/>'
+          );
+        }
+
+        var rowsHtml = items.map(function (it) {
+          var cant = Number(it.cantidad) || 1;
+          var sub = Number(it.subtotal) || (cant * (Number(it.precio_unitario) || 0));
+          return (
+            '<div style="display:flex;justify-content:space-between;font-size:12px;margin:2px 0;">' +
+              '<span>' + cant + 'x ' + (it.nombre || '') + '</span>' +
+              '<strong>' + formatCopStation(sub) + '</strong>' +
+            '</div>'
+          );
+        }).join('');
+
+        return (
+          '<div style="text-align:center;font-weight:900;font-size:15px;">RESTAURANTE SAN PARRILLA</div>' +
+          '<div style="text-align:center;font-size:11px;">Especialistas en Carne a la Llanera<br/>' + (tipoJob === 'TEST' ? 'TICKET DE PRUEBA SAT Q22' : 'COMPROBANTE DE VENTA') + '</div>' +
+          '<hr style="border-top:1px dashed #000;margin:6px 0;"/>' +
+          '<div style="font-size:11px;">Orden: <strong>' + codigo + '</strong><br/>Fecha: ' + fecha + '<br/>Servicio: ' + (job.tipo || 'MESA') + ' (' + mesa + ')<br/>Cliente: ' + cliente + '</div>' +
+          '<hr style="border-top:1px dashed #000;margin:6px 0;"/>' +
+          rowsHtml +
+          '<hr style="border-top:1px dashed #000;margin:6px 0;"/>' +
+          '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;"><span>TOTAL:</span><span>' + formatCopStation(job.total || 0) + '</span></div>' +
+          '<div style="font-size:11px;margin-top:3px;">Método de Pago: ' + (job.metodo_pago || 'EFECTIVO') + '</div>' +
+          '<div style="text-align:center;font-size:11px;margin-top:8px;">¡Gracias por su compra!</div>'
+        );
+      }
+
+      var isPollingPrintQueue = false;
+      var processedJobKeys = {};
+
+      function checkPythonAgentLocal() {
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timeoutId = controller ? setTimeout(function () { controller.abort(); }, 450) : null;
+        return fetch('http://127.0.0.1:8765/status', {
+          method: 'GET',
+          signal: controller ? controller.signal : undefined,
+        })
+          .then(function (r) {
+            if (timeoutId) clearTimeout(timeoutId);
+            return r.ok;
+          })
+          .catch(function () {
+            if (timeoutId) clearTimeout(timeoutId);
+            return false;
+          });
+      }
+
+      function pollRemotePrintQueue() {
+        if (!isPrintServerEnabled() || isPollingPrintQueue) return;
+        isPollingPrintQueue = true;
+
+        checkPythonAgentLocal()
+          .then(function (pythonAgentRunning) {
+            var badge = document.getElementById('python-agent-detect-badge');
+            if (badge && pythonAgentRunning) {
+              badge.textContent = '🟢 Agente Python Activo en PC';
+              badge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white';
+            }
+            if (pythonAgentRunning) {
+              // print_agent.py ya está corriendo en este PC y consumiendo /api/impresion/pendientes por ESC/POS directo
+              isPollingPrintQueue = false;
+              return;
+            }
+            return fetch('/api/impresion/pendientes')
+              .then(function (res) {
+                if (!res.ok) return [];
+                return res.json();
+              })
+              .then(function (jobs) {
+                if (!Array.isArray(jobs) || jobs.length === 0) return;
+                var job = jobs[0];
+                var tipoJob = (job.tipo_trabajo || 'COCINA').toUpperCase();
+                var jobKey = String(job.id) + '_' + tipoJob + '_' + Math.floor(Date.now() / 8000);
+                if (processedJobKeys[jobKey]) return;
+                processedJobKeys[jobKey] = true;
+
+                return fetch('/api/impresion/marcar-impreso/' + encodeURIComponent(String(job.id)) + '?tipo=' + encodeURIComponent(tipoJob), {
+                  method: 'POST',
+                }).then(function () {
+                  var container = document.getElementById('global-print-station-ticket');
+                  if (!container) return;
+                  container.innerHTML = buildStationTicketHtml(job);
+                  document.body.classList.add('sp-station-printing');
+                  window.print();
+                  setTimeout(function () {
+                    document.body.classList.remove('sp-station-printing');
+                  }, 800);
+                });
+              });
+          })
+          .catch(function () {})
+          .finally(function () {
+            isPollingPrintQueue = false;
+          });
+      }
+
+      updatePrintServerUI();
+      setInterval(function () {
+        if (isPrintServerEnabled()) {
+          pollRemotePrintQueue();
+        }
+      }, 2500);
 
       window.openPrintAgentModal = openPrintAgentModal;
     })();

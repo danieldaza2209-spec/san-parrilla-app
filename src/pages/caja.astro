@@ -1358,14 +1358,17 @@ import StaffLayout from '../layouts/StaffLayout.astro';
         }
 
         closeModalCancel();
-        const zTicket = document.getElementById('z-ticket');
-        if (zTicket) zTicket.classList.remove('hidden');
-        setTimeout(() => {
-          window.print();
+        const isStationPc = localStorage.getItem('sanparrilla_is_print_server') === 'true';
+        if (isStationPc) {
+          const zTicket = document.getElementById('z-ticket');
+          if (zTicket) zTicket.classList.remove('hidden');
           setTimeout(() => {
-            if (zTicket) zTicket.classList.add('hidden');
-          }, 1000);
-        }, 80);
+            window.print();
+            setTimeout(() => {
+              if (zTicket) zTicket.classList.add('hidden');
+            }, 1000);
+          }, 80);
+        }
 
         setTimeout(async () => {
           await loadActiveCaja();

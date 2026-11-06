@@ -3431,35 +3431,25 @@ const searchableCatalog = allPosProducts.map((p) => ({
       }
     });
 
-    // 7.1 QUICK TEST PRINT SAT Q22
-    quickTestBtn?.addEventListener('click', () => {
-      // Add test combo to cart if not present
-      const testItem = cart.find(i => i.id === 'test-print-sat');
-      if (testItem) {
-        testItem.quantity += 1;
-      } else {
-        cart.push({
-          id: 'test-print-sat',
-          name: '🔥 Combo Prueba Impresión SAT Q22',
-          price: 1000,
-          quantity: 1,
-          category_id: 'fuertes_165'
-        });
+    // 7.1 QUICK TEST PRINT SAT Q22 (Cola remota hacia el PC de Caja)
+    quickTestBtn?.addEventListener('click', async () => {
+      // @ts-ignore
+      quickTestBtn.disabled = true;
+      const origHtml = quickTestBtn.innerHTML;
+      quickTestBtn.innerHTML = '<span>⏳...</span>';
+      try {
+        const res = await fetch('/api/impresion/test', { method: 'POST' });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        showPosToast('✅ Enviado a impresora SAT Q22 en Caja (Ticket de Prueba)');
+      } catch (err) {
+        alert('No se pudo enviar el ticket de prueba a la cola de impresión: ' + (err.message || err));
+      } finally {
+        // @ts-ignore
+        quickTestBtn.disabled = false;
+        quickTestBtn.innerHTML = origHtml;
       }
-      renderCart();
-      // If delivery mode is selected, populate test delivery data so validation passes
-      if (currentOrderType === 'domicilio') {
-        // @ts-ignore
-        if (!custPhoneInput.value) custPhoneInput.value = '3183821787';
-        // @ts-ignore
-        if (!custNameInput.value) custNameInput.value = 'CLIENTE PRUEBA SAT';
-        // @ts-ignore
-        if (!custAddressInput.value) custAddressInput.value = 'Cra 15 # 45 - 20 Apto 301';
-        // @ts-ignore
-        if (!custNeighborhoodInput.value) custNeighborhoodInput.value = 'Parrilla Centro';
-      }
-      // Trigger checkout and print immediately
-      checkoutPrintBtn?.click();
     });
 
     // 8. CHECKOUT & MODAL DE COBRO / PAGO MIXTO
@@ -3860,6 +3850,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
         const ticket = {
           id: savedOrder.codigo_pedido || savedOrder.id,
+          pedidoId: savedOrder.id,
           createdAt: savedOrder.fecha_hora || new Date().toISOString(),
           orderType: currentOrderType,
           table: meta.mesaStr,
@@ -4071,9 +4062,10 @@ const searchableCatalog = allPosProducts.map((p) => ({
           })
         }).catch(() => {});
 
-        // 3. Imprimir comanda en SAT Q22
+        // 3. Guardar referencia de último pedido (la comanda de cocina se imprime en el PC de Caja vía impreso_cocina = False)
         const ticket = {
           id: savedOrder.codigo_pedido || savedOrder.id,
+          pedidoId: savedOrder.id,
           createdAt: new Date().toISOString(),
           orderType: currentOrderType,
           table: mesaStr,
@@ -4126,9 +4118,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
         // Notificación Toast de confirmación en pantalla
         const orderCode = (savedOrder && (savedOrder.codigo_pedido || savedOrder.id)) || 'NUEVO';
         if (currentOrderType === 'mesa') {
-          showPosToast('✅ Mesa liberada y cobro registrado exitosamente');
+          showPosToast(`✅ Mesa liberada, cobro registrado y comanda enviada a SAT Q22 (#${orderCode})`);
         } else {
-          showPosToast(`✅ Pedido cobrado exitosamente (#${orderCode})`);
+          showPosToast(`✅ Pedido cobrado y enviado a SAT Q22 (#${orderCode})`);
         }
       } catch (err) {
         alert('Ocurrió un error al cobrar: ' + err.message);
@@ -4140,42 +4132,110 @@ const searchableCatalog = allPosProducts.map((p) => ({
       }
     });
 
-    // 9. COMANDA DIRECTA DE COCINA DESDE EL CARRITO
-    document.getElementById('btn-print-kitchen-cart')?.addEventListener('click', () => {
+    // 9. SOLO COMANDA COCINA (Guarda pedido real en Neon o encola reimpresión remota en la SAT Q22 del PC)
+    const btnKitchenCart = document.getElementById('btn-print-kitchen-cart');
+    btnKitchenCart?.addEventListener('click', async () => {
       if (cart.length === 0) {
-        alert('Por favor agrega al menos un plato a la comanda para imprimir la orden de cocina.');
+        alert('Por favor agrega al menos un plato a la comanda para enviar a cocina.');
         return;
       }
 
-      const { subtotal, packagingFee, deliveryFee } = calculateTotals();
+      // @ts-ignore
+      btnKitchenCart.disabled = true;
+      const origHtml = btnKitchenCart.innerHTML;
+      btnKitchenCart.innerHTML = '<span>⏳ Enviando a SAT Q22...</span>';
 
-      const tempTicket = {
-        id: 'COCINA-' + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-        createdAt: new Date().toISOString(),
-        orderType: currentOrderType,
-        // @ts-ignore
-        table: currentOrderType === 'mesa' ? (tableInput.value || 'Mesa 1') : '',
-        // @ts-ignore
-        customerName: currentOrderType === 'domicilio' ? custNameInput.value.trim() : '',
-        // @ts-ignore
-        customerPhone: currentOrderType === 'domicilio' ? custPhoneInput.value.trim() : '',
-        items: cart.map(({ name, price, quantity, notes, packaging }) => ({
-          name,
-          price,
-          quantity,
-          notes: notes || '',
-          packaging: packaging || globalPackagingType
-        })),
-        subtotal,
-        packagingFee,
-        packagingType: globalPackagingType,
-        packagingQty,
-        deliveryFee,
-        total: 0,
-        paymentMethod: 'PENDIENTE'
-      };
+      try {
+        const { payload, meta } = buildFastapiPedidoPayload('EN_PREPARACION');
+        const { tipoBackend, mesaStr, custPhone, total, detallesPayload } = meta;
+        const cartSignature = JSON.stringify({ tipoBackend, mesaStr, custPhone, total, detallesPayload });
 
-      printTicketType(tempTicket, 'kitchen');
+        // @ts-ignore
+        let savedOrder = (window.__pendingOrderSig === cartSignature && window.__pendingOrderObj?.id)
+          // @ts-ignore
+          ? window.__pendingOrderObj
+          : null;
+
+        if (savedOrder && savedOrder.id) {
+          const repRes = await fetch(`/api/impresion/reimprimir/${encodeURIComponent(savedOrder.id)}?tipo=COCINA`, {
+            method: 'POST'
+          });
+          if (!repRes.ok) {
+            throw new Error(`HTTP ${repRes.status} al reenviar comanda a cocina`);
+          }
+        } else if (editingOpenOrder && editingOpenOrder.id) {
+          const putRes = await fetch(`/api/pedidos/${editingOpenOrder.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (putRes.ok) {
+            savedOrder = await putRes.json();
+          } else {
+            savedOrder = editingOpenOrder;
+          }
+          await fetch(`/api/impresion/reimprimir/${encodeURIComponent(savedOrder.id)}?tipo=COCINA`, {
+            method: 'POST'
+          });
+        } else {
+          const pedRes = await fetch('/api/pedidos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const pedData = await pedRes.json().catch(() => ({}));
+          if (!pedRes.ok || !pedData.id) {
+            const errMsg = pedData.detail || pedData.error || `Error HTTP ${pedRes.status} al enviar comanda a cocina.`;
+            throw new Error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
+          }
+          savedOrder = pedData;
+          // @ts-ignore
+          window.__pendingOrderSig = cartSignature;
+          // @ts-ignore
+          window.__pendingOrderObj = savedOrder;
+        }
+
+        const ticket = {
+          id: savedOrder.codigo_pedido || savedOrder.id,
+          pedidoId: savedOrder.id,
+          createdAt: savedOrder.fecha_hora || new Date().toISOString(),
+          orderType: currentOrderType,
+          table: meta.mesaStr,
+          customerName: meta.custName,
+          customerPhone: meta.custPhone,
+          address: meta.custAddress,
+          neighborhood: meta.custNeighborhood,
+          items: cart.map(({ name, price, quantity, notes, packaging, isHospitalDiet, hospitalLocation }) => ({
+            name,
+            price,
+            quantity,
+            notes: notes || '',
+            packaging: packaging || globalPackagingType,
+            isHospitalDiet: !!isHospitalDiet,
+            hospitalLocation: hospitalLocation || null
+          })),
+          subtotal: meta.subtotal,
+          packagingFee: meta.packagingFee,
+          packagingType: globalPackagingType,
+          packagingQty,
+          deliveryFee: meta.deliveryFee,
+          total: meta.total,
+          paymentMethod: 'PENDIENTE POR COBRAR',
+          cashPaid: 0
+        };
+
+        saveLastTicket(ticket);
+        checkOccupiedTables();
+        showPosToast('✅ Enviado a impresora SAT Q22 en Caja');
+      } catch (err) {
+        alert('Error al enviar comanda a cocina: ' + (err.message || err));
+      } finally {
+        // @ts-ignore
+        btnKitchenCart.disabled = false;
+        btnKitchenCart.innerHTML = origHtml;
+        // @ts-ignore
+        if (window.lucide) window.lucide.createIcons();
+      }
     });
 
     // 10. MODAL RÁPIDO DE GASTO DE CAJA MENOR DESDE POS
@@ -4621,37 +4681,34 @@ const searchableCatalog = allPosProducts.map((p) => ({
       `;
     }
 
-    // DISPARADOR DE IMPRESIÓN POR TIPO
-    function printTicketType(ticket, type = 'customer', isCopy = false) {
-      const printable = document.getElementById('printable-ticket');
-      if (!printable) return;
-
-      // Ocultar modales en DOM antes de imprimir
+    // DISPARADOR DE IMPRESIÓN REMOTA POR COLA HACIA SAT Q22 EN CAJA (Sin window.print local)
+    async function printTicketType(ticket, type = 'customer', _isCopy = false) {
       closeCobroModal();
       closeExpensePosModal();
       closeGarnishModal();
 
-      let html = '';
-      if (type === 'kitchen') {
-        html = renderKitchenTicketHTML(ticket);
-      } else if (type === 'courier') {
-        html = renderCourierTicketHTML(ticket);
-      } else {
-        html = renderCustomerReceiptHTML(ticket, isCopy);
+      const targetId = ticket?.pedidoId || ticket?.id;
+      if (!targetId) {
+        alert('No se encontró un pedido registrado para enviar a la impresora SAT Q22.');
+        return;
       }
 
-      printable.innerHTML = html;
-      printable.classList.remove('hidden');
-
-      setTimeout(() => {
-        window.print();
-        setTimeout(() => {
-          printable.classList.add('hidden');
-        }, 1000);
-      }, 80);
+      const tipoBackend = type === 'kitchen' ? 'COCINA' : 'CUENTA';
+      try {
+        const res = await fetch(`/api/impresion/reimprimir/${encodeURIComponent(String(targetId))}?tipo=${tipoBackend}`, {
+          method: 'POST'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.detail || data.error || `HTTP ${res.status}`);
+        }
+        showPosToast('✅ Enviado a impresora SAT Q22 en Caja');
+      } catch (err) {
+        alert('No se pudo enviar el ticket a la cola de impresión en Caja: ' + (err.message || err));
+      }
     }
 
-    // BOTONES DE REIMPRESIÓN EN BARRA INFERIOR
+    // BOTONES DE REIMPRESIÓN EN BARRA INFERIOR ("Último Pedido")
     document.getElementById('btn-reprint-customer')?.addEventListener('click', () => {
       const last = loadLastTicket();
       if (last) printTicketType(last, 'customer', true);
