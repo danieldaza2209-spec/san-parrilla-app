@@ -180,16 +180,22 @@ def enviar_raw_spooler(printer_name: str, data: bytes, job_title: str = "SanParr
 
 def construir_tirilla_cocina(pedido: dict) -> bytes:
     """
-    Construye la Tirilla de Cocina (80mm) sin precios, con notas y ubicación destacadas:
+    Construye la Comanda de Cocina (80mm) con diseno visual exacto:
     ========================================
             SAN PARRILLA - COCINA          
-    Pedido: #SP-XXXX | Tipo: MESA 3 / DOMI 
-    Hora: HH:MM                             
+    ========================================
+    *** >>> ADICIÓN A MESA <<< *** (si aplica)
+    PEDIDO: #SP-XXXX
+    TIPO: MESA X / DOMICILIO / PARA LLEVAR
+    HORA: HH:MM
+    ATENDIDO POR: [Nombre]
     ----------------------------------------
-    [CANT] PRODUCTO                        
-      * Notas: Sin cebolla                  
-      * Sopa: Fideos | Ppio: Lentejas      
-      * Ubicación: Torre A                  
+    [CANT] NOMBRE DEL PLATO
+      [TORRE A / TORRE B / URGENCIAS]
+      > Sopa: [Nombre] | Ppio: [Nombre]
+      > Acomp: [Nombre]
+      * NOTA: [Observaciones]
+      [Empaque: Icopor / Caja]
     ========================================
     """
     sep = ("=" * LINE_WIDTH + "\n").encode("cp850")
@@ -199,38 +205,41 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
     codigo = raw_cod if raw_cod.startswith("#") else f"#{raw_cod}"
     tipo = limpiar_texto(pedido.get("tipo_label") or pedido.get("tipo") or "MESA").upper()
     hora = extraer_hora(pedido.get("fecha_hora"))
+    creado_por = limpiar_texto(pedido.get("creado_por") or "Colaborador")
     items = pedido.get("items") or []
     notas_generales = limpiar_texto(pedido.get("notas") or "")
+    es_adicion = bool(pedido.get("es_adicion") or "ADICION" in tipo)
 
     b = bytearray()
     b.extend(ESC_RESET)
 
-    # Encabezado Cocina
-    es_adicion = "ADICION" in tipo
-    creado_por = limpiar_texto(pedido.get("creado_por") or "Colaborador")
+    # 1. ENCABEZADO CENTRADO OFICIAL
     b.extend(ESC_ALIGN_CENTER)
     b.extend(sep)
     b.extend(ESC_BOLD_ON)
-    b.extend(GS_DOUBLE_H)
-    if es_adicion:
-        b.extend(b"SAN PARRILLA - ADICION MESA\n")
-    else:
-        b.extend(b"SAN PARRILLA - COCINA\n")
-    b.extend(GS_NORMAL)
+    b.extend(b"        SAN PARRILLA - COCINA          \n")
     b.extend(ESC_BOLD_OFF)
+    b.extend(sep)
 
-    # Pedido y Tipo en tamaño grande destacado
+    # Si es adicion a mesa ocupada, banner intermedio destacado
+    if es_adicion:
+        b.extend(ESC_BOLD_ON)
+        b.extend(GS_DOUBLE_H)
+        b.extend(b"*** >>> ADICION A MESA <<< ***\n")
+        b.extend(GS_NORMAL)
+        b.extend(ESC_BOLD_OFF)
+
+    # 2. METADATOS EN TEXTO NORMAL / DESTACADO
     b.extend(ESC_ALIGN_LEFT)
     b.extend(ESC_BOLD_ON)
-    b.extend(GS_DOUBLE)
-    b.extend(limpiar_texto(f"{codigo} | {tipo}\n").encode("cp850", errors="ignore"))
-    b.extend(GS_NORMAL)
-    b.extend(limpiar_texto(f"Pedido: {codigo} | Tipo: {tipo}\n").encode("cp850", errors="ignore"))
+    b.extend(limpiar_texto(f"PEDIDO: {codigo}\n").encode("cp850", errors="ignore"))
+    b.extend(limpiar_texto(f"TIPO: {tipo}\n").encode("cp850", errors="ignore"))
     b.extend(ESC_BOLD_OFF)
-    b.extend(limpiar_texto(f"Hora: {hora} | Atendido por: {creado_por}\n").encode("cp850", errors="ignore"))
+    b.extend(limpiar_texto(f"HORA: {hora}\n").encode("cp850", errors="ignore"))
+    b.extend(limpiar_texto(f"ATENDIDO POR: {creado_por}\n").encode("cp850", errors="ignore"))
     b.extend(subsep)
 
-    # Detalle de platos para cocina
+    # 3. BLOQUE DE PLATOS (SIN PRECIOS, LECTURA LIMPIA)
     for it in items:
         cant = it.get("cantidad", 1)
         nombre = limpiar_texto(it.get("nombre") or it.get("plato_nombre") or "PRODUCTO").upper()
@@ -242,52 +251,54 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
         ubicacion = limpiar_texto(it.get("ubicacion_hospitalaria") or "")
         empaque = limpiar_texto(it.get("empaque") or "")
 
-        # Línea principal del producto en negrita y doble alto
+        # Cantidad y nombre en negrilla / doble altura
         b.extend(ESC_BOLD_ON)
         b.extend(GS_DOUBLE_H)
         b.extend(f"[{cant}] {nombre}\n".encode("cp850", errors="ignore"))
         b.extend(GS_NORMAL)
         b.extend(ESC_BOLD_OFF)
 
-        # Guarniciones (Sopa / Principio / Acompañamiento)
+        # Indicacion clinica si aplica (Torre A / Torre B / Urgencias)
+        if ubicacion:
+            b.extend(ESC_BOLD_ON)
+            b.extend(limpiar_texto(f"  [{ubicacion.upper()}]\n").encode("cp850", errors="ignore"))
+            b.extend(ESC_BOLD_OFF)
+
+        # Sopa y principio
         partes_guarn = []
         if sopa:
             partes_guarn.append(f"Sopa: {sopa}")
         if ppio:
             partes_guarn.append(f"Ppio: {ppio}")
-        if acomp:
-            partes_guarn.append(f"Acomp: {acomp}")
         if partes_guarn:
-            b.extend(f"  * {' | '.join(partes_guarn)}\n".encode("cp850", errors="ignore"))
+            b.extend(limpiar_texto(f"  > {' | '.join(partes_guarn)}\n").encode("cp850", errors="ignore"))
 
-        # Ubicación Hospitalaria (Torre A / Torre B / Urgencias) en negrita
-        if ubicacion:
-            b.extend(ESC_BOLD_ON)
-            b.extend(GS_DOUBLE_H)
-            b.extend(f"  * Ubicacion: {ubicacion}\n".encode("cp850", errors="ignore"))
-            b.extend(GS_NORMAL)
-            b.extend(ESC_BOLD_OFF)
+        # Acompanamiento
+        if acomp:
+            b.extend(limpiar_texto(f"  > Acomp: {acomp}\n").encode("cp850", errors="ignore"))
 
-        # Empaque
-        if empaque:
-            b.extend(f"  * Empaque: {empaque}\n".encode("cp850", errors="ignore"))
-
-        # Notas de preparación del ítem
+        # Notas y observaciones destacadas
         if notas_it:
             b.extend(ESC_BOLD_ON)
-            b.extend(f"  * Notas: {notas_it}\n".encode("cp850", errors="ignore"))
+            b.extend(limpiar_texto(f"  * NOTA: {notas_it}\n").encode("cp850", errors="ignore"))
             b.extend(ESC_BOLD_OFF)
         elif notas_raw and not (sopa or ppio or acomp or ubicacion or empaque):
             b.extend(ESC_BOLD_ON)
-            b.extend(f"  * Notas: {notas_raw}\n".encode("cp850", errors="ignore"))
+            b.extend(limpiar_texto(f"  * NOTA: {notas_raw}\n").encode("cp850", errors="ignore"))
             b.extend(ESC_BOLD_OFF)
 
+        # Empaque si es para llevar o domicilio
+        if empaque:
+            b.extend(limpiar_texto(f"  [Empaque: {empaque}]\n").encode("cp850", errors="ignore"))
+
+    # Observaciones generales del pedido
     if notas_generales:
         b.extend(subsep)
         b.extend(ESC_BOLD_ON)
-        b.extend(f"Obs: {notas_generales}\n".encode("cp850", errors="ignore"))
+        b.extend(limpiar_texto(f"  * NOTA PEDIDO: {notas_generales}\n").encode("cp850", errors="ignore"))
         b.extend(ESC_BOLD_OFF)
 
+    # 4. PIE CON SEPARADOR Y CORTE TOTAL
     b.extend(sep)
     b.extend(ESC_FEED_4)
     b.extend(GS_CUT_FULL)
@@ -500,8 +511,8 @@ def consultar_pendientes(session: requests.Session):
     return [], urls[0]
 
 
-def marcar_pedido_impreso(session: requests.Session, base_url: str, pedido_id: int) -> bool:
-    """Notifica al backend que el pedido ya fue impreso en cocina y caja."""
+def marcar_pedido_impreso(session: requests.Session, base_url: str, pedido_id: int, tipo: str = "COCINA") -> bool:
+    """Notifica al backend que el trabajo (COCINA o CUENTA) ya fue impreso."""
     urls = [base_url, obtener_url_base_impresion(BACKEND_URL), obtener_url_base_impresion(FALLBACK_BACKEND_URL)]
     vistos = set()
     for b_url in urls:
@@ -509,7 +520,7 @@ def marcar_pedido_impreso(session: requests.Session, base_url: str, pedido_id: i
             continue
         vistos.add(b_url)
         try:
-            r = session.post(f"{b_url}/marcar-impreso/{pedido_id}", timeout=10)
+            r = session.post(f"{b_url}/marcar-impreso/{pedido_id}?tipo={tipo}", timeout=10)
             if r.status_code == 200:
                 return True
         except requests.RequestException:
@@ -525,10 +536,9 @@ def iniciar_agente():
     print(f"[i] Backend Primario : {obtener_url_base_impresion(BACKEND_URL)}")
     print(f"[i] Impresora Destino: {printer_target}")
     print(f"[i] Intervalo Sondeo : {POLL_INTERVAL}s")
-    print(f"[i] Tirilla Cocina   : {'ACTIVA' if IMPRIMIR_COCINA else 'DESACTIVADA'}")
-    print(f"[i] Tirilla Caja/Dom : {'ACTIVA' if IMPRIMIR_CAJA else 'DESACTIVADA'}")
+    print(f"[i] Modo Operativo   : AUTOMATICO (SOLO COCINA) | CUENTAS (BAJO DEMANDA)")
     print("=" * 60)
-    print("[*] Escuchando pedidos nuevos en segundo plano (Ctrl+C para detener)...\n")
+    print("[*] Escuchando comandas nuevas en segundo plano (Ctrl+C para detener)...\n")
 
     http_session = requests.Session()
     http_session.headers.update({"Accept": "application/json", "User-Agent": "SanParrillaPrintAgent/2.0"})
@@ -541,33 +551,30 @@ def iniciar_agente():
                     ped_id = ped.get("id")
                     cod = ped.get("codigo") or ped.get("codigo_pedido") or f"#{ped_id}"
                     tipo = ped.get("tipo_label") or ped.get("tipo") or "PEDIDO"
-                    impreso_cocina_bd = bool(ped.get("impreso_cocina", False))
-                    impreso_caja_bd = bool(ped.get("impreso_caja", False))
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Pedido pendiente detectado: {cod} ({tipo}) [Cocina: {impreso_cocina_bd}, Caja: {impreso_caja_bd}]")
+                    tipo_trabajo = str(ped.get("tipo_trabajo") or ("CUENTA" if ped.get("impreso_cocina") and not ped.get("impreso_caja") else "COCINA")).upper()
 
-                    exito_cocina = True
-                    exito_caja = True
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Trabajo pendiente: {cod} ({tipo}) -> [{tipo_trabajo}]")
 
-                    if IMPRIMIR_COCINA and not impreso_cocina_bd:
+                    if tipo_trabajo == "COCINA":
                         bytes_cocina = construir_tirilla_cocina(ped)
-                        exito_cocina = enviar_raw_spooler(printer_target, bytes_cocina, f"Cocina_{cod}")
-                        if exito_cocina:
-                            print(f"    [+] Tirilla de COCINA enviada a '{printer_target}'.")
+                        exito = enviar_raw_spooler(printer_target, bytes_cocina, f"Cocina_{cod}")
+                        if exito:
+                            print(f"    [+] Comanda de COCINA impresa en '{printer_target}'.")
+                            if marcar_pedido_impreso(http_session, active_base, ped_id, tipo="COCINA"):
+                                print(f"    [OK] Pedido {cod} confirmado en Neon DB como impreso en Cocina.\n")
+                            else:
+                                print(f"    [!] Aviso: Se imprimio Cocina {cod}, pero fallo confirmacion HTTP.\n")
 
-                    if IMPRIMIR_CAJA and not impreso_caja_bd:
-                        if IMPRIMIR_COCINA and not impreso_cocina_bd:
-                            time.sleep(0.4)
+                    elif tipo_trabajo == "CUENTA":
                         bytes_caja = construir_tirilla_caja(ped)
                         job_label = f"PreCuenta_{cod}" if ("MESA" in str(tipo).upper() or ped.get("mesa")) else f"Cuenta_{cod}"
-                        exito_caja = enviar_raw_spooler(printer_target, bytes_caja, job_label)
-                        if exito_caja:
-                            print(f"    [+] Tirilla de CUENTA / PRE-CUENTA enviada a '{printer_target}'.")
-
-                    if exito_cocina and exito_caja:
-                        if marcar_pedido_impreso(http_session, active_base, ped_id):
-                            print(f"    [OK] Pedido {cod} marcado como IMPRESO en Neon DB.\n")
-                        else:
-                            print(f"    [!] Aviso: Se imprimio {cod}, pero fallo la confirmacion HTTP. Se reintentara.\n")
+                        exito = enviar_raw_spooler(printer_target, bytes_caja, job_label)
+                        if exito:
+                            print(f"    [+] Tirilla de CUENTA / PRE-CUENTA impresa en '{printer_target}'.")
+                            if marcar_pedido_impreso(http_session, active_base, ped_id, tipo="CUENTA"):
+                                print(f"    [OK] Pedido {cod} confirmado en Neon DB como impreso en Cuenta.\n")
+                            else:
+                                print(f"    [!] Aviso: Se imprimio Cuenta {cod}, pero fallo confirmacion HTTP.\n")
 
             time.sleep(POLL_INTERVAL)
 

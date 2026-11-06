@@ -849,8 +849,9 @@ def anexar_a_pedido_mesa(
     pedido_existente.subtotal = subtotal_total
     pedido_existente.total = subtotal_total + float(pedido_existente.delivery_fee or 0.0) + float(pedido_existente.packaging_fee or 0.0)
 
-    # Indicar a la cola de impresión que hay nuevos ítems pendientes para cocina
+    # Indicar a la cola de impresión que hay nuevos ítems pendientes para cocina (solo cocina, nunca cuenta automática)
     pedido_existente.impreso_cocina = False
+    pedido_existente.impreso_caja = True
 
     # Registrar trazabilidad de la adición en notas
     tz_col = timezone(timedelta(hours=-5))
@@ -931,7 +932,10 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         subtotal=0.0,
         delivery_fee=delivery_fee,
         packaging_fee=packaging_fee,
-        total=0.0
+        total=0.0,
+        impreso_cocina=False,  # Cola de cocina automática
+        impreso_caja=True,     # NO imprimir cuenta automáticamente al crear
+        impreso_ticket=True,
     )
     db.add(nuevo_pedido)
     db.flush()

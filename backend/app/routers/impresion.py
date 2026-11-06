@@ -158,13 +158,51 @@ def formatear_comanda_texto(pedido: models.Pedido, items: List[schemas.ItemImpre
     return "\n".join(lineas)
 
 
+def _mapear_items_impresion(detalles) -> List[schemas.ItemImpresionOut]:
+    items_out: List[schemas.ItemImpresionOut] = []
+    for det in detalles:
+        plato_nombre = det.plato.nombre if det.plato else "Plato"
+        sopa_fk = det.sopa.nombre if det.sopa else None
+        princ_fk = det.principio.nombre if det.principio else None
+        acomp_fk = det.acompanamiento.nombre if det.acompanamiento else None
+        pu = float(det.precio_unitario or 0.0)
+        cant = int(det.cantidad or 1)
+
+        sopa, principio, acomp, empaque, ubicacion, notas_limpias = _desglosar_notas_item(
+            det.notas_item, sopa_fk, princ_fk, acomp_fk
+        )
+
+        items_out.append(
+            schemas.ItemImpresionOut(
+                id=det.id,
+                cantidad=cant,
+                nombre=plato_nombre,
+                plato_nombre=plato_nombre,
+                precio=pu,
+                precio_unitario=pu,
+                subtotal=pu * cant,
+                sopa=sopa,
+                principio=principio,
+                principios=principio,
+                acompanamiento=acomp,
+                empaque=empaque,
+                ubicacion_hospitalaria=ubicacion,
+                notas=notas_limpias,
+                notas_item=det.notas_item,
+            )
+        )
+    return items_out
+
+
 @router.get("/pendientes", response_model=List[schemas.PedidoImpresionOut])
 def obtener_pedidos_pendientes_impresion(
     tipo_filtro: Optional[str] = Query(default=None, description="Filtrar por tipo: EN_MESA, PARA_LLEVAR, DOMICILIO"),
     db: Session = Depends(get_db)
 ):
     """
-    Consulta en Neon todos los pedidos con impreso_cocina == False ordenados por id ASC.
+    Consulta en Neon todos los pedidos con trabajos de impresion pendientes.
+    - Automatico (al crear pedido): Solo encola COCINA (impreso_cocina == False).
+    - Manual (boton Comanda/Cta o cobrar): Encola CUENTA (impreso_caja == False).
     Excluye borradores web no aprobados (BORRADOR_WEB) y pedidos cancelados (CANCELADO).
     """
     query = (
@@ -186,91 +224,113 @@ def obtener_pedidos_pendientes_impresion(
     resultado: List[schemas.PedidoImpresionOut] = []
 
     for ped in pedidos:
-        detalles_a_imprimir = ped.detalles
-        if ped.tipo == models.TipoPedido.EN_MESA:
-            mesa_txt = (ped.mesa or "1").replace("Mesa", "").replace("MESA", "").strip()
-            # Si la cocina está pendiente, verificar si es una adición a una mesa ocupada
-            nuevos_cocina = [d for d in ped.detalles if not getattr(d, "impreso_cocina", False)]
-            previos_cocina = [d for d in ped.detalles if getattr(d, "impreso_cocina", False)]
-            if previos_cocina and nuevos_cocina and not ped.impreso_cocina:
-                tipo_label = f"ADICIÓN MESA {mesa_txt}"
-                detalles_a_imprimir = nuevos_cocina
-            else:
-                tipo_label = f"MESA {mesa_txt}"
-        elif ped.tipo == models.TipoPedido.PARA_LLEVAR:
-            tipo_label = "PARA LLEVAR"
-        elif ped.tipo == models.TipoPedido.DOMICILIO:
-            tipo_label = "DOMICILIO"
-        else:
-            tipo_label = str(ped.tipo.value if hasattr(ped.tipo, "value") else ped.tipo).upper()
-
         direccion, barrio = _extraer_direccion_barrio(ped)
         metodo_pago = _extraer_metodo_pago(ped)
         codigo_fmt = ped.codigo_pedido if str(ped.codigo_pedido).startswith("#") else f"#{ped.codigo_pedido}"
 
-        items_out: List[schemas.ItemImpresionOut] = []
-        for det in detalles_a_imprimir:
-            plato_nombre = det.plato.nombre if det.plato else "Plato"
-            sopa_fk = det.sopa.nombre if det.sopa else None
-            princ_fk = det.principio.nombre if det.principio else None
-            acomp_fk = det.acompanamiento.nombre if det.acompanamiento else None
-            pu = float(det.precio_unitario or 0.0)
-            cant = int(det.cantidad or 1)
+        mesa_txt = ""
+        if ped.tipo == models.TipoPedido.EN_MESA:
+            mesa_txt = (ped.mesa or "1").replace("Mesa", "").replace("MESA", "").strip()
 
-            sopa, principio, acomp, empaque, ubicacion, notas_limpias = _desglosar_notas_item(
-                det.notas_item, sopa_fk, princ_fk, acomp_fk
-            )
+        # 1. TRABAJO DE COCINA PENDIENTE (AUTOMATICO)
+        if not ped.impreso_cocina:
+            nuevos_cocina = [d for d in ped.detalles if not getattr(d, "impreso_cocina", False)]
+            previos_cocina = [d for d in ped.detalles if getattr(d, "impreso_cocina", False)]
+            es_adicion = bool(previos_cocina and nuevos_cocina and ped.tipo == models.TipoPedido.EN_MESA)
 
-            items_out.append(
-                schemas.ItemImpresionOut(
-                    id=det.id,
-                    cantidad=cant,
-                    nombre=plato_nombre,
-                    plato_nombre=plato_nombre,
-                    precio=pu,
-                    precio_unitario=pu,
-                    subtotal=pu * cant,
-                    sopa=sopa,
-                    principio=principio,
-                    principios=principio,
-                    acompanamiento=acomp,
-                    empaque=empaque,
-                    ubicacion_hospitalaria=ubicacion,
-                    notas=notas_limpias,
-                    notas_item=det.notas_item,
+            if es_adicion:
+                tipo_label_cocina = f"ADICIÓN MESA {mesa_txt}"
+                detalles_cocina = nuevos_cocina
+            elif ped.tipo == models.TipoPedido.EN_MESA:
+                tipo_label_cocina = f"MESA {mesa_txt}"
+                detalles_cocina = ped.detalles
+            elif ped.tipo == models.TipoPedido.PARA_LLEVAR:
+                tipo_label_cocina = "PARA LLEVAR"
+                detalles_cocina = ped.detalles
+            elif ped.tipo == models.TipoPedido.DOMICILIO:
+                tipo_label_cocina = "DOMICILIO"
+                detalles_cocina = ped.detalles
+            else:
+                tipo_label_cocina = str(ped.tipo.value if hasattr(ped.tipo, "value") else ped.tipo).upper()
+                detalles_cocina = ped.detalles
+
+            items_cocina = _mapear_items_impresion(detalles_cocina)
+            texto_comanda = formatear_comanda_texto(ped, items_cocina, tipo_label_cocina)
+
+            resultado.append(
+                schemas.PedidoImpresionOut(
+                    id=ped.id,
+                    codigo=codigo_fmt,
+                    codigo_pedido=ped.codigo_pedido,
+                    fecha_hora=ped.fecha_hora,
+                    tipo=tipo_label_cocina,
+                    tipo_label=tipo_label_cocina,
+                    tipo_trabajo="COCINA",
+                    es_adicion=es_adicion,
+                    mesa=ped.mesa,
+                    cliente_nombre=ped.cliente_nombre or "Cliente",
+                    cliente_telefono=ped.cliente_telefono,
+                    direccion=direccion,
+                    barrio=barrio,
+                    courier_name=ped.courier_name,
+                    metodo_pago=metodo_pago,
+                    creado_por=ped.creado_por,
+                    notas=ped.notas,
+                    packaging_fee=float(ped.packaging_fee or 0.0),
+                    delivery_fee=float(ped.delivery_fee or 0.0),
+                    subtotal=float(ped.subtotal or 0.0),
+                    total=float(ped.total or 0.0),
+                    impreso_cocina=False,
+                    impreso_caja=bool(getattr(ped, "impreso_caja", False)),
+                    impreso_ticket=bool(ped.impreso_ticket),
+                    items=items_cocina,
+                    texto_comanda_sugerido=texto_comanda,
                 )
             )
 
-        texto_comanda = formatear_comanda_texto(ped, items_out, tipo_label)
+        # 2. TRABAJO DE CUENTA / PRE-CUENTA PENDIENTE (SOLO BAJO PETICION MANUAL)
+        if not getattr(ped, "impreso_caja", False):
+            if ped.tipo == models.TipoPedido.EN_MESA:
+                tipo_label_cuenta = f"MESA {mesa_txt}"
+            elif ped.tipo == models.TipoPedido.PARA_LLEVAR:
+                tipo_label_cuenta = "PARA LLEVAR"
+            elif ped.tipo == models.TipoPedido.DOMICILIO:
+                tipo_label_cuenta = "DOMICILIO"
+            else:
+                tipo_label_cuenta = str(ped.tipo.value if hasattr(ped.tipo, "value") else ped.tipo).upper()
 
-        resultado.append(
-            schemas.PedidoImpresionOut(
-                id=ped.id,
-                codigo=codigo_fmt,
-                codigo_pedido=ped.codigo_pedido,
-                fecha_hora=ped.fecha_hora,
-                tipo=tipo_label,
-                tipo_label=tipo_label,
-                mesa=ped.mesa,
-                cliente_nombre=ped.cliente_nombre or "Cliente",
-                cliente_telefono=ped.cliente_telefono,
-                direccion=direccion,
-                barrio=barrio,
-                courier_name=ped.courier_name,
-                metodo_pago=metodo_pago,
-                creado_por=ped.creado_por,
-                notas=ped.notas,
-                packaging_fee=float(ped.packaging_fee or 0.0),
-                delivery_fee=float(ped.delivery_fee or 0.0),
-                subtotal=float(ped.subtotal or 0.0),
-                total=float(ped.total or 0.0),
-                impreso_cocina=bool(ped.impreso_cocina),
-                impreso_caja=bool(getattr(ped, "impreso_caja", False)),
-                impreso_ticket=bool(ped.impreso_ticket),
-                items=items_out,
-                texto_comanda_sugerido=texto_comanda,
+            items_cuenta = _mapear_items_impresion(ped.detalles)
+
+            resultado.append(
+                schemas.PedidoImpresionOut(
+                    id=ped.id,
+                    codigo=codigo_fmt,
+                    codigo_pedido=ped.codigo_pedido,
+                    fecha_hora=ped.fecha_hora,
+                    tipo=tipo_label_cuenta,
+                    tipo_label=tipo_label_cuenta,
+                    tipo_trabajo="CUENTA",
+                    es_adicion=False,
+                    mesa=ped.mesa,
+                    cliente_nombre=ped.cliente_nombre or "Cliente",
+                    cliente_telefono=ped.cliente_telefono,
+                    direccion=direccion,
+                    barrio=barrio,
+                    courier_name=ped.courier_name,
+                    metodo_pago=metodo_pago,
+                    creado_por=ped.creado_por,
+                    notas=ped.notas,
+                    packaging_fee=float(ped.packaging_fee or 0.0),
+                    delivery_fee=float(ped.delivery_fee or 0.0),
+                    subtotal=float(ped.subtotal or 0.0),
+                    total=float(ped.total or 0.0),
+                    impreso_cocina=bool(ped.impreso_cocina),
+                    impreso_caja=False,
+                    impreso_ticket=bool(ped.impreso_ticket),
+                    items=items_cuenta,
+                    texto_comanda_sugerido=None,
+                )
             )
-        )
 
     return resultado
 
@@ -278,21 +338,32 @@ def obtener_pedidos_pendientes_impresion(
 @router.post("/marcar-impreso/{pedido_id}")
 def marcar_pedido_como_impreso(
     pedido_id: int,
+    tipo: Optional[str] = Query(default=None, description="Tipo de impresion confirmada: COCINA o CUENTA"),
     db: Session = Depends(get_db)
 ):
     """
-    Actualiza impreso_cocina = True e impreso_caja = True en la base de datos de Neon
-    para evitar impresiones duplicadas.
+    Confirma impresion en Neon DB para evitar re-impresiones.
+    Soporta marcar selectivamente COCINA o CUENTA.
     """
     pedido = db.query(models.Pedido).filter(models.Pedido.id == pedido_id).first()
     if not pedido:
         raise HTTPException(status_code=404, detail=f"Pedido con ID #{pedido_id} no encontrado.")
 
-    pedido.impreso_cocina = True
-    pedido.impreso_caja = True
-    pedido.impreso_ticket = True
-    for det in pedido.detalles:
-        det.impreso_cocina = True
+    tipo_norm = (tipo or "").upper().strip()
+    if tipo_norm == "COCINA":
+        pedido.impreso_cocina = True
+        for det in pedido.detalles:
+            det.impreso_cocina = True
+    elif tipo_norm == "CUENTA":
+        pedido.impreso_caja = True
+        pedido.impreso_ticket = True
+    else:
+        pedido.impreso_cocina = True
+        pedido.impreso_caja = True
+        pedido.impreso_ticket = True
+        for det in pedido.detalles:
+            det.impreso_cocina = True
+
     db.commit()
     db.refresh(pedido)
 
@@ -301,6 +372,7 @@ def marcar_pedido_como_impreso(
         "pedido_id": pedido.id,
         "codigo": pedido.codigo_pedido,
         "codigo_pedido": pedido.codigo_pedido,
+        "tipo_confirmado": tipo_norm or "TODOS",
         "impreso_cocina": pedido.impreso_cocina,
         "impreso_caja": pedido.impreso_caja,
         "impreso_ticket": pedido.impreso_ticket,
@@ -355,9 +427,11 @@ def habilitar_reimpresion_pedido(
             det.impreso_cocina = False
     elif tipo_norm == "CUENTA":
         pedido.impreso_caja = False
+        pedido.impreso_ticket = False
     else:
         pedido.impreso_cocina = False
         pedido.impreso_caja = False
+        pedido.impreso_ticket = False
         for det in pedido.detalles:
             det.impreso_cocina = False
 

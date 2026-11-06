@@ -420,6 +420,8 @@ class PedidoImpresionOut(BaseModel):
     fecha_hora: datetime
     tipo: str
     tipo_label: str
+    tipo_trabajo: str = "COCINA"  # "COCINA" (comanda de preparación) o "CUENTA" (tirilla de cliente/pre-cuenta)
+    es_adicion: bool = False
     mesa: Optional[str] = None
     cliente_nombre: str
     cliente_telefono: Optional[str] = None
