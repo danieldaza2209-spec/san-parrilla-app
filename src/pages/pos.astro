@@ -4021,9 +4021,23 @@ const searchableCatalog = allPosProducts.map((p) => ({
         cashReceivedInput.value = '';
         renderCart();
 
-        // Notificación Toast Silenciosa en pantalla (Sin popup window.print en móviles/POS)
+        // Liberación inmediata de mesa en el POS para cualquier medio de pago
+        if (mesaStr) {
+          const key = normalizeMesaKey(mesaStr);
+          if (key && activeOccupiedTableOrders[key]) {
+            delete activeOccupiedTableOrders[key];
+          }
+        }
+        updateMesaOccupiedIndicator();
+        await checkOccupiedTables();
+
+        // Notificación Toast de confirmación en pantalla
         const orderCode = (savedOrder && (savedOrder.codigo_pedido || savedOrder.id)) || 'NUEVO';
-        showPosToast(`✅ Pedido registrado y enviado a impresora (#${orderCode})`);
+        if (currentOrderType === 'mesa') {
+          showPosToast('✅ Mesa liberada y cobro registrado exitosamente');
+        } else {
+          showPosToast(`✅ Pedido cobrado exitosamente (#${orderCode})`);
+        }
       } catch (err) {
         alert('Ocurrió un error al cobrar: ' + err.message);
       } finally {

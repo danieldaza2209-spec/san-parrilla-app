@@ -376,6 +376,7 @@ class PedidoOut(BaseModel):
     mesa: Optional[str] = None
     tipo: TipoPedido
     estado: EstadoPedido
+    estado_pago: Optional[str] = "PENDIENTE"
     courier_name: Optional[str] = None
     creado_por: Optional[str] = None
     cantidad_domicilios: Optional[int] = 0

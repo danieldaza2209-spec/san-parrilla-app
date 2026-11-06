@@ -53,6 +53,8 @@ def fix():
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS impreso_ticket BOOLEAN DEFAULT FALSE;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS packaging_fee DOUBLE PRECISION DEFAULT 0.0;",
             "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS courier_name VARCHAR(100);",
+            "ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS estado_pago VARCHAR(20) DEFAULT 'PENDIENTE';",
+            "UPDATE pedidos SET estado_pago = 'PAGADO' WHERE estado IN ('PAGADO', 'ENTREGADO');",
             "ALTER TABLE detalles_pedido ADD COLUMN IF NOT EXISTS impreso_cocina BOOLEAN DEFAULT FALSE;",
             "ALTER TABLE platos ADD COLUMN IF NOT EXISTS disponible BOOLEAN NOT NULL DEFAULT TRUE;",
             "UPDATE platos SET disponible = activo WHERE disponible IS NULL;",

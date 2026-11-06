@@ -1234,14 +1234,40 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
           throw new Error(data.detail || data.error || `Error HTTP ${res.status} al cobrar el pedido.`);
         }
 
-        // Si es domicilio, asegurar transición de estado a ENTREGADO en backend y remoción instantánea en UI
-        if (activePayOrder.tipo === 'DOMICILIO') {
-          fetch(`/api/pedidos/${activePayOrder.id}/estado`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nuevo_estado: 'ENTREGADO' })
-          }).catch(() => {});
+        // Inmediata sincronización visual y liberación de mesa / remoción de pedidos
+        const isTable = activePayOrder.tipo === 'EN_MESA' || Boolean(activePayOrder.mesa);
+        const isTakeout = activePayOrder.tipo === 'PARA_LLEVAR';
+        const isDelivery = activePayOrder.tipo === 'DOMICILIO';
+        const targetTable = activePayOrder.mesa;
 
+        // Actualizar el estado en memoria de inmediato para eliminar latencia visual
+        activePayOrder.estado = 'ENTREGADO';
+        activePayOrder.estado_pago = 'PAGADO';
+        const oIdx = allOrders.findIndex((o) => o.id === activePayOrder.id);
+        if (oIdx !== -1) {
+          allOrders[oIdx].estado = 'ENTREGADO';
+          allOrders[oIdx].estado_pago = 'PAGADO';
+        }
+
+        if (isTable) {
+          // Si había cualquier otro pedido para la misma mesa, también marcarlo cerrado
+          if (targetTable) {
+            const cleanTarget = String(targetTable).trim().toLowerCase().replace(/^mesa\s*/i, '');
+            allOrders.forEach((o) => {
+              if (o.tipo === 'EN_MESA' && o.mesa) {
+                const cm = String(o.mesa).trim().toLowerCase().replace(/^mesa\s*/i, '');
+                if (cm === cleanTarget) {
+                  o.estado = 'ENTREGADO';
+                  o.estado_pago = 'PAGADO';
+                }
+              }
+            });
+          }
+          // Cambiar de inmediato el estado visual de la tarjeta de la mesa en /pedidos a verde "Disponible"
+          renderTablesGrid();
+          showBoardToast('✅ Mesa liberada y cobro registrado exitosamente', true);
+        } else if (isDelivery) {
+          // Si es domicilio, asegurar transición y remoción instantánea en UI
           const cardEl = document.getElementById(`delivery-card-${activePayOrder.id}`);
           if (cardEl) {
             cardEl.style.transition = 'all 0.3s ease-out';
@@ -1249,9 +1275,18 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
             cardEl.style.transform = 'scale(0.95)';
             setTimeout(() => cardEl.remove(), 300);
           }
-          activePayOrder.estado = 'ENTREGADO';
-          const oIdx = allOrders.findIndex((o) => o.id === activePayOrder.id);
-          if (oIdx !== -1) allOrders[oIdx].estado = 'ENTREGADO';
+          renderDeliveriesSection();
+          showBoardToast('✅ Domicilio cobrado y entregado exitosamente', true);
+        } else if (isTakeout) {
+          const takeoutCard = document.getElementById(`takeout-card-${activePayOrder.id}`);
+          if (takeoutCard) {
+            takeoutCard.style.transition = 'all 0.3s ease-out';
+            takeoutCard.style.opacity = '0';
+            takeoutCard.style.transform = 'scale(0.95)';
+            setTimeout(() => takeoutCard.remove(), 300);
+          }
+          renderTakeoutSection();
+          showBoardToast('✅ Pedido para llevar cobrado y entregado exitosamente', true);
         }
 
         const wantReceipt = document.getElementById('chk-board-print-receipt')?.checked ?? true;

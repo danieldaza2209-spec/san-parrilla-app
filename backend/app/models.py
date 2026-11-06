@@ -185,6 +185,7 @@ class Pedido(Base):
     mesa = Column(String(20), nullable=True)
     tipo = Column(SQLEnum(TipoPedido), default=TipoPedido.EN_MESA)
     estado = Column(SQLEnum(EstadoPedido), default=EstadoPedido.PENDIENTE)
+    estado_pago = Column(String(20), default="PENDIENTE", server_default="PENDIENTE", nullable=True)
     subtotal = Column(Float, default=0.0)
     delivery_fee = Column(Float, default=0.0)
     packaging_fee = Column(Float, default=0.0)
