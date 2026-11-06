@@ -217,19 +217,9 @@ def formatear_comanda_texto(pedido: models.Pedido, items: List[schemas.ItemImpre
     sep = "=" * 40
     subsep = "-" * 40
     codigo = pedido.codigo_pedido if str(pedido.codigo_pedido).startswith("#") else f"#{pedido.codigo_pedido}"
+    creado_por = pedido.creado_por or "Colaborador"
 
     if _es_pedido_clinica(pedido, items):
-        lineas = [
-            sep,
-            "        SAN PARRILLA - COCINA          ",
-            "   CONVENIO CLINICA PRIMERO DE MAYO    ",
-            f"Pedido: {codigo} | Tipo: {tipo_label.upper()}",
-            f"Hora: {fecha_str} | Atendido: {pedido.creado_por or 'Colaborador'}",
-            subsep,
-            ">>> DISTRIBUCION POR PABELLON Y DIETA <<<",
-            subsep,
-        ]
-
         agrupado = {}
         total_raciones = 0
         total_agua_items = 0
@@ -260,6 +250,25 @@ def formatear_comanda_texto(pedido: models.Pedido, items: List[schemas.ItemImpre
 
         orden_pabellon = ["TORRE A", "TORRE B", "URGENCIAS"]
         ubicaciones_ordenadas = [u for u in orden_pabellon if u in agrupado] + [u for u in sorted(agrupado.keys()) if u not in orden_pabellon]
+        area_torre = " / ".join(ubicaciones_ordenadas) if ubicaciones_ordenadas else "TORRE A"
+
+        tipo_pacientes = f"{tipo_label.upper()} (PACIENTES)" if "(PACIENTES)" not in tipo_label.upper() else tipo_label.upper()
+
+        lineas = [
+            sep,
+            "        SAN PARRILLA - COCINA          ",
+            "   CONVENIO CLINICA PRIMERO DE MAYO    ",
+            sep,
+            f"PEDIDO: {codigo}",
+            f"TIPO: {tipo_pacientes}",
+            f"HORA: {fecha_str}",
+            f"ATENDIDO POR: {creado_por}",
+            "CONVENIO: CLÍNICA PRIMERO DE MAYO",
+            f"ÁREA / TORRE: {area_torre}",
+            subsep,
+            ">>> DISTRIBUCION POR PABELLON Y DIETA <<<",
+            subsep,
+        ]
 
         for ubic in ubicaciones_ordenadas:
             lineas.append(f"[UBICACION: {ubic}]")
@@ -282,13 +291,48 @@ def formatear_comanda_texto(pedido: models.Pedido, items: List[schemas.ItemImpre
         ])
         return "\n".join(lineas)
 
+    tipo_upper = (tipo_label or "").upper()
+    mesa_val = (pedido.mesa or "").strip()
+    es_mesa = (pedido.tipo == models.TipoPedido.EN_MESA) or ("MESA" in tipo_upper) or bool(mesa_val)
+    cli_raw = (pedido.cliente_nombre or "").strip()
+
     lineas = [
         sep,
         "        SAN PARRILLA - COCINA          ",
-        f"Pedido: {codigo} | Tipo: {tipo_label.upper()}",
-        f"Hora: {fecha_str}",
-        subsep,
+        sep,
     ]
+
+    if getattr(pedido, "es_adicion", False) or "ADICION" in tipo_upper:
+        lineas.append("*** >>> ADICIÓN A MESA <<< ***")
+
+    lineas.extend([
+        f"PEDIDO: {codigo}",
+        f"TIPO: {tipo_label.upper()}",
+        f"HORA: {fecha_str}",
+        f"ATENDIDO POR: {creado_por}",
+    ])
+
+    if es_mesa:
+        mesa_txt = mesa_val.replace("Mesa", "").replace("MESA", "").strip()
+        if not mesa_txt:
+            m = re.search(r"MESA\s*(\S+)", tipo_upper)
+            mesa_txt = m.group(1).strip() if m else "1"
+
+        if not cli_raw or cli_raw.lower() in ("cliente", "none", "null"):
+            cli_mesa = f"Mesa {mesa_txt}"
+        else:
+            cli_mesa = cli_raw
+
+        lineas.append(f"UBICACIÓN: MESA {mesa_txt}")
+        lineas.append(f"CLIENTE: {cli_mesa}")
+    else:
+        if not cli_raw or cli_raw.lower() in ("cliente", "none", "null", "mostrador", "general"):
+            cli_nombre = "Mostrador / General"
+        else:
+            cli_nombre = cli_raw.upper()
+        lineas.append(f"CLIENTE: {cli_nombre}")
+
+    lineas.append(subsep)
 
     for item in items:
         lineas.append(f"[{item.cantidad}] {item.plato_nombre.upper()}")
@@ -522,8 +566,12 @@ def encolar_ticket_prueba(
     texto_test = (
         "========================================\n"
         "        SAN PARRILLA - COCINA          \n"
-        f"Pedido: #TEST-{test_id % 1000} | Tipo: PRUEBA SAT Q22\n"
-        f"Hora: {hora_str}\n"
+        "========================================\n"
+        f"PEDIDO: #TEST-{test_id % 1000}\n"
+        f"TIPO: PRUEBA SAT Q22\n"
+        f"HORA: {hora_str}\n"
+        "ATENDIDO POR: Sistema POS\n"
+        "CLIENTE: Prueba Impresora SAT Q22\n"
         "----------------------------------------\n"
         "[1] TICKET DE PRUEBA SAT Q22 (80MM)\n"
         "  * Notas: Conexion remota verificada OK\n"
@@ -657,26 +705,34 @@ def marcar_ticket_como_impreso(
 @router.post("/reimprimir/{pedido_id}")
 def habilitar_reimpresion_pedido(
     pedido_id: str,
-    tipo: Optional[str] = Query(default="CUENTA", description="Tipo de reimpresión: CUENTA (pre-cuenta mesa) o COCINA (comanda preparación)"),
+    tipo: Optional[str] = Query(default=None, description="Tipo de reimpresión: CUENTA (o TICKET) o COCINA"),
+    payload: Optional[dict] = None,
     db: Session = Depends(get_db)
 ):
     """
     Restablece el flag de impresión según el tipo solicitado:
-    - CUENTA: impreso_caja = False (para pre-cuenta de mesa o recibo)
+    - CUENTA o TICKET: impreso_caja = False (para pre-cuenta de mesa o recibo)
     - COCINA: impreso_cocina = False (para comanda de preparación)
+    Accesible para todos los roles operativos sin restricciones restrictivas.
     """
-    pedido = _buscar_pedido_por_id_o_codigo(db, pedido_id)
+    clean_ref = str(pedido_id or "").strip().lstrip("#")
+    pedido = _buscar_pedido_por_id_o_codigo(db, clean_ref)
     if not pedido:
         raise HTTPException(status_code=404, detail=f"Pedido con ID #{pedido_id} no encontrado.")
 
-    tipo_norm = (tipo or "CUENTA").upper().strip()
-    if tipo_norm == "COCINA":
+    # Resolver tipo ya sea por query param o por body JSON
+    raw_tipo = tipo
+    if not raw_tipo and isinstance(payload, dict):
+        raw_tipo = payload.get("tipo")
+    tipo_norm = (raw_tipo or "CUENTA").upper().strip()
+
+    if tipo_norm in ("CUENTA", "TICKET"):
+        pedido.impreso_caja = False
+        pedido.impreso_ticket = False
+    elif tipo_norm == "COCINA":
         pedido.impreso_cocina = False
         for det in pedido.detalles:
             det.impreso_cocina = False
-    elif tipo_norm == "CUENTA":
-        pedido.impreso_caja = False
-        pedido.impreso_ticket = False
     else:
         pedido.impreso_cocina = False
         pedido.impreso_caja = False
@@ -688,10 +744,12 @@ def habilitar_reimpresion_pedido(
     db.refresh(pedido)
 
     return {
+        "status": "success",
         "success": True,
+        "message": "Encolado para impresión",
+        "tipo": tipo_norm,
         "pedido_id": pedido.id,
         "codigo_pedido": pedido.codigo_pedido,
-        "tipo": tipo_norm,
         "impreso_cocina": bool(pedido.impreso_cocina),
         "impreso_caja": bool(getattr(pedido, "impreso_caja", False)),
         "mensaje": f"Pedido #{pedido.codigo_pedido} encolado para reimpresión de {tipo_norm} en SAT Q22."

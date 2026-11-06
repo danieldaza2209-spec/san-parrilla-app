@@ -22,6 +22,7 @@ function hardenHeaders(response) {
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
   if (!pathname.startsWith('/api/')) return next();
+  if (pathname.startsWith('/api/impresion')) return next();
 
   const rule = getAccessRule(pathname, context.request.method);
 

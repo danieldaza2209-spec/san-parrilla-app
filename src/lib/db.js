@@ -105,6 +105,7 @@ export const lunchProductList = [
   { id: 'esp-2', name: 'Bagre al ajillo', price: 21000, category_id: 'especiales_21', description: 'Bañado en reducción cremosa de ajo y finas hierbas.', is_active: 1, is_featured: 0, sort_order: 2 },
   { id: 'esp-3', name: 'Róbalo apanado', price: 21000, category_id: 'especiales_21', description: 'Filete de róbalo crocante.', is_active: 1, is_featured: 0, sort_order: 3 },
   { id: 'esp-4', name: 'Róbalo al ajillo', price: 21000, category_id: 'especiales_21', description: 'Filete bañado en salsa de ajillo.', is_active: 1, is_featured: 0, sort_order: 4 },
+  { id: 'esp-alm-papas-francesa', name: 'Almuerzo con papas a la francesa', price: 21000, category_id: 'especiales_21', description: 'Almuerzo completo servido con crujientes papas a la francesa, sopa y principios del día.', is_active: 1, is_featured: 0, sort_order: 5 },
 
   // $22.000
   { id: 'esp-5', name: 'Bagre sudado', price: 22000, category_id: 'especiales_21', description: 'En jugo natural de tomate criollo y cebolla.', is_active: 1, is_featured: 0, sort_order: 5 },

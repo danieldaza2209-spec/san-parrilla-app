@@ -3538,7 +3538,11 @@ const searchableCatalog = allPosProducts.map((p) => ({
       const origHtml = quickTestBtn.innerHTML;
       quickTestBtn.innerHTML = '<span>⏳...</span>';
       try {
-        const res = await fetch('/api/impresion/test', { method: 'POST' });
+        const res = await fetch('/api/impresion/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ tipo: 'COCINA' })
+        });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -4263,7 +4267,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
         if (savedOrder && savedOrder.id) {
           const repRes = await fetch(`/api/impresion/reimprimir/${encodeURIComponent(savedOrder.id)}?tipo=COCINA`, {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ tipo: 'COCINA' })
           });
           if (!repRes.ok) {
             throw new Error(`HTTP ${repRes.status} al reenviar comanda a cocina`);
@@ -4280,7 +4286,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
             savedOrder = editingOpenOrder;
           }
           await fetch(`/api/impresion/reimprimir/${encodeURIComponent(savedOrder.id)}?tipo=COCINA`, {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ tipo: 'COCINA' })
           });
         } else {
           const pedRes = await fetch('/api/pedidos', {
@@ -5066,7 +5074,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
       const tipoBackend = type === 'kitchen' ? 'COCINA' : 'CUENTA';
       try {
         const res = await fetch(`/api/impresion/reimprimir/${encodeURIComponent(String(targetId))}?tipo=${tipoBackend}`, {
-          method: 'POST'
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ tipo: tipoBackend })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {

@@ -674,7 +674,11 @@ const navItems = [
           modalTestPrintBtn.disabled = true;
           var origHtml = modalTestPrintBtn.innerHTML;
           modalTestPrintBtn.innerHTML = '<span>⏳ Enviando...</span>';
-          fetch('/api/impresion/test', { method: 'POST' })
+          fetch('/api/impresion/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ tipo: 'COCINA' })
+          })
             .then(function (r) { return r.json(); })
             .then(function () {
               if (liveLogEl) {
@@ -703,6 +707,8 @@ const navItems = [
         var t = (tipo || 'CUENTA').toUpperCase();
         return fetch('/api/impresion/reimprimir/' + encodeURIComponent(String(pedidoIdOrCode)) + '?tipo=' + encodeURIComponent(t), {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ tipo: t })
         }).then(function (res) {
           if (!res.ok) throw new Error('HTTP ' + res.status);
           if (isPrintServerEnabled()) {
@@ -713,7 +719,11 @@ const navItems = [
       };
 
       window.spSendRemoteTestPrint = function () {
-        return fetch('/api/impresion/test', { method: 'POST' }).then(function (res) {
+        return fetch('/api/impresion/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ tipo: 'COCINA' })
+        }).then(function (res) {
           if (!res.ok) throw new Error('HTTP ' + res.status);
           if (isPrintServerEnabled()) {
             setTimeout(pollRemotePrintQueue, 350);
@@ -828,6 +838,8 @@ const navItems = [
 
                 return fetch('/api/impresion/marcar-impreso/' + encodeURIComponent(String(job.id)) + '?tipo=' + encodeURIComponent(tipoJob), {
                   method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                  body: JSON.stringify({ tipo: tipoJob })
                 }).then(function () {
                   var container = document.getElementById('global-print-station-ticket');
                   if (!container) return;

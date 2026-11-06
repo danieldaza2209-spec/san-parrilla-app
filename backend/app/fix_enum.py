@@ -168,6 +168,7 @@ def fix():
             ("Bagre al ajillo", 21000.0),
             ("Róbalo apanado", 21000.0),
             ("Róbalo al ajillo", 21000.0),
+            ("Almuerzo con papas a la francesa", 21000.0),
             ("Bagre sudado", 22000.0),
             ("Bagre frito sudado", 22000.0),
             ("Mojarra frita", 22000.0),

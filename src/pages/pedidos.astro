@@ -1351,18 +1351,29 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
 
     async function sendRemotePrintJob(pedidoId, tipo = 'CUENTA', mesaLabel = 'Mesa') {
       try {
+        let authHeader = '';
+        try {
+          const session = JSON.parse(localStorage.getItem('sp_staff_session') || '{}');
+          const token = session.token || localStorage.getItem('token') || localStorage.getItem('sp_token') || '';
+          if (token) authHeader = 'Bearer ' + token;
+        } catch (e) {}
+
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        };
+        if (authHeader) headers['Authorization'] = authHeader;
+
         const res = await fetch(`/api/impresion/reimprimir/${encodeURIComponent(String(pedidoId))}?tipo=${encodeURIComponent(tipo)}`, {
-          method: 'POST'
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ pedido_id: pedidoId, tipo: tipo }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          throw new Error(data.detail || `Error HTTP ${res.status}`);
+          throw new Error(data.detail || data.error || data.message || `Error HTTP ${res.status}`);
         }
-        if (tipo === 'COCINA') {
-          showBoardToast(`✅ Enviado a impresora SAT Q22 en Caja (Comanda ${mesaLabel})`);
-        } else {
-          showBoardToast(`✅ Enviado a impresora SAT Q22 en Caja (Cuenta ${mesaLabel})`);
-        }
+        showBoardToast(`✅ Enviado a SAT Q22`);
       } catch (err) {
         showBoardToast(`❌ Error al imprimir en SAT Q22: ${err.message}`, false);
       }

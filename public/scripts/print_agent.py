@@ -334,9 +334,11 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
     ========================================
     *** >>> ADICIÓN A MESA <<< *** (si aplica)
     PEDIDO: #SP-XXXX
-    TIPO: MESA X / DOMICILIO / PARA LLEVAR
+    TIPO: [DOMICILIO / PARA LLEVAR / MESA X]
     HORA: HH:MM
-    ATENDIDO POR: [Nombre]
+    ATENDIDO POR: [colaborador_nombre]
+    UBICACIÓN: MESA [X] (si es Mesa, en grande)
+    CLIENTE: [cliente_nombre / Mostrador / General / Mesa X]
     ----------------------------------------
     [CANT] NOMBRE DEL PLATO
       [TORRE A / TORRE B / URGENCIAS]
@@ -380,6 +382,12 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
         b.extend(ESC_BOLD_OFF)
         b.extend(limpiar_texto(f"HORA: {hora}\n").encode("cp850", errors="ignore"))
         b.extend(limpiar_texto(f"ATENDIDO POR: {creado_por}\n").encode("cp850", errors="ignore"))
+
+        area_torre = " / ".join(ubicaciones) if ubicaciones else "TORRE A"
+        b.extend(ESC_BOLD_ON)
+        b.extend(b"CONVENIO: CLINICA PRIMERO DE MAYO\n")
+        b.extend(limpiar_texto(f"AREA / TORRE: {area_torre}\n").encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
         b.extend(subsep)
 
         b.extend(ESC_ALIGN_CENTER)
@@ -451,6 +459,38 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
     b.extend(ESC_BOLD_OFF)
     b.extend(limpiar_texto(f"HORA: {hora}\n").encode("cp850", errors="ignore"))
     b.extend(limpiar_texto(f"ATENDIDO POR: {creado_por}\n").encode("cp850", errors="ignore"))
+
+    mesa_val = limpiar_texto(pedido.get("mesa") or "")
+    es_mesa = ("MESA" in tipo) or bool(mesa_val)
+    cli_raw = limpiar_texto(pedido.get("cliente_nombre") or "").strip()
+
+    if es_mesa:
+        num_mesa = re.sub(r"(?i)^mesa\s*", "", mesa_val).strip()
+        if not num_mesa:
+            m = re.search(r"MESA\s*(\S+)", tipo, flags=re.IGNORECASE)
+            num_mesa = m.group(1).strip() if m else "1"
+
+        if not cli_raw or cli_raw.lower() in ("cliente", "none", "null"):
+            cli_mesa = f"Mesa {num_mesa}"
+        else:
+            cli_mesa = cli_raw
+
+        b.extend(ESC_BOLD_ON)
+        b.extend(GS_DOUBLE_H)
+        b.extend(limpiar_texto(f"UBICACION: MESA {num_mesa}\n").encode("cp850", errors="ignore"))
+        b.extend(GS_NORMAL)
+        b.extend(limpiar_texto(f"CLIENTE: {cli_mesa}\n").encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
+    else:
+        if not cli_raw or cli_raw.lower() in ("cliente", "none", "null", "mostrador", "general"):
+            cliente_str = "Mostrador / General"
+        else:
+            cliente_str = cli_raw.upper()
+
+        b.extend(ESC_BOLD_ON)
+        b.extend(limpiar_texto(f"CLIENTE: {cliente_str}\n").encode("cp850", errors="ignore"))
+        b.extend(ESC_BOLD_OFF)
+
     b.extend(subsep)
 
     # 3. BLOQUE DE PLATOS (SIN PRECIOS, LECTURA LIMPIA)

@@ -76,6 +76,7 @@ def seed():
                 models.Plato(nombre="Bagre al ajillo", descripcion="Posta de bagre salteada en rica salsa de ajo y mantequilla.", precio=21000.0, imagen_emoji="🧄", categoria_id=cat_210.id),
                 models.Plato(nombre="Róbalo apanado", descripcion="Filete de róbalo empanado doradito y crujiente.", precio=21000.0, imagen_emoji="🐠", categoria_id=cat_210.id),
                 models.Plato(nombre="Róbalo al ajillo", descripcion="Filete de róbalo en delicada salsa al ajillo de la casa.", precio=21000.0, imagen_emoji="🐠", categoria_id=cat_210.id),
+                models.Plato(nombre="Almuerzo con papas a la francesa", descripcion="Almuerzo completo servido con crujientes papas a la francesa, sopa y principios del día.", precio=21000.0, imagen_emoji="🍟", categoria_id=cat_210.id),
 
                 # $22.000
                 models.Plato(nombre="Bagre sudado", descripcion="Posta de bagre en sabroso guiso criollo con plátano y yuca.", precio=22000.0, imagen_emoji="🐟", categoria_id=cat_220.id),
