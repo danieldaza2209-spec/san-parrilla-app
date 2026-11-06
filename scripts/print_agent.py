@@ -206,11 +206,16 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
     b.extend(ESC_RESET)
 
     # Encabezado Cocina
+    es_adicion = "ADICION" in tipo
+    creado_por = limpiar_texto(pedido.get("creado_por") or "Colaborador")
     b.extend(ESC_ALIGN_CENTER)
     b.extend(sep)
     b.extend(ESC_BOLD_ON)
     b.extend(GS_DOUBLE_H)
-    b.extend(b"SAN PARRILLA - COCINA\n")
+    if es_adicion:
+        b.extend(b"SAN PARRILLA - ADICION MESA\n")
+    else:
+        b.extend(b"SAN PARRILLA - COCINA\n")
     b.extend(GS_NORMAL)
     b.extend(ESC_BOLD_OFF)
 
@@ -222,7 +227,7 @@ def construir_tirilla_cocina(pedido: dict) -> bytes:
     b.extend(GS_NORMAL)
     b.extend(limpiar_texto(f"Pedido: {codigo} | Tipo: {tipo}\n").encode("cp850", errors="ignore"))
     b.extend(ESC_BOLD_OFF)
-    b.extend(limpiar_texto(f"Hora: {hora}\n").encode("cp850", errors="ignore"))
+    b.extend(limpiar_texto(f"Hora: {hora} | Atendido por: {creado_por}\n").encode("cp850", errors="ignore"))
     b.extend(subsep)
 
     # Detalle de platos para cocina

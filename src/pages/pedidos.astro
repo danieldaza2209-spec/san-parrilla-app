@@ -590,10 +590,8 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
           occupiedCount++;
           const totalPlates = (openOrder.detalles || []).reduce((acc, d) => acc + Number(d.cantidad || 1), 0);
           const elapsedStr = formatElapsed(openOrder.fecha_hora);
-          const dishesPreview = (openOrder.detalles || [])
-            .slice(0, 3)
-            .map((d) => `${d.cantidad}x ${d.plato?.nombre || 'Plato'}`)
-            .join(', ');
+          const dishesList = (openOrder.detalles || []).map((d) => `${d.cantidad}x ${d.plato?.nombre || 'Plato'}`);
+          const dishesPreview = dishesList.slice(0, 4).join(', ') + (dishesList.length > 4 ? ` (+${dishesList.length - 4} más)` : '');
 
           cardsHtml.push(`
             <div class="rounded-2xl border-2 border-orange-500 bg-gradient-to-br from-orange-50 via-amber-50/70 to-red-50 p-3.5 shadow-md flex flex-col justify-between gap-2.5 transition">
@@ -622,9 +620,9 @@ import { CORPORATE_CUSTOMERS } from '../lib/db.js';
               <div class="pt-2 border-t border-orange-200/80 space-y-1.5">
                 <div class="grid grid-cols-2 gap-1.5">
                   <a
-                    href="/pos?mesa=${encodeURIComponent(tableName)}&pedido_id=${openOrder.id}"
+                    href="/pos?mesa=${encodeURIComponent(tableName)}"
                     class="py-1.5 px-2 rounded-lg bg-white hover:bg-orange-100 text-orange-900 border border-orange-300 text-[11px] font-extrabold text-center transition"
-                    title="Ver o agregar más platos a esta mesa en el POS"
+                    title="Agregar más platos a esta mesa en el POS"
                   >
                     ➕ Agregar/POS
                   </a>

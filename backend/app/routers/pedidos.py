@@ -30,6 +30,22 @@ def registrar_pedido(
     return nuevo_pedido
 
 
+@router.post("/mesa-append", response_model=schemas.PedidoOut)
+def anexar_platos_a_mesa(
+    pedido_in: schemas.PedidoCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Anexa nuevos platos al pedido abierto existente de una mesa o crea uno nuevo si la mesa está libre.
+    """
+    if not pedido_in.detalles:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe incluir al menos un detalle de plato para agregar a la mesa."
+        )
+    return crud.crear_pedido(db, pedido_in)
+
+
 @router.get("/stats/dashboard", response_model=schemas.DashboardStatsOut)
 def obtener_estadisticas_dashboard(db: Session = Depends(get_db)):
     """

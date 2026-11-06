@@ -746,7 +746,135 @@ def _asegurar_botella_agua_hipo(
     detalles_creados.append(nuevo_det_agua)
 
 
+def buscar_pedido_abierto_mesa(db: Session, mesa_str: Optional[str]) -> Optional[models.Pedido]:
+    """
+    Busca si existe una orden activa (PENDIENTE, EN_PREPARACION, SERVIDO) para una mesa en el turno actual.
+    """
+    if not mesa_str or not str(mesa_str).strip():
+        return None
+    raw_mesa = str(mesa_str).strip()
+    clean_num = re.sub(r'^(mesa\s*)', '', raw_mesa, flags=re.IGNORECASE).strip()
+    posibles_nombres = {raw_mesa.lower(), f"mesa {clean_num}".lower(), clean_num.lower()}
+
+    estados_abiertos = [
+        models.EstadoPedido.PENDIENTE,
+        models.EstadoPedido.EN_PREPARACION,
+        models.EstadoPedido.SERVIDO,
+    ]
+
+    pedidos_abiertos = (
+        db.query(models.Pedido)
+        .filter(
+            models.Pedido.tipo == models.TipoPedido.EN_MESA,
+            models.Pedido.estado.in_(estados_abiertos),
+        )
+        .order_by(models.Pedido.fecha_hora.desc())
+        .all()
+    )
+    for p in pedidos_abiertos:
+        p_mesa = str(p.mesa or "").strip().lower()
+        p_num = re.sub(r'^(mesa\s*)', '', p_mesa, flags=re.IGNORECASE).strip()
+        if p_mesa in posibles_nombres or (p_num and p_num in posibles_nombres):
+            return p
+    return None
+
+
+def anexar_a_pedido_mesa(
+    db: Session,
+    pedido_existente: models.Pedido,
+    pedido_in: schemas.PedidoCreate
+) -> models.Pedido:
+    """
+    Anexa nuevos platos a un pedido de mesa abierto:
+    1. Agrega los nuevos ítems a detalles_pedido marcados con impreso_cocina = False.
+    2. Descuenta stock en MenuDiaItem si aplica.
+    3. Recalcula subtotal y total consolidados en Neon DB.
+    4. Marca pedido_existente.impreso_cocina = False para emitir la comanda clasificada 'ADICIÓN MESA'.
+    5. Retorna el pedido consolidado actualizado.
+    """
+    hoy = date.today()
+    menu_hoy = get_menu_dia_by_fecha(db, hoy)
+    creado_por = (pedido_in.creado_por or "").strip() or None
+    if creado_por:
+        pedido_existente.creado_por = creado_por
+
+    nuevos_detalles: List[models.DetallePedido] = []
+
+    for det in pedido_in.detalles:
+        plato = _resolver_o_crear_plato(db, det.plato_id, det.nombre_plato, det.precio_unitario)
+        if not plato:
+            continue
+
+        is_free_water = "botella con agua" in _normalizar_texto(plato.nombre)
+        if is_free_water:
+            precio_item = 0.0
+        elif det.precio_unitario is not None and det.precio_unitario >= 0:
+            precio_item = float(det.precio_unitario) if det.precio_unitario > 0 else float(plato.precio or 0.0)
+        else:
+            precio_item = float(plato.precio or 0.0)
+
+        notas_item = det.notas_item if det.notas_item is not None else det.notas
+        if getattr(det, "ubicacion_hospitalaria", None):
+            loc_tag = f"[{det.ubicacion_hospitalaria.upper()}]"
+            if not notas_item:
+                notas_item = loc_tag
+            elif loc_tag not in notas_item.upper():
+                notas_item = f"{loc_tag} {notas_item}"
+
+        detalle_db = models.DetallePedido(
+            pedido_id=pedido_existente.id,
+            plato_id=plato.id,
+            sopa_id=det.sopa_id,
+            principio_id=det.principio_id,
+            acompanamiento_id=det.acompanamiento_id,
+            cantidad=det.cantidad,
+            precio_unitario=precio_item,
+            notas_item=notas_item,
+            impreso_cocina=False,  # Marcado como pendiente para comanda de adición
+        )
+        detalle_db.plato = plato
+        db.add(detalle_db)
+        nuevos_detalles.append(detalle_db)
+
+    _asegurar_botella_agua_hipo(db, pedido_existente.id, nuevos_detalles)
+
+    if not pedido_in.es_borrador_web:
+        _verificar_y_descontar_stock(db, nuevos_detalles, menu_hoy, verificar_disponibilidad=False)
+
+    db.flush()
+
+    # Recalcular subtotal y total consolidado con todos los detalles existentes + nuevos
+    todos_detalles = db.query(models.DetallePedido).filter(models.DetallePedido.pedido_id == pedido_existente.id).all()
+    subtotal_total = sum(float(d.precio_unitario or 0.0) * int(d.cantidad or 1) for d in todos_detalles)
+    pedido_existente.subtotal = subtotal_total
+    pedido_existente.total = subtotal_total + float(pedido_existente.delivery_fee or 0.0) + float(pedido_existente.packaging_fee or 0.0)
+
+    # Indicar a la cola de impresión que hay nuevos ítems pendientes para cocina
+    pedido_existente.impreso_cocina = False
+
+    # Registrar trazabilidad de la adición en notas
+    tz_col = timezone(timedelta(hours=-5))
+    hora_str = datetime.now(tz_col).strftime("%H:%M")
+    tag_adicion = f"[ADICION:{hora_str}:{creado_por or 'Staff'}]"
+    cur_notas = pedido_existente.notas or ""
+    if tag_adicion not in cur_notas:
+        pedido_existente.notas = f"{cur_notas} | {tag_adicion}".strip(" |")
+
+    db.commit()
+    db.refresh(pedido_existente)
+    return pedido_existente
+
+
 def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
+    is_mesa = (
+        pedido_in.tipo in [models.TipoPedido.EN_MESA, "EN_MESA", "MESA"]
+        or bool(pedido_in.mesa and str(pedido_in.mesa).strip())
+    )
+    if is_mesa and not pedido_in.es_borrador_web:
+        pedido_abierto = buscar_pedido_abierto_mesa(db, pedido_in.mesa)
+        if pedido_abierto:
+            return anexar_a_pedido_mesa(db, pedido_abierto, pedido_in)
+
     hoy = date.today()
     menu_hoy = get_menu_dia_by_fecha(db, hoy)
     

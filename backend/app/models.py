@@ -218,6 +218,7 @@ class DetallePedido(Base):
     cantidad = Column(Integer, default=1, nullable=False)
     precio_unitario = Column(Float, nullable=False)
     notas_item = Column(String(255), nullable=True)
+    impreso_cocina = Column(Boolean, default=False, server_default="false", nullable=False)
 
     pedido = relationship("Pedido", back_populates="detalles")
     plato = relationship("Plato", back_populates="detalles_pedido")

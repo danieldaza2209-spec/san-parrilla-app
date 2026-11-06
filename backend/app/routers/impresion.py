@@ -186,9 +186,17 @@ def obtener_pedidos_pendientes_impresion(
     resultado: List[schemas.PedidoImpresionOut] = []
 
     for ped in pedidos:
+        detalles_a_imprimir = ped.detalles
         if ped.tipo == models.TipoPedido.EN_MESA:
             mesa_txt = (ped.mesa or "1").replace("Mesa", "").replace("MESA", "").strip()
-            tipo_label = f"MESA {mesa_txt}"
+            # Si la cocina está pendiente, verificar si es una adición a una mesa ocupada
+            nuevos_cocina = [d for d in ped.detalles if not getattr(d, "impreso_cocina", False)]
+            previos_cocina = [d for d in ped.detalles if getattr(d, "impreso_cocina", False)]
+            if previos_cocina and nuevos_cocina and not ped.impreso_cocina:
+                tipo_label = f"ADICIÓN MESA {mesa_txt}"
+                detalles_a_imprimir = nuevos_cocina
+            else:
+                tipo_label = f"MESA {mesa_txt}"
         elif ped.tipo == models.TipoPedido.PARA_LLEVAR:
             tipo_label = "PARA LLEVAR"
         elif ped.tipo == models.TipoPedido.DOMICILIO:
@@ -201,7 +209,7 @@ def obtener_pedidos_pendientes_impresion(
         codigo_fmt = ped.codigo_pedido if str(ped.codigo_pedido).startswith("#") else f"#{ped.codigo_pedido}"
 
         items_out: List[schemas.ItemImpresionOut] = []
-        for det in ped.detalles:
+        for det in detalles_a_imprimir:
             plato_nombre = det.plato.nombre if det.plato else "Plato"
             sopa_fk = det.sopa.nombre if det.sopa else None
             princ_fk = det.principio.nombre if det.principio else None
@@ -283,6 +291,8 @@ def marcar_pedido_como_impreso(
     pedido.impreso_cocina = True
     pedido.impreso_caja = True
     pedido.impreso_ticket = True
+    for det in pedido.detalles:
+        det.impreso_cocina = True
     db.commit()
     db.refresh(pedido)
 
@@ -341,11 +351,15 @@ def habilitar_reimpresion_pedido(
     tipo_norm = (tipo or "CUENTA").upper().strip()
     if tipo_norm == "COCINA":
         pedido.impreso_cocina = False
+        for det in pedido.detalles:
+            det.impreso_cocina = False
     elif tipo_norm == "CUENTA":
         pedido.impreso_caja = False
     else:
         pedido.impreso_cocina = False
         pedido.impreso_caja = False
+        for det in pedido.detalles:
+            det.impreso_cocina = False
 
     db.commit()
     db.refresh(pedido)

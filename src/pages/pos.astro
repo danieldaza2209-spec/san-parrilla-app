@@ -474,6 +474,16 @@ const searchableCatalog = allPosProducts.map((p) => ({
               ))}
             </select>
           </div>
+          <!-- INDICADOR: MESA OCUPADA / ADICIÓN A CUENTA ACTIVA -->
+          <div
+            id="mesa-occupied-banner"
+            class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold transition flex items-start gap-2 shadow-xs"
+          >
+            <span class="text-base leading-none">⚠️</span>
+            <div id="mesa-occupied-text" class="flex-1 min-w-0 leading-snug">
+              Mesa con cuenta activa. Los platos que agregues se sumarán a la cuenta.
+            </div>
+          </div>
         </div>
 
         <!-- CONDITIONAL FORM: PARA LLEVAR -->
@@ -2895,7 +2905,63 @@ const searchableCatalog = allPosProducts.map((p) => ({
       }
 
       renderCart();
+      updateMesaOccupiedIndicator();
     }
+
+    // 4.1 MONITOR DE MESAS OCUPADAS Y ADICIONES A CUENTA ACTIVA
+    let activeOccupiedTableOrders = {};
+
+    function normalizeMesaKey(m) {
+      if (!m) return '';
+      return String(m).trim().toLowerCase().replace(/^mesa\s*/i, '');
+    }
+
+    function getOccupiedTableOrder(mesaVal) {
+      const key = normalizeMesaKey(mesaVal);
+      return key ? activeOccupiedTableOrders[key] : null;
+    }
+
+    function updateMesaOccupiedIndicator() {
+      const banner = document.getElementById('mesa-occupied-banner');
+      const bannerText = document.getElementById('mesa-occupied-text');
+      if (!banner || !bannerText) return;
+
+      if (currentOrderType !== 'mesa') {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      // @ts-ignore
+      const selMesa = String(tableInput?.value || '').trim();
+      const openOrder = getOccupiedTableOrder(selMesa);
+
+      if (openOrder) {
+        const cod = openOrder.codigo_pedido || ('#' + openOrder.id);
+        const tot = fmt(openOrder.total);
+        bannerText.innerHTML = `⚠️ <strong>${escapeHtml(selMesa)}</strong> con cuenta activa (<strong>${escapeHtml(cod)}</strong> - Total actual: <strong>${tot}</strong>). Los platos que agregues se sumarán a la cuenta.`;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    async function checkOccupiedTables() {
+      try {
+        const res = await fetch('/api/pedidos?tipo=EN_MESA&limit=100', { cache: 'no-store' });
+        if (!res.ok) return;
+        const list = await res.json();
+        activeOccupiedTableOrders = {};
+        (Array.isArray(list) ? list : []).forEach((p) => {
+          if (['PENDIENTE', 'EN_PREPARACION', 'SERVIDO', 'EN_CAMINO'].includes(p.estado)) {
+            const key = normalizeMesaKey(p.mesa);
+            if (key) activeOccupiedTableOrders[key] = p;
+          }
+        });
+        updateMesaOccupiedIndicator();
+      } catch (e) {}
+    }
+
+    tableInput?.addEventListener('change', updateMesaOccupiedIndicator);
 
     typeMesaBtn?.addEventListener('click', () => setOrderType('mesa'));
     typeDomicilioBtn?.addEventListener('click', () => setOrderType('domicilio'));
@@ -3670,6 +3736,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
       try {
         const { payload, meta } = buildFastapiPedidoPayload('EN_PREPARACION');
+        // @ts-ignore
+        const wasOccupied = currentOrderType === 'mesa' && Boolean(getOccupiedTableOrder(tableInput?.value));
         let savedOrder = null;
 
         if (editingOpenOrder && editingOpenOrder.id) {
@@ -3739,7 +3807,12 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
         // Notificación Toast Silenciosa (Sin popup window.print)
         const orderCode = savedOrder.codigo_pedido || savedOrder.id || 'NUEVO';
-        showPosToast(`✅ Pedido registrado y enviado a impresora (#${orderCode})`);
+        if (wasOccupied) {
+          showPosToast(`✅ Nuevos platos agregados a ${meta.mesaStr || 'Mesa'} y comanda enviada a cocina`);
+        } else {
+          showPosToast(`✅ Pedido registrado y enviado a impresora (#${orderCode})`);
+        }
+        checkOccupiedTables();
       } catch (err) {
         alert('Error al guardar pedido abierto: ' + err.message);
       } finally {
@@ -4577,7 +4650,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
           }
         }
 
-        if (pedidoIdParam) {
+        if (pedidoIdParam && !mesaParam) {
           const res = await fetch(`/api/pedidos/${encodeURIComponent(pedidoIdParam)}`, { cache: 'no-store' });
           if (res.ok) {
             const order = await res.json();
@@ -4588,22 +4661,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
           }
         }
 
-        if (mesaParam) {
-          const cleanMesa = /^\d+$/.test(mesaParam.trim()) ? `Mesa ${mesaParam.trim()}` : mesaParam.trim();
-          const res = await fetch('/api/pedidos?limit=150', { cache: 'no-store' });
-          if (res.ok) {
-            const list = await res.json();
-            const openForMesa = (Array.isArray(list) ? list : []).find(
-              (p) =>
-                p.tipo === 'EN_MESA' &&
-                String(p.mesa || '').toLowerCase() === cleanMesa.toLowerCase() &&
-                ['PENDIENTE', 'EN_PREPARACION', 'SERVIDO', 'EN_CAMINO'].includes(p.estado)
-            );
-            if (openForMesa) {
-              loadOrderObjectIntoCart(openForMesa);
-            }
-          }
-        }
+        await checkOccupiedTables();
+        setInterval(checkOccupiedTables, 15000);
       } catch (e) {}
     }
 
