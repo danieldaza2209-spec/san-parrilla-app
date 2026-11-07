@@ -41,6 +41,16 @@ const rapidasCatCards = [
   { id: 'bebidas_rapidas', title: 'Bebidas', icon: '🧊' },
 ];
 
+const CLINICA_DIETAS_TARGET = [
+  { shortName: 'Dieta Normal', isHipo: false },
+  { shortName: 'Dieta Hiposódica', isHipo: true },
+  { shortName: 'Dieta Hipoglúcida', isHipo: true },
+  { shortName: 'Dieta Hiposódica e Hipoglúcida', isHipo: true },
+  { shortName: 'Dieta Líquida', isHipo: false },
+  { shortName: 'Dieta Hiperproteica', isHipo: false },
+  { shortName: 'Dieta Blanda', isHipo: false },
+];
+
 console.log(">>> POS PRODUCTS IN ASTRO BUILD:", publicProducts.length, "Categories:", categories.length);
 const activeCash = getActiveCashRegister();
 
@@ -140,7 +150,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
         </div>
 
         <!-- 1. PARTE SUPERIOR: BUSCADOR UNIVERSAL PROTAGONISTA & FILTROS RÁPIDOS -->
-        <div class="bg-white rounded-2xl p-4 sm:p-5 border-2 border-parrilla-gold/60 shadow-md space-y-3.5 sticky top-16 z-30">
+        <div id="pos-universal-search-container" class="bg-white rounded-2xl p-4 sm:p-5 border-2 border-parrilla-gold/60 shadow-md space-y-3.5 sticky top-16 z-30">
           <div class="flex items-center justify-between gap-2">
             <span class="text-[11px] font-extrabold uppercase tracking-widest text-parrilla-gold flex items-center gap-1.5">
               <i data-lucide="zap" class="w-3.5 h-3.5"></i>
@@ -302,39 +312,34 @@ const searchableCatalog = allPosProducts.map((p) => ({
           })}
         </div>
 
-        <!-- 5. CUERPO DEL CATÁLOGO CONVENIOS INSTITUCIONALES Y DIETAS HOSPITALARIAS (CLÍNICA Y EMPRESAS) -->
+        <!-- 5. CUERPO DEL CATÁLOGO CONVENIOS INSTITUCIONALES Y DIETAS HOSPITALARIAS (CLÍNICA PRIMERO DE MAYO) -->
         <div id="pos-convenios-menu-wrapper" class="hidden space-y-4">
-          <!-- A. Acceso Rápido a los 6 Clientes Corporativos / Institucionales Fijos -->
-          <div class="bg-white rounded-2xl border-2 border-indigo-300 p-4 shadow-sm space-y-3">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <!-- 1. Tarjeta Institucional Fija Activa: Clínica Primero de Mayo (Pacientes) -->
+          <div class="bg-gradient-to-r from-blue-50 via-indigo-50 to-emerald-50 rounded-2xl border-2 border-indigo-400 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <span class="text-3xl sm:text-4xl">🏥</span>
               <div>
-                <span class="text-[10px] font-black uppercase tracking-widest text-indigo-600 block">Convenios a Crédito (Fiado Institucional)</span>
-                <h3 class="font-display font-black text-base sm:text-lg text-parrilla-ivory">1. Selecciona la Empresa o Clínica del Servicio</h3>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-full">Convenio Activo</span>
+                  <span class="text-[10px] font-mono font-bold text-indigo-900 bg-white px-2 py-0.5 rounded border border-indigo-300">CONV-CLINICA-PAC</span>
+                </div>
+                <h3 class="font-display font-black text-lg sm:text-xl text-slate-900 mt-0.5">Clínica Primero de Mayo (Pacientes)</h3>
+                <p class="text-xs text-slate-600">Área de Hospitalización · Raciones Clínicas y Dietas Hospitalarias por Pabellón</p>
               </div>
-              <span class="text-[11px] font-bold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-200">6 Empresas Activas</span>
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {CORPORATE_CUSTOMERS.map((corp) => (
-                <button
-                  type="button"
-                  data-corp-name={corp.name}
-                  data-corp-phone={corp.phone}
-                  data-corp-address={corp.address}
-                  data-corp-barrio={corp.neighborhood}
-                  class="btn-select-corporate-client text-left p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 hover:border-indigo-400 transition flex flex-col justify-between gap-1 cursor-pointer"
-                >
-                  <span class="font-display font-black text-xs text-slate-900 leading-snug">🏢 {corp.name}</span>
-                  <span class="text-[10px] font-mono font-bold text-indigo-700">{corp.phone} · 📝 Fiado</span>
-                </button>
-              ))}
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-xs">
+                <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                <span>Cliente Vinculado (Fiado Institucional)</span>
+              </span>
             </div>
           </div>
 
-          <!-- B. Menú Hospitalario: Clínica Primero de Mayo (Pacientes) con Regla Automática de Agua en Dietas Hipo -->
-          <div class="bg-white rounded-2xl border-2 border-emerald-400 p-4 shadow-sm space-y-3">
-            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+          <!-- 2. Menú Hospitalario: Raciones y Dietas Clínicas (Desayuno, Almuerzo y Cena) -->
+          <div class="bg-white rounded-2xl border-2 border-emerald-400 p-4 sm:p-5 shadow-sm space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
-                <span class="text-[10px] font-black uppercase tracking-widest text-emerald-700 block">🏥 Menú Hospitalario · Clínica Primero de Mayo (Pacientes)</span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-emerald-700 block">🏥 Menú Hospitalario Exclusivo</span>
                 <h3 class="font-display font-black text-base sm:text-lg text-parrilla-ivory">2. Raciones y Dietas Clínicas (Desayuno, Almuerzo y Cena)</h3>
               </div>
               <span class="text-[11px] font-extrabold bg-sky-50 text-sky-800 border border-sky-200 px-2.5 py-1 rounded-lg">
@@ -343,33 +348,33 @@ const searchableCatalog = allPosProducts.map((p) => ({
             </div>
 
             <!-- Selector Activo de Pabellón / Ubicación para Raciones Hospitalarias -->
-            <div class="flex flex-wrap items-center justify-between gap-2 bg-emerald-50/90 border border-emerald-300 rounded-xl p-2.5">
-              <div class="flex items-center gap-1.5">
-                <span class="text-sm">🏢</span>
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-emerald-50/90 border border-emerald-300 rounded-xl p-3">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🏢</span>
                 <div>
-                  <span class="block text-[11px] font-black uppercase tracking-wider text-emerald-950">Pabellón / Ubicación para Raciones:</span>
-                  <span class="block text-[10px] text-emerald-700">Las raciones que agregues se asignarán a esta ubicación (o cámbiala directamente en cada renglón del carrito)</span>
+                  <span class="block text-xs font-black uppercase tracking-wider text-emerald-950">Pabellón / Sector Activo:</span>
+                  <span class="block text-[11px] text-emerald-700">Las raciones que agregues con (+1, +5, +10) se registrarán en esta torre</span>
                 </div>
               </div>
-              <div class="flex items-center gap-1.5" id="hospital-active-loc-bar">
+              <div class="flex items-center gap-2" id="hospital-active-loc-bar">
                 <button
                   type="button"
                   data-loc="Torre A"
-                  class="btn-hosp-loc-tab px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer bg-emerald-700 text-white shadow-xs"
+                  class="btn-hosp-loc-tab px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer bg-emerald-700 text-white shadow-xs"
                 >
                   🏢 Torre A
                 </button>
                 <button
                   type="button"
                   data-loc="Torre B"
-                  class="btn-hosp-loc-tab px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer bg-white text-emerald-900 border border-emerald-300 hover:bg-emerald-100"
+                  class="btn-hosp-loc-tab px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer bg-white text-emerald-900 border border-emerald-300 hover:bg-emerald-100"
                 >
                   🏢 Torre B
                 </button>
                 <button
                   type="button"
                   data-loc="Urgencias"
-                  class="btn-hosp-loc-tab px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer bg-white text-emerald-900 border border-emerald-300 hover:bg-emerald-100"
+                  class="btn-hosp-loc-tab px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer bg-white text-emerald-900 border border-emerald-300 hover:bg-emerald-100"
                 >
                   🚨 Urgencias
                 </button>
@@ -377,50 +382,96 @@ const searchableCatalog = allPosProducts.map((p) => ({
             </div>
 
             {['Desayuno Clínica', 'Almuerzo Clínica', 'Cena Clínica'].map((servicio) => {
-              const serviceItems = conveniosProductList.filter((p) => p.name.startsWith(`${servicio} -`));
               const icon = servicio.startsWith('Desayuno') ? '🌅' : servicio.startsWith('Almuerzo') ? '☀️' : '🌙';
+              const basePrice = servicio.startsWith('Desayuno') ? 12000 : servicio.startsWith('Almuerzo') ? 16500 : 15000;
+
               return (
-                <div class="bg-slate-50/80 rounded-xl p-3 border border-slate-200 space-y-2">
-                  <div class="flex items-center justify-between">
-                    <span class="font-display font-black text-xs sm:text-sm text-slate-900 uppercase flex items-center gap-1.5">
+                <div class="bg-slate-50/90 rounded-2xl p-3.5 border border-slate-200 space-y-3">
+                  <div class="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                    <span class="font-display font-black text-sm sm:text-base text-slate-900 uppercase flex items-center gap-2">
                       <span>{icon}</span>
                       <span>{servicio}</span>
                     </span>
-                    <span class="text-xs font-mono font-black text-emerald-700">
-                      {serviceItems[0] ? formatPrice(serviceItems[0].price) : ''}
+                    <span class="text-xs sm:text-sm font-mono font-black text-emerald-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                      {formatPrice(basePrice)} c/u
                     </span>
                   </div>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {serviceItems.map((item) => {
-                      const isHipo = item.name.toLowerCase().includes('hiposódica') || item.name.toLowerCase().includes('hipoglúcida');
-                      const shortDiet = item.name.replace(`${servicio} - `, '');
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {CLINICA_DIETAS_TARGET.map((diet) => {
+                      const fullName = `${servicio} - ${diet.shortName}`;
+                      const item = conveniosProductList.find((p) => p.name === fullName) || {
+                        id: `conv-${servicio.slice(0, 3).toLowerCase()}-${diet.shortName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                        name: fullName,
+                        price: basePrice,
+                        category_id: 'convenios_clinica',
+                        menu_type: 'convenios'
+                      };
+
                       return (
-                        <div class="flex items-center justify-between gap-2 bg-white p-2.5 rounded-xl border border-slate-200 hover:border-emerald-400 transition">
+                        <div class="flex items-center justify-between gap-2 bg-white p-3 rounded-xl border border-slate-200 hover:border-emerald-400 transition shadow-2xs">
                           <div class="min-w-0 flex-1">
-                            <div class="font-bold text-xs text-slate-900 leading-tight">{shortDiet}</div>
-                            <div class="flex items-center gap-1.5 mt-0.5">
-                              <span class="font-mono font-black text-[11px] text-emerald-700" data-conv-price-id={item.id}>{formatPrice(item.price)}</span>
-                              {isHipo && (
+                            <div class="font-black text-xs sm:text-sm text-slate-900 leading-tight">{diet.shortName}</div>
+                            <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                              <span class="font-mono font-black text-xs text-emerald-700" data-conv-price-id={item.id}>
+                                {formatPrice(item.price)}
+                              </span>
+                              {diet.isHipo && (
                                 <span class="text-[9px] font-extrabold bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded border border-sky-200">
                                   💧 +Agua $0 Auto
                                 </span>
                               )}
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            data-id={item.id}
-                            data-name={item.name}
-                            data-price={item.price}
-                            data-cat="convenios_clinica"
-                            data-menu="convenios"
-                            data-customizable="false"
-                            data-hospital="true"
-                            class="btn-add-cart w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center justify-center shadow-xs transition active:scale-90 cursor-pointer"
-                            title={`Agregar ${item.name}`}
-                          >
-                            +
-                          </button>
+
+                          <!-- Botones de incremento rápido (+1, +5, +10) -->
+                          <div class="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              type="button"
+                              data-id={item.id}
+                              data-name={item.name}
+                              data-price={item.price}
+                              data-cat="convenios_clinica"
+                              data-menu="convenios"
+                              data-customizable="false"
+                              data-hospital="true"
+                              data-qty="1"
+                              class="btn-add-cart-qty px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 font-black text-xs transition cursor-pointer active:scale-95 shadow-2xs"
+                              title={`Agregar 1x ${item.name} al pabellón activo`}
+                            >
+                              +1
+                            </button>
+                            <button
+                              type="button"
+                              data-id={item.id}
+                              data-name={item.name}
+                              data-price={item.price}
+                              data-cat="convenios_clinica"
+                              data-menu="convenios"
+                              data-customizable="false"
+                              data-hospital="true"
+                              data-qty="5"
+                              class="btn-add-cart-qty px-2.5 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-700 text-emerald-900 hover:text-white border border-emerald-400 font-black text-xs transition cursor-pointer active:scale-95 shadow-2xs"
+                              title={`Agregar 5x ${item.name} al pabellón activo`}
+                            >
+                              +5
+                            </button>
+                            <button
+                              type="button"
+                              data-id={item.id}
+                              data-name={item.name}
+                              data-price={item.price}
+                              data-cat="convenios_clinica"
+                              data-menu="convenios"
+                              data-customizable="false"
+                              data-hospital="true"
+                              data-qty="10"
+                              class="btn-add-cart-qty px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition cursor-pointer active:scale-95 shadow-2xs"
+                              title={`Agregar 10x ${item.name} al pabellón activo`}
+                            >
+                              +10
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -428,41 +479,6 @@ const searchableCatalog = allPosProducts.map((p) => ({
                 </div>
               );
             })}
-          </div>
-
-          <!-- C. Platos Especiales Corporativos (TuboDrilling & Terpel Aeropuerto) -->
-          <div class="bg-white rounded-2xl border-2 border-amber-400 p-4 shadow-sm space-y-3">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-              <div>
-                <span class="text-[10px] font-black uppercase tracking-widest text-amber-700 block">Tarifas Exclusivas de Convenio</span>
-                <h3 class="font-display font-black text-base sm:text-lg text-parrilla-ivory">3. Platos Especiales Corporativos (TuboDrilling / Terpel)</h3>
-              </div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {conveniosProductList
-                .filter((p) => !p.name.startsWith('Desayuno Clínica') && !p.name.startsWith('Almuerzo Clínica') && !p.name.startsWith('Cena Clínica'))
-                .map((item) => (
-                  <div class="flex items-center justify-between gap-2 bg-amber-50/60 p-3 rounded-xl border border-amber-200 hover:border-amber-400 transition">
-                    <div class="min-w-0 flex-1">
-                      <div class="font-display font-black text-xs sm:text-sm text-slate-900 leading-tight">{item.name}</div>
-                      <div class="text-[10px] text-slate-600 mt-0.5">{item.description}</div>
-                      <div class="font-mono font-black text-xs text-amber-800 mt-1" data-conv-price-id={item.id}>{formatPrice(item.price)}</div>
-                    </div>
-                    <button
-                      type="button"
-                      data-id={item.id}
-                      data-name={item.name}
-                      data-price={item.price}
-                      data-cat="convenios_clinica"
-                      data-menu="convenios"
-                      data-customizable="false"
-                      class="btn-add-cart w-8 h-8 rounded-full bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-black text-sm flex items-center justify-center shadow-xs transition active:scale-90 cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-                ))}
-            </div>
           </div>
         </div>
 
@@ -1594,6 +1610,42 @@ const searchableCatalog = allPosProducts.map((p) => ({
       }, 4000);
     }
 
+    // VINCULAR AUTOMÁTICAMENTE CLIENTE INSTITUCIONAL CLÍNICA PRIMERO DE MAYO (PACIENTES)
+    function linkClinicaPrimeroDeMayoPacientes() {
+      // 1. Establecer tipo de pedido en Domicilio
+      setOrderType('domicilio');
+
+      // 2. Activar método de pago FIADO automáticamente
+      const fiadoBtn = document.querySelector('.pay-btn[data-method="fiado"]');
+      if (fiadoBtn) {
+        // @ts-ignore
+        fiadoBtn.click();
+      }
+
+      // 3. Vincular datos institucionales del cliente CONV-CLINICA-PAC
+      applySelectedCustomer({
+        id: 9001,
+        nombre: 'Clínica Primero de Mayo (Pacientes)',
+        telefono: 'CONV-CLINICA-PAC',
+        direccion: 'Clínica Primero de Mayo - Área Hospitalización',
+        barrio: 'Convenio Institucional Pacientes',
+        notes: 'Dietas hospitalarias + Domicilios por turno',
+        es_institucional: true
+      });
+
+      // 4. Si la cantidad de domicilios está en 0, sugerir 1 domicilio por defecto
+      if (clinicaDomiciliosCountInput) {
+        // @ts-ignore
+        if (Number(clinicaDomiciliosCountInput.value || 0) === 0) {
+          // @ts-ignore
+          clinicaDomiciliosCountInput.value = '1';
+        }
+        syncClinicaDomiciliosBadge();
+      }
+
+      showToast('🏥 Clínica Primero de Mayo', 'Vinculado a CONV-CLINICA-PAC (Domicilio · Fiado)');
+    }
+
     // MENU MODE SWITCHER (ALMUERZOS VS COMIDAS RÁPIDAS VS CONVENIOS & CLÍNICA)
     function setMenuMode(mode) {
       activeMenuMode = mode;
@@ -1608,7 +1660,10 @@ const searchableCatalog = allPosProducts.map((p) => ({
       activeTab?.classList.add('bg-parrilla-gold', 'text-white', 'shadow-sm', 'active');
       activeTab?.classList.remove('text-parrilla-ivory', 'hover:text-parrilla-gold');
 
+      const universalSearchContainer = document.getElementById('pos-universal-search-container');
+
       if (mode === 'rapidas') {
+        universalSearchContainer?.classList.remove('hidden');
         posFiltersAlmuerzo?.classList.add('hidden');
         posFiltersRapidas?.classList.remove('hidden');
         if (searchInput) {
@@ -1616,13 +1671,13 @@ const searchableCatalog = allPosProducts.map((p) => ({
           searchInput.placeholder = '🔍 Buscar comida rápida... (ej: hamburguesa, perro, salchipapa, jugo)';
         }
       } else if (mode === 'convenios') {
+        // Ocultar buscador universal en vista Convenios & Clínica y vincular cliente automáticamente
+        universalSearchContainer?.classList.add('hidden');
         posFiltersAlmuerzo?.classList.add('hidden');
         posFiltersRapidas?.classList.add('hidden');
-        if (searchInput) {
-          // @ts-ignore
-          searchInput.placeholder = '🔍 Buscar dieta clínica o plato de convenio... (ej: hiposódica, líquida, terpel, tubo)';
-        }
+        linkClinicaPrimeroDeMayoPacientes();
       } else {
+        universalSearchContainer?.classList.remove('hidden');
         posFiltersRapidas?.classList.add('hidden');
         posFiltersAlmuerzo?.classList.remove('hidden');
         if (searchInput) {
@@ -2155,13 +2210,14 @@ const searchableCatalog = allPosProducts.map((p) => ({
       closeGarnishModal();
     });
 
-    // 1-CLICK: Agregar plato al carrito sin bloquear con modal
-    function addDishToCartInOneClick({ id, name, price, isCustomizable, category_id, menu_type }) {
+    // 1-CLICK: Agregar plato al carrito sin bloquear con modal (soporta cantidades directas)
+    function addDishToCartInOneClick({ id, name, price, isCustomizable, category_id, menu_type, quantity = 1 }) {
       const numPrice = Number(price);
       const isRapFood = isRapidasFoodProduct({ id, name, category_id, menu_type });
       const isHospitalDiet = isHospitalDietProduct({ id, name, category_id, menu_type });
       const isJuice = isJuiceProduct(name, category_id);
       const isDrink = isDrinkProduct(name, category_id);
+      const addQty = Math.max(1, parseInt(String(quantity || 1), 10) || 1);
 
       if (isCustomizable) {
         const isFixed = isFixedGarnishDish(name);
@@ -2170,28 +2226,30 @@ const searchableCatalog = allPosProducts.map((p) => ({
         const principleOptions = [...(dailySpecialsData.principios || []), 'Sin Principio'];
         const sideOptions = [...(dailySpecialsData.acompanamientos || []), 'Sin Acompañamiento'];
 
-        const item = {
-          uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-          id: id || name,
-          name,
-          price: numPrice,
-          quantity: 1,
-          category_id: category_id || 'fuertes_165',
-          isCustomizable: true,
-          isFixedGarnish: isFixed,
-          isRapidasFood: false,
-          isJuice: false,
-          isDrink: false,
-          soup: soupOptions[0],
-          principle: isFixed ? null : (principleOptions[0] || 'Sin Principio'),
-          side: isFixed ? null : (sideOptions[0] || 'Sin Acompañamiento'),
-          salad: isFixed ? null : 'Con ensalada',
-          packaging: globalPackagingType,
-          extraNotes: '',
-          notes: ''
-        };
-        item.notes = buildPlateNotes(item);
-        cart.push(item);
+        for (let q = 0; q < addQty; q++) {
+          const item = {
+            uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '_' + q,
+            id: id || name,
+            name,
+            price: numPrice,
+            quantity: 1,
+            category_id: category_id || 'fuertes_165',
+            isCustomizable: true,
+            isFixedGarnish: isFixed,
+            isRapidasFood: false,
+            isJuice: false,
+            isDrink: false,
+            soup: soupOptions[0],
+            principle: isFixed ? null : (principleOptions[0] || 'Sin Principio'),
+            side: isFixed ? null : (sideOptions[0] || 'Sin Acompañamiento'),
+            salad: isFixed ? null : 'Con ensalada',
+            packaging: globalPackagingType,
+            extraNotes: '',
+            notes: ''
+          };
+          item.notes = buildPlateNotes(item);
+          cart.push(item);
+        }
 
       } else if (isRapFood) {
         const item = {
@@ -2199,7 +2257,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
           id: id || name,
           name,
           price: numPrice,
-          quantity: 1,
+          quantity: addQty,
           category_id: category_id || 'rapidas',
           isCustomizable: false,
           isRapidasFood: true,
@@ -2213,20 +2271,28 @@ const searchableCatalog = allPosProducts.map((p) => ({
         cart.push(item);
 
       } else if (isHospitalDiet) {
+        // Clave compuesta: id + ubicación seleccionada para separar por pabellón/torre
         const targetLoc = currentActiveHospitalLocation || 'Torre A';
+        const locCode = targetLoc.replace(/\s+/g, '_').toUpperCase();
+        const baseId = id || name;
+        const cartKey = `${baseId}_${locCode}`;
+
         const existing = cart.find(
-          (it) => it.isHospitalDiet && it.name === name && (it.hospitalLocation || 'Torre A') === targetLoc
+          (it) => it.isHospitalDiet && (it.cartKey === cartKey || (it.name === name && (it.hospitalLocation || 'Torre A') === targetLoc))
         );
         if (existing) {
-          existing.quantity += 1;
+          existing.quantity += addQty;
+          existing.cartKey = cartKey;
+          existing.hospitalLocation = targetLoc;
           existing.notes = buildPlateNotes(existing);
         } else {
           const item = {
             uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
             id: id || name,
+            cartKey: cartKey,
             name,
             price: numPrice,
-            quantity: 1,
+            quantity: addQty,
             category_id: category_id || 'convenios_clinica',
             isCustomizable: false,
             isRapidasFood: false,
@@ -2336,10 +2402,10 @@ const searchableCatalog = allPosProducts.map((p) => ({
       }
     }
 
-    // Delegación global para botones '+' (.btn-add-cart) tanto del Menú Rápido como del Buscador (1-CLIC directo)
+    // Delegación global para botones '+' (.btn-add-cart) y botones rápidos (+1, +5, +10) (.btn-add-cart-qty)
     document.addEventListener('click', (e) => {
       // @ts-ignore
-      const btn = e.target.closest('.btn-add-cart');
+      const btn = e.target.closest('.btn-add-cart, .btn-add-cart-qty');
       if (!btn || btn.disabled || btn.getAttribute('data-sold-out') === 'true') return;
 
       btn.classList.add('ring-4', 'ring-emerald-400', 'bg-emerald-600', 'scale-110');
@@ -2353,8 +2419,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
       const id = btn.getAttribute('data-id') || name;
       const category_id = btn.getAttribute('data-cat') || '';
       const menu_type = btn.getAttribute('data-menu') || '';
+      const quantity = parseInt(btn.getAttribute('data-qty') || '1', 10) || 1;
 
-      addDishToCartInOneClick({ id, name, price, isCustomizable, category_id, menu_type });
+      addDishToCartInOneClick({ id, name, price, isCustomizable, category_id, menu_type, quantity });
     });
 
     // Controladores de Empaques Globales (Caja / Icopor y Cantidad)
@@ -2686,9 +2753,17 @@ const searchableCatalog = allPosProducts.map((p) => ({
               </div>
               
               <!-- Quantity Controls -->
-              <div class="flex items-center gap-1 bg-white px-1.5 py-1 rounded-lg border border-parrilla-border">
+              <div class="flex items-center gap-1 bg-white px-1 py-1 rounded-lg border border-parrilla-border">
                 <button type="button" class="btn-qty-minus text-parrilla-muted hover:text-red-500 font-bold px-1.5 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}">-</button>
-                <span class="font-bold text-xs text-parrilla-ivory px-1 min-w-[14px] text-center">${item.quantity}</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="999"
+                  value="${item.quantity}"
+                  class="cart-qty-input w-12 text-center font-black text-xs text-slate-900 bg-slate-50 border border-slate-200 rounded py-0.5 outline-none focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  data-uid="${item.uid}"
+                  title="Escribe la cantidad directamente"
+                />
                 <button type="button" class="btn-qty-plus text-parrilla-muted hover:text-parrilla-gold font-bold px-1.5 cursor-pointer" data-uid="${item.uid}" data-idx="${idx}">+</button>
               </div>
 
@@ -2769,6 +2844,35 @@ const searchableCatalog = allPosProducts.map((p) => ({
         });
       });
 
+      // Entrada directa de cantidades por teclado
+      document.querySelectorAll('.cart-qty-input').forEach((inp) => {
+        inp.addEventListener('change', (e) => {
+          // @ts-ignore
+          const uid = e.target.getAttribute('data-uid');
+          const item = cart.find((it) => it.uid === uid);
+          if (!item) return;
+          // @ts-ignore
+          let val = parseInt(e.target.value, 10);
+          if (isNaN(val) || val < 1) val = 1;
+          item.quantity = val;
+          if (item.isHospitalDiet) {
+            item.notes = buildPlateNotes(item);
+          }
+          if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
+            packagingQty = countFoodPlates();
+          }
+          syncHospitalHipoWaterInCart();
+          renderCart();
+        });
+        inp.addEventListener('keydown', (e) => {
+          // @ts-ignore
+          if (e.key === 'Enter') {
+            // @ts-ignore
+            e.target.blur();
+          }
+        });
+      });
+
       document.querySelectorAll('.btn-remove-item').forEach((b) => {
         b.addEventListener('click', (e) => {
           // @ts-ignore
@@ -2803,6 +2907,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
                 mergeTarget.quantity += item.quantity;
                 const idx = cart.indexOf(item);
                 if (idx !== -1) cart.splice(idx, 1);
+              } else {
+                item.hospitalLocation = target.value;
+                item.cartKey = `${item.id || item.name}_${target.value.replace(/\s+/g, '_').toUpperCase()}`;
               }
             }
             item.notes = buildPlateNotes(item);
@@ -3818,8 +3925,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
       const detallesPayload = cart.map((item) => {
         let finalNotes = item.notes || '';
-        if (item.isHospitalDiet) {
-          const loc = item.hospitalLocation || 'Torre A';
+        const loc = item.hospitalLocation || (item.isHospitalDiet ? (currentActiveHospitalLocation || 'Torre A') : null);
+        if (item.isHospitalDiet && loc) {
           const tag = getHospitalDietTag(item.name, loc);
           if (!finalNotes.includes(tag)) {
             finalNotes = `${tag} ${finalNotes}`.trim();
@@ -3834,7 +3941,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
           precio_unitario: Number(item.price || 0),
           notas_item: finalNotes,
           notas: finalNotes,
-          ubicacion_hospitalaria: item.hospitalLocation || null
+          ubicacion_hospitalaria: loc,
+          ubicacion: loc
         };
       });
 
@@ -4014,7 +4122,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
             notes: notes || '',
             packaging: packaging || globalPackagingType,
             isHospitalDiet: !!isHospitalDiet,
-            hospitalLocation: hospitalLocation || null
+            hospitalLocation: hospitalLocation || null,
+            ubicacion: hospitalLocation || null
           })),
           subtotal: meta.subtotal,
           packagingFee: meta.packagingFee,
@@ -4232,7 +4341,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
             notes: notes || '',
             packaging: packaging || globalPackagingType,
             isHospitalDiet: !!isHospitalDiet,
-            hospitalLocation: hospitalLocation || null
+            hospitalLocation: hospitalLocation || null,
+            ubicacion: hospitalLocation || null
           })),
           subtotal,
           packagingFee,
@@ -4368,7 +4478,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
             notes: notes || '',
             packaging: packaging || globalPackagingType,
             isHospitalDiet: !!isHospitalDiet,
-            hospitalLocation: hospitalLocation || null
+            hospitalLocation: hospitalLocation || null,
+            ubicacion: hospitalLocation || null
           })),
           subtotal: meta.subtotal,
           packagingFee: meta.packagingFee,
@@ -5223,6 +5334,10 @@ const searchableCatalog = allPosProducts.map((p) => ({
         const mesaParam = params.get('mesa');
         const pedidoIdParam = params.get('pedido_id');
         const tipoParam = params.get('tipo');
+        const menuParam = params.get('menu');
+
+        if (menuParam === 'convenios') setMenuMode('convenios');
+        else if (menuParam === 'rapidas') setMenuMode('rapidas');
 
         if (tipoParam === 'domicilio') setOrderType('domicilio');
         else if (tipoParam === 'para_llevar') setOrderType('para_llevar');

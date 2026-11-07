@@ -274,6 +274,7 @@ class DetallePedidoCreate(BaseModel):
     notas_item: Optional[str] = None
     notas: Optional[str] = None
     ubicacion_hospitalaria: Optional[str] = None
+    ubicacion: Optional[str] = None
 
 class DetallePedidoOut(BaseModel):
     id: int
@@ -285,6 +286,7 @@ class DetallePedidoOut(BaseModel):
     precio_unitario: float
     notas_item: Optional[str] = None
     ubicacion_hospitalaria: Optional[str] = None
+    ubicacion: Optional[str] = None
     plato: PlatoOut
     sopa: Optional[SopaOut] = None
     principio: Optional[PrincipioOut] = None
@@ -474,6 +476,7 @@ class ItemImpresionOut(BaseModel):
     acompanamiento: Optional[str] = None
     empaque: Optional[str] = None
     ubicacion_hospitalaria: Optional[str] = None
+    ubicacion: Optional[str] = None
     notas: Optional[str] = None
     notas_item: Optional[str] = None
 

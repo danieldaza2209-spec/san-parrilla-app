@@ -821,8 +821,9 @@ def anexar_a_pedido_mesa(
             precio_item = float(plato.precio or 0.0)
 
         notas_item = det.notas_item if det.notas_item is not None else det.notas
-        if getattr(det, "ubicacion_hospitalaria", None):
-            loc_tag = f"[{det.ubicacion_hospitalaria.upper()}]"
+        loc = getattr(det, "ubicacion_hospitalaria", None) or getattr(det, "ubicacion", None)
+        if loc:
+            loc_tag = f"[{loc.upper()}]"
             if not notas_item:
                 notas_item = loc_tag
             elif loc_tag not in notas_item.upper():
@@ -966,8 +967,9 @@ def crear_pedido(db: Session, pedido_in: schemas.PedidoCreate) -> models.Pedido:
         subtotal_item = precio_item * det.cantidad
         subtotal_calculado += subtotal_item
         notas_item = det.notas_item if det.notas_item is not None else det.notas
-        if getattr(det, "ubicacion_hospitalaria", None):
-            loc_tag = f"[{det.ubicacion_hospitalaria.upper()}]"
+        loc = getattr(det, "ubicacion_hospitalaria", None) or getattr(det, "ubicacion", None)
+        if loc:
+            loc_tag = f"[{loc.upper()}]"
             if not notas_item:
                 notas_item = loc_tag
             elif loc_tag not in notas_item.upper():
@@ -1058,8 +1060,9 @@ def aprobar_pedido_borrador(
                 )
                 nuevo_subtotal += precio_item * det.cantidad
                 notas_item = det.notas_item if det.notas_item is not None else det.notas
-                if getattr(det, "ubicacion_hospitalaria", None):
-                    loc_tag = f"[{det.ubicacion_hospitalaria.upper()}]"
+                loc = getattr(det, "ubicacion_hospitalaria", None) or getattr(det, "ubicacion", None)
+                if loc:
+                    loc_tag = f"[{loc.upper()}]"
                     if not notas_item:
                         notas_item = loc_tag
                     elif loc_tag not in notas_item.upper():
@@ -1209,8 +1212,9 @@ def actualizar_pedido(
 
             nuevo_subtotal += precio_item * det.cantidad
             notas_item = det.notas_item if det.notas_item is not None else det.notas
-            if getattr(det, "ubicacion_hospitalaria", None):
-                loc_tag = f"[{det.ubicacion_hospitalaria.upper()}]"
+            loc = getattr(det, "ubicacion_hospitalaria", None) or getattr(det, "ubicacion", None)
+            if loc:
+                loc_tag = f"[{loc.upper()}]"
                 if not notas_item:
                     notas_item = loc_tag
                 elif loc_tag not in notas_item.upper():

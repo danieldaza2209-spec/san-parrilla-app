@@ -390,6 +390,7 @@ def _mapear_items_impresion(detalles) -> List[schemas.ItemImpresionOut]:
                 acompanamiento=acomp,
                 empaque=empaque,
                 ubicacion_hospitalaria=ubicacion,
+                ubicacion=ubicacion,
                 notas=notas_limpias,
                 notas_item=det.notas_item,
             )
