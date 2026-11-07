@@ -212,6 +212,13 @@ const formatPrice = (val) => {
           </button>
           <button
             type="button"
+            data-courier="DOMICILIOS"
+            class="audit-courier-btn px-3 py-1.5 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-blue-500 transition flex items-center gap-1.5"
+          >
+            <span>🛵 Domicilios</span>
+          </button>
+          <button
+            type="button"
             data-courier="MESA_LLEVAR"
             class="audit-courier-btn px-3 py-1.5 rounded-xl font-bold text-xs border border-parrilla-border bg-parrilla-dark text-parrilla-ivory hover:border-blue-500 transition flex items-center gap-1.5"
           >
@@ -362,13 +369,13 @@ const formatPrice = (val) => {
               />
             </div>
             <div>
-              <label class="block text-xs font-bold uppercase text-parrilla-muted mb-1">🛵 Mensajero (Domicilio)</label>
-              <input
-                type="text"
-                id="edit-order-courier"
-                placeholder="Sin asignar"
-                class="w-full px-3 py-2 bg-parrilla-dark rounded-xl border border-parrilla-border text-xs text-parrilla-ivory focus:border-parrilla-gold outline-none"
-              />
+              <label class="block text-xs font-bold text-gray-700 mb-1">🛵 MENSAJERO (DOMICILIO)</label>
+              <select
+                id="edit-modal-mensajero"
+                class="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-amber-500 outline-none cursor-pointer"
+              >
+                <option value="">-- Sin asignar --</option>
+              </select>
             </div>
           </div>
 
@@ -1895,20 +1902,99 @@ const formatPrice = (val) => {
     }
 
     function getAdminActiveCouriersList() {
-      const set = new Set();
-      allAdminCouriers.filter(c => c.activo !== false).forEach(c => {
-        if (c.nombre && c.nombre.trim()) set.add(c.nombre.trim());
+      const map = new Map();
+      (allAdminCouriers || []).filter(c => c.activo !== false).forEach(c => {
+        if (c.nombre && c.nombre.trim()) {
+          const key = c.nombre.trim().toLowerCase();
+          if (!map.has(key)) map.set(key, c.nombre.trim());
+        }
       });
-      if (set.size === 0) {
-        FALLBACK_ADMIN_COURIERS.forEach(n => set.add(n));
+      if (map.size === 0) {
+        FALLBACK_ADMIN_COURIERS.forEach(n => {
+          const key = n.trim().toLowerCase();
+          if (!map.has(key)) map.set(key, n.trim());
+        });
       }
       for (const p of allAuditOrders) {
         const cName = p.mensajero_nombre || p.courier_name;
         if (cName && String(cName).trim()) {
-          set.add(String(cName).trim());
+          const trimmed = String(cName).trim();
+          const key = trimmed.toLowerCase();
+          if (!map.has(key)) {
+            map.set(key, trimmed);
+          }
         }
       }
-      return Array.from(set);
+      return Array.from(map.values());
+    }
+
+    function populateEditModalMensajerosSelect(selectedCourierName, selectedCourierId) {
+      // @ts-ignore
+      const select = document.getElementById('edit-modal-mensajero');
+      if (!select) return;
+
+      const targetName = (selectedCourierName || '').trim();
+      const targetId = selectedCourierId ? Number(selectedCourierId) : null;
+
+      const map = new Map();
+
+      // 1. Catálogo maestro de mensajeros (de GET /api/mensajeros)
+      (allAdminCouriers || []).forEach(c => {
+        if (c && c.nombre && c.nombre.trim()) {
+          const key = c.nombre.trim().toLowerCase();
+          if (!map.has(key)) {
+            map.set(key, {
+              id: c.id,
+              nombre: c.nombre.trim(),
+              activo: c.activo !== false
+            });
+          }
+        }
+      });
+
+      // 2. Si no hay registrados en memoria, usar el catálogo de respaldo
+      if (map.size === 0) {
+        FALLBACK_ADMIN_COURIERS.forEach((n, idx) => {
+          const key = n.trim().toLowerCase();
+          if (!map.has(key)) {
+            map.set(key, { id: idx + 1, nombre: n.trim(), activo: true });
+          }
+        });
+      }
+
+      // 3. Si el pedido tiene un mensajero asignado y no está en el mapa, agregarlo
+      if (targetName && !map.has(targetName.toLowerCase())) {
+        map.set(targetName.toLowerCase(), {
+          id: targetId,
+          nombre: targetName,
+          activo: true
+        });
+      }
+
+      // 4. Opciones ordenadas alfabéticamente
+      let html = '<option value="">-- Sin asignar --</option>';
+      const list = Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+
+      let selectedIndexToSet = 0;
+      let currentIndex = 1;
+
+      list.forEach(c => {
+        const isMatched =
+          (targetId && c.id && Number(c.id) === targetId) ||
+          (targetName && c.nombre.toLowerCase() === targetName.toLowerCase());
+
+        if (isMatched) {
+          selectedIndexToSet = currentIndex;
+        }
+
+        const optVal = c.id ? String(c.id) : `name:${c.nombre}`;
+        const label = c.nombre + (c.activo === false ? ' (Inactivo)' : '');
+        html += `<option value="${optVal}" data-nombre="${c.nombre}" data-id="${c.id || ''}" ${isMatched ? 'selected' : ''}>${label}</option>`;
+        currentIndex++;
+      });
+
+      select.innerHTML = html;
+      select.selectedIndex = selectedIndexToSet;
     }
 
     const METHOD_LABELS = {
@@ -1954,6 +2040,7 @@ const formatPrice = (val) => {
 
       const baseButtons = [
         { key: 'ALL', label: '👥 Todos' },
+        { key: 'DOMICILIOS', label: '🛵 Domicilios' },
         { key: 'MESA_LLEVAR', label: '🏠 Mesa / Para Llevar' },
         ...couriers.map(c => ({ key: c, label: `🛵 ${c}` }))
       ];
@@ -2106,18 +2193,22 @@ const formatPrice = (val) => {
 
     function matchesCourierFilter(p) {
       if (currentCourierFilter === 'ALL') return true;
+      const isDom = String(p.tipo || '').toUpperCase() === 'DOMICILIO' || Boolean(p.mensajero_nombre || p.courier_name);
+      if (currentCourierFilter === 'DOMICILIOS') {
+        return isDom;
+      }
       if (currentCourierFilter === 'MESA_LLEVAR') {
-        return p.tipo !== 'DOMICILIO';
+        return !isDom;
       }
       const courier = (p.mensajero_nombre || p.courier_name || '').trim().toLowerCase();
-      return p.tipo === 'DOMICILIO' && courier === currentCourierFilter.toLowerCase();
+      return courier === currentCourierFilter.toLowerCase();
     }
 
     function updateCourierSettlementCard() {
       const card = document.getElementById('courier-settlement-card');
       if (!card) return;
 
-      if (currentCourierFilter === 'ALL' || currentCourierFilter === 'MESA_LLEVAR') {
+      if (currentCourierFilter === 'ALL' || currentCourierFilter === 'MESA_LLEVAR' || currentCourierFilter === 'DOMICILIOS') {
         card.classList.add('hidden');
         return;
       }
@@ -2125,7 +2216,6 @@ const formatPrice = (val) => {
       card.classList.remove('hidden');
       const courierOrders = allAuditOrders.filter(p =>
         p.estado !== 'CANCELADO' &&
-        p.tipo === 'DOMICILIO' &&
         (p.mensajero_nombre || p.courier_name || '').trim().toLowerCase() === currentCourierFilter.toLowerCase()
       );
 
@@ -2144,6 +2234,12 @@ const formatPrice = (val) => {
             else if (m === 'FIADO') fiadoTotal += amt;
             else digitalTotal += amt;
           }
+        } else if (p.estado === 'PAGADO' || p.estado === 'ENTREGADO') {
+          const m = getOrderPrimaryMethod(p);
+          const amt = Number(p.total || 0);
+          if (m === 'CASH') cashCollected += amt;
+          else if (m === 'FIADO') fiadoTotal += amt;
+          else digitalTotal += amt;
         }
       }
 
@@ -2241,10 +2337,11 @@ const formatPrice = (val) => {
         const isCancelled = p.estado === 'CANCELADO';
         const isPaid = p.estado === 'PAGADO' || p.estado === 'ENTREGADO' || (Array.isArray(p.payments) && p.payments.length > 0);
 
+        const isDelivery = String(p.tipo || '').toUpperCase() === 'DOMICILIO' || Boolean(p.mensajero_nombre || p.courier_name);
         let tipoBadge = '';
         if (p.tipo === 'MESA') {
           tipoBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 font-bold text-[11px]">🍽️ ${p.mesa || 'Mesa'}</span>`;
-        } else if (p.tipo === 'DOMICILIO') {
+        } else if (isDelivery) {
           tipoBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-100 text-blue-900 font-bold text-[11px]">🛵 Domicilio</span>`;
         } else {
           tipoBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-100 text-purple-900 font-bold text-[11px]">🛍️ Para Llevar</span>`;
@@ -2262,11 +2359,11 @@ const formatPrice = (val) => {
         }).join(', ') || 'Sin detalles';
 
         const cName = p.mensajero_nombre || p.courier_name;
-        const courierHtml = (p.tipo === 'DOMICILIO' && cName)
+        const courierHtml = (isDelivery && cName)
           ? `<span class="block text-[11px] font-bold text-blue-700 mt-0.5">🛵 Mensajero: ${cName}</span>`
-          : (p.tipo === 'DOMICILIO' ? `<span class="block text-[10px] text-parrilla-muted mt-0.5">🛵 Sin mensajero asignado</span>` : '');
+          : (isDelivery ? `<span class="block text-[10px] text-parrilla-muted mt-0.5">🛵 Sin mensajero asignado</span>` : '');
 
-        const dirHtml = (p.tipo === 'DOMICILIO' && p.mesa)
+        const dirHtml = (isDelivery && p.mesa)
           ? `<span class="block text-[10px] text-parrilla-muted truncate max-w-[200px]" title="${p.mesa}">📍 ${p.mesa}</span>`
           : '';
 
@@ -2371,7 +2468,7 @@ const formatPrice = (val) => {
       throw new Error(errData.detail || errData.error || 'No se pudo actualizar el pedido');
     }
 
-    function openEditOrderModal(orderId) {
+    async function openEditOrderModal(orderId) {
       const order = allAuditOrders.find(o => Number(o.id) === Number(orderId));
       if (!order) return;
 
@@ -2388,8 +2485,6 @@ const formatPrice = (val) => {
       // @ts-ignore
       const mesaInput = document.getElementById('edit-order-mesa');
       // @ts-ignore
-      const courierInput = document.getElementById('edit-order-courier');
-      // @ts-ignore
       const feeInput = document.getElementById('edit-order-delivery-fee');
       // @ts-ignore
       const estadoSelect = document.getElementById('edit-order-estado');
@@ -2404,7 +2499,13 @@ const formatPrice = (val) => {
       if (clienteInput) clienteInput.value = order.cliente_nombre || '';
       if (telInput) telInput.value = order.cliente_telefono || '';
       if (mesaInput) mesaInput.value = order.mesa || '';
-      if (courierInput) courierInput.value = order.mensajero_nombre || order.courier_name || '';
+
+      // Poblar el menú desplegable de mensajeros dinámicamente y preseleccionar
+      if (!allAdminCouriers || allAdminCouriers.length === 0) {
+        await loadAdminCouriers(true);
+      }
+      populateEditModalMensajerosSelect(order.mensajero_nombre || order.courier_name, order.mensajero_id);
+
       if (feeInput) feeInput.value = String(order.delivery_fee || 0);
       if (estadoSelect) estadoSelect.value = order.estado || 'PAGADO';
       if (notasInput) notasInput.value = order.notas || '';
@@ -2453,8 +2554,24 @@ const formatPrice = (val) => {
       const cliente_telefono = document.getElementById('edit-order-telefono')?.value?.trim() || '';
       // @ts-ignore
       const mesa = document.getElementById('edit-order-mesa')?.value?.trim() || '';
+
+      // Obtener mensajero seleccionado del select
       // @ts-ignore
-      const courier_name = document.getElementById('edit-order-courier')?.value?.trim() || '';
+      const courierSelect = document.getElementById('edit-modal-mensajero');
+      let courier_name = '';
+      let courier_id = null;
+      if (courierSelect && courierSelect.value) {
+        const selOpt = courierSelect.options[courierSelect.selectedIndex];
+        courier_name = (selOpt?.getAttribute('data-nombre') || selOpt?.textContent?.replace(' (Inactivo)', '') || '').trim();
+        const rawVal = courierSelect.value;
+        if (rawVal && !rawVal.startsWith('name:') && !isNaN(Number(rawVal))) {
+          courier_id = Number(rawVal);
+        } else {
+          const matched = allAdminCouriers.find(c => c.nombre && c.nombre.trim().toLowerCase() === courier_name.toLowerCase());
+          if (matched && matched.id) courier_id = matched.id;
+        }
+      }
+
       // @ts-ignore
       const delivery_fee = Number(document.getElementById('edit-order-delivery-fee')?.value || 0);
       // @ts-ignore
@@ -2471,17 +2588,54 @@ const formatPrice = (val) => {
           cliente_nombre,
           cliente_telefono,
           mesa,
-          courier_name,
-          mensajero_nombre: courier_name,
+          courier_name: courier_name || null,
+          mensajero_nombre: courier_name || null,
+          mensajero_id: courier_id || null,
           delivery_fee,
           estado,
           notas
         };
-        const matchedCourier = allAdminCouriers.find(c => c.nombre && c.nombre.toLowerCase() === courier_name.toLowerCase());
-        if (matchedCourier) {
-          payload.mensajero_id = matchedCourier.id;
+        if (courier_name) {
+          payload.tipo = 'DOMICILIO';
         }
-        await changeOrderPaymentMethodAndDetails(orderId, payload);
+
+        const updatedOrder = await changeOrderPaymentMethodAndDetails(orderId, payload);
+
+        // Actualización inmediata en memoria para reflejar cambios en tiempo real
+        const existingOrder = allAuditOrders.find(o => Number(o.id) === orderId);
+        if (existingOrder) {
+          existingOrder.mensajero_nombre = courier_name || null;
+          existingOrder.courier_name = courier_name || null;
+          existingOrder.mensajero_id = courier_id || null;
+          if (courier_name) existingOrder.tipo = 'DOMICILIO';
+          existingOrder.delivery_fee = delivery_fee;
+          existingOrder.mesa = mesa;
+          existingOrder.cliente_nombre = cliente_nombre;
+          existingOrder.cliente_telefono = cliente_telefono;
+          existingOrder.estado = estado;
+          existingOrder.notas = notas;
+          if (payment_method && Array.isArray(existingOrder.payments) && existingOrder.payments.length > 0) {
+            existingOrder.payments[0].method = payment_method;
+            existingOrder.payments[0].amount = existingOrder.total;
+          }
+          if (updatedOrder && typeof updatedOrder === 'object') {
+            Object.assign(existingOrder, updatedOrder);
+          }
+        }
+
+        // Si el mensajero asignado es nuevo y no está en allAdminCouriers, incorporarlo
+        if (courier_name && !allAdminCouriers.some(c => c.nombre && c.nombre.trim().toLowerCase() === courier_name.toLowerCase())) {
+          allAdminCouriers.push({
+            id: courier_id || Date.now(),
+            nombre: courier_name,
+            telefono: null,
+            activo: true
+          });
+        }
+
+        // Sincronización en cascada: regenerar botones superiores de mensajero, recalcular fletes y re-renderizar tabla
+        updateAuditTabsAndRender();
+
         closeEditOrderModal();
         showAuditToast(`✓ Pedido #SP-${orderId} actualizado (${METHOD_LABELS[payment_method] || payment_method}) y Caja recalculada.`);
         await loadLiveAdminMetrics();
@@ -3503,6 +3657,7 @@ const formatPrice = (val) => {
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      renderCourierFilterButtons();
       loadLiveSpecialsIntoAdmin();
       loadLivePlatosIntoAdmin();
       loadLiveAdminMetrics();
