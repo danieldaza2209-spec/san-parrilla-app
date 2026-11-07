@@ -16,7 +16,7 @@ const WHATSAPP = 'https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20deseo
 
 <BaseLayout title={title} description={description}>
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-parrilla-border">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <div class="w-full max-w-2xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <a href="/" class="flex items-center gap-3 group" aria-label="San Parrilla - Inicio">
         <img src="/logo.png" alt="San Parrilla" class="h-10 w-auto rounded-full ring-2 ring-parrilla-gold/30 group-hover:ring-parrilla-gold transition" />
         <div class="flex flex-col">
@@ -93,12 +93,12 @@ const WHATSAPP = 'https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20deseo
     -->
   </header>
 
-  <main class="flex-1">
+  <main class="flex-1 w-full">
     <slot />
   </main>
 
   <footer class="bg-white border-t border-parrilla-border py-8 text-xs text-parrilla-muted">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+    <div class="w-full max-w-2xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
       <div class="flex items-center gap-2">
         <span class="font-display font-bold text-parrilla-gold text-sm">SAN PARRILLA</span>
         <span>•</span>
