@@ -678,9 +678,13 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
             </div>`;
         }
       } else {
+        const isBrk = /desayuno/i.test(item.name);
         html += `
           <div class="mt-2 pt-2 border-t border-dashed border-parrilla-border">
-            <input type="text" class="item-notes w-full py-1.5 px-2.5 bg-white rounded-lg border border-parrilla-border text-xs text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition" data-id="${item.id}" placeholder="Nota opcional (ej: bien fría...)" value="${escapeHtml(item.notes || '')}">
+            <label class="block text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">
+              ${isBrk ? '📝 Especificaciones / Nota del desayuno:' : '📝 Nota opcional:'}
+            </label>
+            <input type="text" class="item-notes w-full py-1.5 px-2.5 bg-white rounded-lg border border-parrilla-border text-xs text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition" data-id="${item.id}" placeholder="${isBrk ? 'Ej: Huevos revueltos, café con leche, arepa...' : 'Nota opcional (ej: bien fría...)'}" value="${escapeHtml(item.notes || '')}">
           </div>
         `;
       }
@@ -712,7 +716,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       });
 
       const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
-      const foodPlatesCount = cart.filter((item) => item.customizable).length;
+      const foodPlatesCount = cart.filter((item) => item.customizable || /desayuno/i.test(item.name)).length;
       const packagingFee = isToGo() ? foodPlatesCount * PACKAGING_FEE : 0;
       const total = subtotal + packagingFee;
 
@@ -821,7 +825,7 @@ const labelClass = 'block text-sm font-semibold text-parrilla-ivory mb-1.5';
       const isDelivery = service === 'Domicilio';
       const isTable = service === 'Mesa';
       const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
-      const foodPlatesCount = cart.filter((item) => item.customizable).length;
+      const foodPlatesCount = cart.filter((item) => item.customizable || /desayuno/i.test(item.name)).length;
       const packagingFee = isToGo() ? foodPlatesCount * PACKAGING_FEE : 0;
       const total = subtotal + packagingFee;
       const paymentMethod = paymentSelect.value;
