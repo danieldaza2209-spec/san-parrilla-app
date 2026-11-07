@@ -19,7 +19,13 @@ const dailySpecials = getDailySpecials() || fallbackDailySpecials;
 const customizableCategories = new Set(['especiales_hoy', 'fuertes_165', 'fuertes_175', 'especiales_21']);
 
 // Separación limpia: Almuerzos (Día) vs Comidas Rápidas (Noche)
-const lunchProducts = products.filter((p) => !p.id.startsWith('rap-') && p.menu_type !== 'rapidas');
+// En la carta pública excluimos desayunos y convenios institucionales
+const lunchProducts = products.filter(
+  (p) => !p.id.startsWith('rap-') &&
+         p.menu_type !== 'rapidas' &&
+         p.category_id !== 'desayunos' &&
+         !p.name.toLowerCase().includes('desayuno')
+);
 const rapidasProducts = products.filter((p) => p.id.startsWith('rap-') || p.menu_type === 'rapidas');
 
 const rapidasCatCards = [
@@ -121,6 +127,7 @@ const formatPrice = (val) => {
         products={lunchProducts}
         dailySpecials={dailySpecials}
         customizableCategories={customizableCategories}
+        showDesayunos={false}
       />
     </div>
 

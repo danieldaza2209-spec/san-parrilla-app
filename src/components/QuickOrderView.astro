@@ -25,9 +25,15 @@ interface Props {
   products: Product[];
   dailySpecials: DailySpecials;
   customizableCategories: Set<string>;
+  showDesayunos?: boolean;
 }
 
-const { products = [], dailySpecials, customizableCategories } = Astro.props;
+const {
+  products = [],
+  dailySpecials,
+  customizableCategories,
+  showDesayunos = true,
+} = Astro.props;
 
 const formatPrice = (val: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
@@ -53,9 +59,11 @@ const priceColumns = priceLevels.map((price) => {
 
 const picadas = products.filter((p) => p.category_id === 'picadas');
 const bebidas = products.filter((p) => p.category_id === 'bebidas');
-const desayunos = products.filter(
-  (p) => p.category_id === 'desayunos' || (p.name && p.name.toLowerCase().includes('desayuno') && !p.name.toLowerCase().includes('clínica'))
-);
+const desayunos = showDesayunos
+  ? products.filter(
+      (p) => p.category_id === 'desayunos' || (p.name && p.name.toLowerCase().includes('desayuno') && !p.name.toLowerCase().includes('clínica'))
+    )
+  : [];
 ---
 
 <div id="quick-order-view" class="space-y-10 sm:space-y-14">
@@ -226,7 +234,7 @@ const desayunos = products.filter(
        SECCIÓN: DESAYUNOS (Desayuno Tubo & Desayuno Personal)
        (2 columnas desde móvil: grid-cols-2)
        ========================================================= -->
-  {desayunos.length > 0 && (
+  {showDesayunos && desayunos.length > 0 && (
     <section aria-labelledby="heading-desayunos" class="space-y-4 sm:space-y-6">
       <div class="text-center max-w-2xl mx-auto px-2">
         <span class="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-amber-700 block mb-1">
