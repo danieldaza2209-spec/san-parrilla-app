@@ -53,6 +53,9 @@ const priceColumns = priceLevels.map((price) => {
 
 const picadas = products.filter((p) => p.category_id === 'picadas');
 const bebidas = products.filter((p) => p.category_id === 'bebidas');
+const desayunos = products.filter(
+  (p) => p.category_id === 'desayunos' || (p.name && p.name.toLowerCase().includes('desayuno') && !p.name.toLowerCase().includes('clínica'))
+);
 ---
 
 <div id="quick-order-view" class="space-y-10 sm:space-y-14">
@@ -218,6 +221,69 @@ const bebidas = products.filter((p) => p.category_id === 'bebidas');
       ))}
     </div>
   </section>
+
+  <!-- =========================================================
+       SECCIÓN: DESAYUNOS (Desayuno Tubo & Desayuno Personal)
+       (2 columnas desde móvil: grid-cols-2)
+       ========================================================= -->
+  {desayunos.length > 0 && (
+    <section aria-labelledby="heading-desayunos" class="space-y-4 sm:space-y-6">
+      <div class="text-center max-w-2xl mx-auto px-2">
+        <span class="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-amber-700 block mb-1">
+          TRADICIÓN & MAÑANAS
+        </span>
+        <h2 id="heading-desayunos" class="font-display font-black text-2xl sm:text-4xl text-parrilla-ivory">
+          ☕ Desayunos
+        </h2>
+        <p class="text-xs sm:text-sm text-parrilla-muted mt-1">
+          Preparados con especificaciones y notas personalizadas en comanda.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2.5 sm:gap-5 px-1 sm:px-2">
+        {desayunos.map((item) => (
+          <div class="bg-white rounded-xl sm:rounded-2xl border-2 border-amber-300/80 hover:border-amber-500 p-3 sm:p-5 shadow-sm flex flex-col justify-between gap-2.5 transition">
+            <div>
+              <div class="flex items-center gap-1.5 mb-1.5">
+                <span class="text-xs sm:text-sm">☕</span>
+                <span class="inline-block bg-amber-100 text-amber-900 border border-amber-300 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                  Con recuadro de notas
+                </span>
+              </div>
+              <h3 class="font-display font-black text-sm sm:text-xl text-parrilla-ivory leading-tight">
+                {item.name}
+              </h3>
+              {item.description && (
+                <p class="text-[11px] sm:text-sm text-parrilla-muted mt-1 leading-snug">
+                  {item.description}
+                </p>
+              )}
+            </div>
+
+            <div class="flex items-center justify-between gap-2 pt-2 border-t border-amber-100">
+              <span class="font-display font-black text-sm sm:text-xl text-amber-800 font-mono">
+                {formatPrice(item.price)}
+              </span>
+              <button
+                type="button"
+                data-id={item.id}
+                data-name={item.name}
+                data-price={item.price}
+                data-cat={item.category_id}
+                data-menu="almuerzo"
+                data-customizable="false"
+                aria-label={`Agregar ${item.name} al pedido`}
+                class="btn-add-cart flex-shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs sm:text-sm flex items-center gap-1 transition active:scale-95 cursor-pointer shadow-xs"
+              >
+                <i data-lucide="plus" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+                <span>+ Agregar</span>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
 
   <!-- =========================================================
        3. SECCIÓN INFERIOR: PARA COMPARTIR - Picadas Especiales

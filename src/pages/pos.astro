@@ -239,6 +239,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
             <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="picada">
               🔥 Picadas
             </button>
+            <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="desayuno">
+              ☕ Desayunos
+            </button>
             <button type="button" class="pos-cat-btn px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition whitespace-nowrap cursor-pointer" data-filter-query="bebida">
               🥤 Bebidas
             </button>
@@ -489,6 +492,47 @@ const searchableCatalog = allPosProducts.map((p) => ({
                 </div>
               );
             })}
+          </div>
+
+          <!-- 3. Otros Convenios Corporativos (TuboDrilling, Terpel, etc.) -->
+          <div class="bg-white rounded-2xl border-2 border-indigo-400 p-4 sm:p-5 shadow-sm space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-indigo-700 block">🏢 Convenios Corporativos</span>
+                <h4 class="font-display font-black text-sm sm:text-base text-slate-900">Desayunos y Almuerzos Pactados</h4>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {[
+                { id: 'conv-desayuno-tubo', name: 'Desayuno Tubo', price: 14000, desc: 'Convenio TuboDrilling (con recuadro de notas)' },
+                { id: 'conv-desayuno-personal', name: 'Desayuno Personal', price: 14000, desc: 'Desayuno Personal (con recuadro de notas)' },
+                { id: 'conv-almuerzo-terpel', name: 'Almuerzo Especial Terpel', price: 16500, desc: 'Tarifa exclusiva pactada Convenio Terpel Aeropuerto' },
+              ].map((cItem) => (
+                <div
+                  class="btn-add-cart flex items-center justify-between gap-2 bg-slate-50 hover:bg-indigo-50/50 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 transition shadow-2xs cursor-pointer select-none"
+                  data-id={cItem.id}
+                  data-name={cItem.name}
+                  data-price={cItem.price}
+                  data-cat="convenios_clinica"
+                  data-menu="convenios"
+                  data-customizable="false"
+                  data-qty="1"
+                  title={`Clic para agregar 1x ${cItem.name}`}
+                >
+                  <div class="min-w-0 flex-1">
+                    <div class="font-black text-xs sm:text-sm text-slate-900 leading-tight">{cItem.name}</div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">{cItem.desc}</div>
+                    <div class="font-mono font-black text-xs text-indigo-700 mt-1">{formatPrice(cItem.price)}</div>
+                  </div>
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs transition shadow-2xs pointer-events-none"
+                  >
+                    + Agregar
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1620,6 +1664,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
       const normCat = String(item.category_id || '').toLowerCase();
       const normName = normalizeStr(item.name || '');
       if (normName.includes('botella con agua')) return false;
+      if (normName.includes('desayuno tubo') || normName.includes('desayuno personal')) return false;
 
       if (normCat === 'convenios_clinica') {
         if (normName.includes('desayuno') || normName.includes('almuerzo') || normName.includes('cena') || normName.includes('dieta')) {
@@ -1633,6 +1678,23 @@ const searchableCatalog = allPosProducts.map((p) => ({
         return true;
       }
       return false;
+    }
+
+    function isBreakfastProduct(item) {
+      if (!item) return false;
+      const normCat = String(item.category_id || '').toLowerCase();
+      const normName = normalizeStr(item.name || '');
+      const idStr = String(item.id || '').toLowerCase();
+      if (normName.includes('clinica')) return false;
+      return (
+        normCat === 'desayunos' ||
+        idStr.startsWith('des-') ||
+        idStr === 'conv-desayuno-tubo' ||
+        idStr === 'conv-desayuno-personal' ||
+        normName.includes('desayuno tubo') ||
+        normName.includes('desayuno personal') ||
+        normName === 'desayuno'
+      );
     }
 
     function getHospitalDietTag(dishName, location) {
@@ -1905,6 +1967,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
           if (subQ === 'picada') {
             return catNorm === 'picadas' || catNorm === 'picadas_noche' || nameNorm.includes('picada');
           }
+          if (subQ === 'desayuno' || subQ === 'desayunos') {
+            return catNorm === 'desayunos' || nameNorm.includes('desayuno');
+          }
 
           return (
             nameNorm.includes(subQ) ||
@@ -2155,7 +2220,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
     // Cuenta cuántos platos de comida hay en la comanda (excluye bebidas/líquidos)
     function countFoodPlates() {
       return cart.reduce((acc, it) => {
-        if (it.isRapidasFood || it.isCustomizable || it.isHospitalDiet) {
+        if (it.isRapidasFood || it.isCustomizable || it.isHospitalDiet || it.isBreakfast) {
           return acc + it.quantity;
         }
         if (it.isJuice || it.isDrink || isJuiceProduct(it.name, it.category_id) || isDrinkProduct(it.name, it.category_id)) {
@@ -2246,6 +2311,17 @@ const searchableCatalog = allPosProducts.map((p) => ({
         return parts.join(' | ');
       }
 
+      if (item.isBreakfast || isBreakfastProduct(item)) {
+        const parts = [];
+        if (currentOrderType !== 'mesa' && item.packaging) {
+          parts.push(`Empaque: ${item.packaging || globalPackagingType}`);
+        }
+        if (item.extraNotes && item.extraNotes.trim()) {
+          parts.push(`Nota: ${item.extraNotes.trim()}`);
+        }
+        return parts.join(' | ');
+      }
+
       if (item.extraNotes && item.extraNotes.trim()) {
         return `Nota: ${item.extraNotes.trim()}`;
       }
@@ -2256,7 +2332,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
     // Sincroniza las notas de empaque de todos los platos
     function updateAllItemsPackagingNotes() {
       cart.forEach((it) => {
-        if (it.isCustomizable || it.isRapidasFood || it.isJuice || it.isHospitalDiet) {
+        if (it.isCustomizable || it.isRapidasFood || it.isJuice || it.isHospitalDiet || it.isBreakfast) {
           it.notes = buildPlateNotes(it);
         }
       });
@@ -2377,6 +2453,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
     function addDishToCartInOneClick({ id, name, price, isCustomizable, category_id, menu_type, quantity = 1 }) {
       const numPrice = Number(price);
       const isHospitalDiet = isHospitalDietProduct({ id, name, category_id, menu_type });
+      const isBreakfast = isBreakfastProduct({ id, name, category_id, menu_type });
       const isRapFood = isRapidasFoodProduct({ id, name, category_id, menu_type });
       const isJuice = isJuiceProduct(name, category_id);
       const isDrink = isDrinkProduct(name, category_id);
@@ -2408,6 +2485,33 @@ const searchableCatalog = allPosProducts.map((p) => ({
         item.notes = buildPlateNotes(item);
         cart.push(item);
         syncHospitalHipoWaterInCart();
+        renderCart();
+        return;
+      }
+
+      // Si es Desayuno (Tubo o Personal): Agregar fila con recuadro para notas/especificaciones
+      if (isBreakfast) {
+        for (let q = 0; q < addQty; q++) {
+          const item = {
+            uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '_' + q,
+            id: id || name,
+            name,
+            price: numPrice,
+            quantity: 1,
+            category_id: category_id || 'desayunos',
+            isCustomizable: false,
+            isRapidasFood: false,
+            isJuice: false,
+            isDrink: false,
+            isBreakfast: true,
+            hasNotesBox: true,
+            packaging: globalPackagingType,
+            extraNotes: '',
+            notes: ''
+          };
+          item.notes = buildPlateNotes(item);
+          cart.push(item);
+        }
         renderCart();
         return;
       }
@@ -2607,7 +2711,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
       globalPackagingType = 'Caja';
       updateGlobalPackagingUI();
       cart.forEach((it) => {
-        if (it.isCustomizable || it.isRapidasFood) it.packaging = 'Caja';
+        if (it.isCustomizable || it.isRapidasFood || it.isBreakfast) it.packaging = 'Caja';
       });
       updateAllItemsPackagingNotes();
       renderCart();
@@ -2617,7 +2721,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
       globalPackagingType = 'Icopor';
       updateGlobalPackagingUI();
       cart.forEach((it) => {
-        if (it.isCustomizable || it.isRapidasFood) it.packaging = 'Icopor';
+        if (it.isCustomizable || it.isRapidasFood || it.isBreakfast) it.packaging = 'Icopor';
       });
       updateAllItemsPackagingNotes();
       renderCart();
@@ -2910,6 +3014,37 @@ const searchableCatalog = allPosProducts.map((p) => ({
               </div>
             </div>
           `;
+        } else if (item.isBreakfast || item.hasNotesBox || isBreakfastProduct(item)) {
+          inlineControls = `
+            <div class="mt-2 pt-2 border-t border-dashed border-amber-300 text-[11px] space-y-1.5">
+              ${
+                currentOrderType !== 'mesa'
+                  ? `
+              <div class="flex items-center justify-between gap-2">
+                <label class="block text-[9px] font-extrabold uppercase text-amber-900 tracking-wider">📦 Empaque:</label>
+                <select class="pos-inline-select py-1 px-1.5 bg-amber-50 hover:bg-white rounded-lg border border-amber-300 text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-uid="${item.uid}">
+                  <option value="Icopor" ${item.packaging === 'Icopor' ? 'selected' : ''}>Icopor</option>
+                  <option value="Caja" ${item.packaging === 'Caja' ? 'selected' : ''}>Caja</option>
+                </select>
+              </div>
+              `
+                  : ''
+              }
+              <div>
+                <label class="block text-[9px] font-black uppercase tracking-wider text-amber-800 mb-0.5 flex items-center gap-1">
+                  <span>📝</span>
+                  <span>Especificaciones / Nota del desayuno:</span>
+                </label>
+                <input
+                  type="text"
+                  class="pos-inline-notes w-full py-1.5 px-2 bg-amber-50/70 hover:bg-white focus:bg-white rounded-lg border border-amber-300 focus:border-amber-500 text-[11px] font-medium text-parrilla-ivory placeholder:text-parrilla-muted focus:ring-1 focus:ring-amber-500 outline-none transition"
+                  data-uid="${item.uid}"
+                  placeholder="Ej: Huevos revueltos, café con leche, arepa..."
+                  value="${escapeHtml(item.extraNotes || '')}"
+                />
+              </div>
+            </div>
+          `;
         } else if (item.notes) {
           inlineControls = `<div class="text-[10px] text-parrilla-muted mt-1 leading-tight bg-slate-100/80 px-1.5 py-0.5 rounded border border-parrilla-border/60">${escapeHtml(item.notes)}</div>`;
         }
@@ -3006,12 +3141,14 @@ const searchableCatalog = allPosProducts.map((p) => ({
           if (item.isHospitalDiet) {
             item.quantity += 1;
             item.notes = buildPlateNotes(item);
-          } else if (item.isCustomizable || item.isRapidasFood || item.isJuice) {
+          } else if (item.isCustomizable || item.isRapidasFood || item.isJuice || item.isBreakfast) {
             // Duplica el plato/producto como un nuevo plato independiente para poder personalizarlo
             const cloned = {
               ...item,
               uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-              quantity: 1
+              quantity: 1,
+              extraNotes: '',
+              notes: ''
             };
             cloned.notes = buildPlateNotes(cloned);
             cart.push(cloned);
@@ -5629,6 +5766,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
         const price = Number(det.precio_unitario || det.plato?.precio || 0);
         const notes = det.notas_item || '';
         const isHosp = isHospitalDietProduct({ id: det.plato_id, name }) || /TORRE A|TORRE B|URGENCIAS/i.test(notes);
+        const isBrk = isBreakfastProduct({ id: det.plato_id, name });
         const locFromDb = det.ubicacion_hospitalaria || det.ubicacion;
         let hospLoc = locFromDb || 'Torre A';
         if (!locFromDb) {
@@ -5643,15 +5781,17 @@ const searchableCatalog = allPosProducts.map((p) => ({
           name,
           price,
           quantity: Number(det.cantidad || 1),
-          category_id: isHosp ? 'convenios_clinica' : 'fuertes_165',
+          category_id: isHosp ? 'convenios_clinica' : isBrk ? 'desayunos' : 'fuertes_165',
           isCustomizable: false,
           isRapidasFood: false,
           isJuice: false,
           isDrink: false,
           isHospitalDiet: isHosp,
+          isBreakfast: isBrk,
+          hasNotesBox: isBrk,
           hospitalLocation: hospLoc,
           ubicacion: hospLoc,
-          extraNotes: notes,
+          extraNotes: isBrk ? notes.replace(/^Nota:\s*/i, '').replace(/\|\s*Empaque:[^|]+/i, '').trim() : notes,
           notes
         };
       });

@@ -10,6 +10,7 @@ const isVercel = Boolean(process.env.VERCEL || process.env.AWS_REGION || process
 // Categorías del Menú Almuerzos
 export const lunchCategories = [
   { id: 'especiales_hoy', name: 'Especiales de Hoy', sort_order: 1 },
+  { id: 'desayunos', name: 'Desayunos', icon: '☕', sort_order: 1.5 },
   { id: 'fuertes_165', name: 'Platos Fuertes $16.500', sort_order: 2 },
   { id: 'fuertes_175', name: 'Platos Fuertes $17.500', sort_order: 3 },
   { id: 'especiales_21', name: 'Especiales & Parrilladas', sort_order: 4 },
@@ -62,6 +63,10 @@ export const fallbackDailySpecials = {
 export const lunchProductList = [
   // Plato de Prueba de Impresión Térmica SAT Q22
   { id: 'test-print-sat', name: '🔥 Combo Prueba Impresión SAT Q22', price: 1000, category_id: 'fuertes_165', description: 'Plato de prueba rápida para calibrar corte e impresión en impresora térmica SAT Q22 (80mm).', is_active: 1, is_featured: 1, sort_order: -999, menu_type: 'almuerzo' },
+
+  // Desayunos con recuadro de especificaciones / notas
+  { id: 'des-tubo', name: 'Desayuno Tubo', price: 14000, category_id: 'desayunos', description: 'Convenio TuboDrilling con notas y especificaciones.', is_active: 1, is_featured: 1, sort_order: -10, menu_type: 'almuerzo' },
+  { id: 'des-personal', name: 'Desayuno Personal', price: 14000, category_id: 'desayunos', description: 'Desayuno personal con notas y especificaciones.', is_active: 1, is_featured: 1, sort_order: -9, menu_type: 'almuerzo' },
 
   // $16.500
   { id: 't1-0', name: 'Milanesa de pollo', price: 16500, category_id: 'fuertes_165', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 0 },
@@ -266,6 +271,7 @@ export const conveniosProductList = [
   // Botella con Agua ($0) automática para dietas Hipo + Convenios Corporativos
   { id: 'conv-agua-hipo', name: 'Botella con Agua (Dieta Hipo Clínica)', price: 0, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 130, description: 'Incluida automáticamente en dietas Hiposódicas e Hipoglúcidas ($0)' },
   { id: 'conv-desayuno-tubo', name: 'Desayuno Tubo', price: 14000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 131, description: 'Convenio Corporativo TuboDrilling' },
+  { id: 'conv-desayuno-personal', name: 'Desayuno Personal', price: 14000, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 131.5, description: 'Desayuno Personal con especificaciones' },
   { id: 'conv-almuerzo-terpel', name: 'Almuerzo Especial Terpel', price: 16500, category_id: 'convenios_clinica', menu_type: 'convenios', is_active: 1, sort_order: 132, description: 'Tarifa exclusiva pactada Convenio Terpel Aeropuerto' },
 ];
 
