@@ -643,6 +643,12 @@ const desayunos = showDesayunos
         if (key === 'espaguetis con pollo' || key === 'espagueti con pollo') {
           nombre = 'Espagueti con pollo';
           key = 'espagueti con pollo';
+        } else if (key === 'picada por uno' || key === 'picada por 1' || key === 'picada x 1') {
+          nombre = 'Picada x 1';
+          key = 'picada x 1';
+          if (precio === 19500 || precio <= 0) {
+            precio = 27500;
+          }
         }
         let precio = Number(item.precio ?? item.price ?? 0);
         if (CALIBRATED_BEVERAGES_MAP.has(key)) {
@@ -717,6 +723,11 @@ const desayunos = showDesayunos
           if (key === 'espagueti con pollo' || key === 'espaguetis con pollo') {
             platoMap.set('espagueti con pollo', p);
             platoMap.set('espaguetis con pollo', p);
+          }
+          if (key === 'picada x 1' || key === 'picada por uno' || key === 'picada por 1') {
+            platoMap.set('picada x 1', p);
+            platoMap.set('picada por uno', p);
+            platoMap.set('picada por 1', p);
           }
         }
       });

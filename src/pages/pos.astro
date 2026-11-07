@@ -1925,6 +1925,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
         if (activeMenuMode === 'almuerzos' && (itemMenu === 'rapidas' || itemMenu === 'convenios')) return false;
 
         const nameNorm = normalizeStr(item.name);
+        const nameWithAliases = (nameNorm === 'picada x 1' || String(item.id) === 'pic-1')
+          ? `${nameNorm} picada por uno picada por 1 picada 1 picada personal`
+          : nameNorm;
         const descNorm = normalizeStr(item.description);
         const catNorm = normalizeStr(item.category_id);
         const priceStr = String(item.price);
@@ -1972,7 +1975,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
           }
 
           return (
-            nameNorm.includes(subQ) ||
+            nameWithAliases.includes(subQ) ||
             priceStr.includes(subQ) ||
             descNorm.includes(subQ) ||
             catNorm.includes(subQ)
@@ -3963,14 +3966,23 @@ const searchableCatalog = allPosProducts.map((p) => ({
       });
 
       catalogData.forEach((item) => {
-        const info = platoMap.get(normalizeStr(item.name));
+        const normItemName = normalizeStr(item.name);
+        let info = platoMap.get(normItemName);
+        if (!info && (normItemName === 'picada x 1' || String(item.id) === 'pic-1')) {
+          info = platoMap.get('picada x 1') || platoMap.get('picada por uno') || platoMap.get('picada por 1');
+        }
         if (info) {
-          const newPrice = Number(info.precio ?? info.price ?? item.price ?? 0);
+          let newPrice = Number(info.precio ?? info.price ?? item.price ?? 0);
+          if (newPrice === 19500 && (normItemName === 'picada x 1' || String(item.id) === 'pic-1')) {
+            newPrice = 27500;
+          }
           if (newPrice > 0) item.price = newPrice;
           const isAvail = info.disponible !== false && info.activo !== false && info.in_stock !== 0;
           item.disponible = isAvail;
           item.in_stock = isAvail ? 1 : 0;
           if (info.id) item.plato_id = info.id;
+        } else if ((normItemName === 'picada x 1' || String(item.id) === 'pic-1') && item.price === 19500) {
+          item.price = 27500;
         }
       });
 

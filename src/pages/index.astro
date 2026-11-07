@@ -31,6 +31,11 @@ try {
         livePlatosMap.set('espagueti con pollo', lp);
         livePlatosMap.set('espaguetis con pollo', lp);
       }
+      if (k === 'picada x 1' || k === 'picada por uno' || k === 'picada por 1') {
+        livePlatosMap.set('picada x 1', lp);
+        livePlatosMap.set('picada por uno', lp);
+        livePlatosMap.set('picada por 1', lp);
+      }
     }
   }
 } catch (_) {}
@@ -50,6 +55,9 @@ const CALIBRATED_BEVERAGE_PRICES: Record<string, { name: string; price: number }
   'porcion de papas a la francesa': { name: 'Porción de Papas a la Francesa', price: 5500 },
   'porcion de papa a la francesa': { name: 'Porción de Papas a la Francesa', price: 5500 },
   'porcion papas a la francesa': { name: 'Porción de Papas a la Francesa', price: 5500 },
+  'picada x 1': { name: 'Picada x 1', price: 27500 },
+  'picada por uno': { name: 'Picada x 1', price: 27500 },
+  'picada por 1': { name: 'Picada x 1', price: 27500 },
 };
 
 const seenPublicKeys = new Set<string>();
@@ -59,6 +67,8 @@ const products = rawProducts
     const n = normKey(item.name);
     if (n === 'espaguetis con pollo' || n === 'espagueti con pollo') {
       item.name = 'Espagueti con pollo';
+    } else if (n === 'picada por uno' || n === 'picada por 1') {
+      item.name = 'Picada x 1';
     }
     if (CALIBRATED_BEVERAGE_PRICES[n]) {
       item.name = CALIBRATED_BEVERAGE_PRICES[n].name;

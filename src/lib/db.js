@@ -151,7 +151,7 @@ export const lunchProductList = [
   { id: 'esp-27', name: 'Róbalo con camarones', price: 33000, category_id: 'especiales_21', description: 'Exquisito filete con camarones salteados.', is_active: 1, is_featured: 0, sort_order: 27 },
 
   // Picadas
-  { id: 'pic-1', name: 'Picada x 1', price: 19500, category_id: 'picadas', description: 'Variedad de carnes y acompañamiento para una persona.', is_active: 1, is_featured: 0, sort_order: 0 },
+  { id: 'pic-1', name: 'Picada x 1', price: 27500, category_id: 'picadas', description: 'Picada por uno. Variedad de carnes y acompañamiento para una persona.', is_active: 1, is_featured: 0, sort_order: 0 },
   { id: 'pic-2', name: 'Picada x 2', price: 30000, category_id: 'picadas', description: 'Perfecta para compartir en pareja. Incluye carnes, chorizo y papas.', is_active: 1, is_featured: 0, sort_order: 1 },
   { id: 'pic-3', name: 'Picada x 3', price: 44000, category_id: 'picadas', description: 'Gran porción familiar para tres personas.', is_active: 1, is_featured: 0, sort_order: 2 },
   { id: 'pic-4', name: 'Picada Berraca', price: 55000, category_id: 'picadas', description: 'Chicharrón crujiente, costilla, lomo y papitas criollas.', is_active: 1, is_featured: 1, sort_order: 3 },
@@ -406,7 +406,11 @@ const normProdKey = (str) =>
     .toLowerCase()
     .trim();
 
-const dishOverridesMap = new Map();
+const dishOverridesMap = new Map([
+  ['picada x 1', { precio: 27500, disponible: true }],
+  ['picada por uno', { precio: 27500, disponible: true }],
+  ['picada por 1', { precio: 27500, disponible: true }],
+]);
 
 export function setDishOverride(nameOrId, { disponible, precio } = {}) {
   const k = normProdKey(nameOrId);
@@ -421,6 +425,11 @@ export function setDishOverride(nameOrId, { disponible, precio } = {}) {
   if (k === 'espagueti con pollo' || k === 'espaguetis con pollo') {
     dishOverridesMap.set('espagueti con pollo', next);
     dishOverridesMap.set('espaguetis con pollo', next);
+  }
+  if (k === 'picada x 1' || k === 'picada por uno' || k === 'picada por 1' || k === 'pic-1') {
+    dishOverridesMap.set('picada x 1', next);
+    dishOverridesMap.set('picada por uno', next);
+    dishOverridesMap.set('picada por 1', next);
   }
 }
 
@@ -511,6 +520,9 @@ export function normalizeDecodedOverrides(rawMap = {}) {
     else if (v.d !== undefined) entry.disponible = Boolean(v.d);
     if (v.precio !== undefined && Number(v.precio) > 0) entry.precio = Number(v.precio);
     else if (v.p !== undefined && Number(v.p) > 0) entry.precio = Number(v.p);
+    if ((normK === 'picada x 1' || normK === 'picada por uno' || normK === 'picada por 1' || normK === 'pic-1') && entry.precio === 19500) {
+      entry.precio = 27500;
+    }
     if (entry.disponible !== undefined || entry.precio !== undefined) {
       out[normK] = entry;
     }

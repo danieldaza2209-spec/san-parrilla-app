@@ -123,6 +123,12 @@ export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
     } else if (key === 'porcion de papas a la francesa' || key === 'papa francesa casera' || key === 'porcion de papa a la francesa') {
       rawName = 'Porción de Papas a la Francesa';
       key = 'porcion de papas a la francesa';
+    } else if (key === 'picada por uno' || key === 'picada por 1' || key === 'picada x 1') {
+      rawName = 'Picada x 1';
+      key = 'picada x 1';
+      if (precio === 19500 || precio <= 0) {
+        precio = 27500;
+      }
     }
 
     let precio = Number(item.precio ?? item.price ?? 0);

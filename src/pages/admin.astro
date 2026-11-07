@@ -1368,7 +1368,11 @@ const formatPrice = (val) => {
     let currentPlatosFamilyTab = 'ALL';
     let currentPlatosSearch = '';
 
-    const normDishText = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const normDishText = (str) => {
+      const s = String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      if (s === 'picada por uno' || s === 'picada por 1') return 'picada x 1';
+      return s;
+    };
 
     const FIXED_PRICE_OPTIONS = [
       // Precios estándar de Almuerzos y Platos Fuertes
@@ -1396,7 +1400,10 @@ const formatPrice = (val) => {
         ['soda', { nombre: 'Soda', precio: 4500 }],
         ['porcion de papas a la francesa', { nombre: 'Porción de Papas a la Francesa', precio: 5500 }],
         ['porcion de papa a la francesa', { nombre: 'Porción de Papas a la Francesa', precio: 5500 }],
-        ['porcion papas a la francesa', { nombre: 'Porción de Papas a la Francesa', precio: 5500 }]
+        ['porcion papas a la francesa', { nombre: 'Porción de Papas a la Francesa', precio: 5500 }],
+        ['picada x 1', { nombre: 'Picada x 1', precio: 27500 }],
+        ['picada por uno', { nombre: 'Picada x 1', precio: 27500 }],
+        ['picada por 1', { nombre: 'Picada x 1', precio: 27500 }]
       ]);
       const seenKeys = new Set();
       const result = [];
@@ -1408,8 +1415,14 @@ const formatPrice = (val) => {
         if (n === 'espaguetis con pollo' || n === 'espagueti con pollo') {
           nombre = 'Espagueti con pollo';
           n = 'espagueti con pollo';
+        } else if (n === 'picada por uno' || n === 'picada por 1' || n === 'picada x 1') {
+          nombre = 'Picada x 1';
+          n = 'picada x 1';
         }
         let precio = Number(item.precio || 0);
+        if (n === 'picada x 1' && (precio === 19500 || precio <= 0)) {
+          precio = 27500;
+        }
         if (CALIBRATED_BEVERAGES.has(n)) {
           const cal = CALIBRATED_BEVERAGES.get(n);
           nombre = cal.nombre;
@@ -1496,10 +1509,11 @@ const formatPrice = (val) => {
         key: 'OTROS_PICADAS',
         family: 'OTROS',
         title: '🥩 Picadas Especiales (Almuerzo / Compartir)',
-        subtitle: 'Picada x 1, Picada x 2, Picada x 3 y Picada Berraca',
+        subtitle: 'Picada x 1 ($27.500), Picada x 2, Picada x 3 y Picada Berraca',
         badgeColor: 'bg-emerald-700 text-white',
+        representativePrice: 27500,
         names: [
-          'Picada x 1', 'Picada x 2', 'Picada x 3', 'Picada Berraca'
+          'Picada x 1', 'Picada por uno', 'Picada por 1', 'Picada x 2', 'Picada x 3', 'Picada Berraca'
         ]
       },
       {
