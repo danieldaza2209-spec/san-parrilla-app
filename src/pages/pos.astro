@@ -125,7 +125,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
         data-specials={JSON.stringify(dailySpecials)}
       >
         <!-- SELECTOR PRINCIPAL DE MENÚ: ALMUERZOS VS COMIDAS RÁPIDAS VS CONVENIOS & CLÍNICA -->
-        <div class="grid grid-cols-3 gap-1.5 sm:gap-2 bg-slate-100 p-1.5 rounded-2xl border border-parrilla-border shadow-xs">
+        <div id="pos-menu-tabs-wrapper" class="grid grid-cols-2 md:grid-cols-3 gap-1.5 sm:gap-2 bg-slate-100 p-1.5 rounded-2xl border border-parrilla-border shadow-xs">
           <button
             type="button"
             id="tab-menu-almuerzos"
@@ -143,11 +143,49 @@ const searchableCatalog = allPosProducts.map((p) => ({
           <button
             type="button"
             id="tab-menu-convenios"
-            class="menu-mode-tab py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-display font-black flex items-center justify-center gap-1 text-parrilla-ivory hover:text-parrilla-gold transition-all cursor-pointer"
+            class="menu-mode-tab hidden py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-display font-black flex items-center justify-center gap-1 text-parrilla-ivory hover:text-parrilla-gold transition-all cursor-pointer"
+            style="display: none;"
           >
             <span>🏥 Convenios & Clínica</span>
           </button>
         </div>
+
+        <!-- Validación inmediata de rol para evitar FOUC (Flash of Unstyled Content) -->
+        <script is:inline>
+          (function() {
+            try {
+              var r = (
+                (typeof window !== 'undefined' && window.__SP_STAFF_ROLE__) ||
+                localStorage.getItem('user_role') ||
+                (JSON.parse(localStorage.getItem('sp_staff_session') || '{}').role) ||
+                localStorage.getItem('sanparrilla_last_role') ||
+                ''
+              ).toLowerCase().trim();
+              var isAllowed = r === 'admin' || r === 'administrador' || r === 'cajero';
+              var tab = document.getElementById('tab-menu-convenios');
+              var wrapper = document.getElementById('pos-menu-tabs-wrapper');
+              if (isAllowed) {
+                if (tab) {
+                  tab.classList.remove('hidden');
+                  tab.style.display = '';
+                }
+                if (wrapper) {
+                  wrapper.classList.remove('grid-cols-2');
+                  wrapper.classList.add('grid-cols-3');
+                }
+              } else {
+                if (tab) {
+                  tab.classList.add('hidden');
+                  tab.style.display = 'none';
+                }
+                if (wrapper) {
+                  wrapper.classList.remove('grid-cols-3');
+                  wrapper.classList.add('grid-cols-2');
+                }
+              }
+            } catch (e) {}
+          })();
+        </script>
 
         <!-- 1. PARTE SUPERIOR: BUSCADOR UNIVERSAL PROTAGONISTA & FILTROS RÁPIDOS -->
         <div id="pos-universal-search-container" class="bg-white rounded-2xl p-4 sm:p-5 border-2 border-parrilla-gold/60 shadow-md space-y-3.5 sticky top-16 z-30">
@@ -1434,15 +1472,75 @@ const searchableCatalog = allPosProducts.map((p) => ({
     const clinicaDomiciliosBadge = document.getElementById('clinica-domicilios-badge');
     const btnCloseFiadoDirect = document.getElementById('btn-close-fiado-direct');
 
-    // Si el rol es mesero, ocultar botón de gasto de caja y alertas de caja
-    if (window.__SP_STAFF_ROLE__ === 'mesero') {
-      const expBtn = document.getElementById('btn-quick-expense-pos');
-      if (expBtn) expBtn.style.display = 'none';
-      document.querySelectorAll('a[href="/caja"]').forEach((a) => {
-        // @ts-ignore
-        a.style.display = 'none';
-      });
+    // Control de Permisos por Rol: Administrador, Cajero vs Mesero
+    function getCurrentUserRole() {
+      try {
+        if (typeof window !== 'undefined' && window.__SP_STAFF_ROLE__) {
+          return String(window.__SP_STAFF_ROLE__).trim().toLowerCase();
+        }
+        const directRole = localStorage.getItem('user_role');
+        if (directRole) return directRole.trim().toLowerCase();
+
+        const sessionRaw = localStorage.getItem('sp_staff_session');
+        if (sessionRaw) {
+          const parsed = JSON.parse(sessionRaw);
+          if (parsed && parsed.role) return String(parsed.role).trim().toLowerCase();
+        }
+
+        const lastRole = localStorage.getItem('sanparrilla_last_role');
+        if (lastRole) return lastRole.trim().toLowerCase();
+
+        const cookieMatch = document.cookie.match(/(?:^|;\s*)sp_role=([^;]+)/);
+        if (cookieMatch) return decodeURIComponent(cookieMatch[1]).trim().toLowerCase();
+      } catch (e) {
+        console.error('Error detectando rol de usuario:', e);
+      }
+      return 'mesero';
     }
+
+    function canAccessConvenios() {
+      const r = getCurrentUserRole();
+      return r === 'admin' || r === 'administrador' || r === 'cajero';
+    }
+
+    function enforceRoleConveniosPermissions() {
+      const isAllowed = canAccessConvenios();
+      const tab = document.getElementById('tab-menu-convenios');
+      const wrapper = document.getElementById('pos-menu-tabs-wrapper');
+
+      if (isAllowed) {
+        if (tab) {
+          tab.classList.remove('hidden');
+          tab.style.display = '';
+        }
+        if (wrapper) {
+          wrapper.classList.remove('grid-cols-2');
+          wrapper.classList.add('grid-cols-3');
+        }
+      } else {
+        if (tab) {
+          tab.classList.add('hidden');
+          tab.style.display = 'none';
+        }
+        if (wrapper) {
+          wrapper.classList.remove('grid-cols-3');
+          wrapper.classList.add('grid-cols-2');
+        }
+        // Si el usuario tenía seleccionada esa pestaña por error o recarga la página, fuerza el cambio automático a Almuerzos
+        if (activeMenuMode === 'convenios') {
+          setMenuMode('almuerzos');
+        }
+
+        const expBtn = document.getElementById('btn-quick-expense-pos');
+        if (expBtn) expBtn.style.display = 'none';
+        document.querySelectorAll('a[href="/caja"]').forEach((a) => {
+          // @ts-ignore
+          a.style.display = 'none';
+        });
+      }
+    }
+
+    enforceRoleConveniosPermissions();
 
     const searchInput = document.getElementById('product-search');
     const btnClearSearch = document.getElementById('btn-clear-search');
@@ -1652,6 +1750,10 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
     // MENU MODE SWITCHER (ALMUERZOS VS COMIDAS RÁPIDAS VS CONVENIOS & CLÍNICA)
     function setMenuMode(mode) {
+      if (mode === 'convenios' && !canAccessConvenios()) {
+        console.warn('Acceso denegado a Convenios & Clínica: el rol actual no tiene permisos.');
+        mode = 'almuerzos';
+      }
       activeMenuMode = mode;
 
       [tabMenuAlmuerzos, tabMenuRapidas, tabMenuConvenios].forEach((tab) => {
@@ -1711,7 +1813,16 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
     tabMenuAlmuerzos?.addEventListener('click', () => setMenuMode('almuerzos'));
     tabMenuRapidas?.addEventListener('click', () => setMenuMode('rapidas'));
-    tabMenuConvenios?.addEventListener('click', () => setMenuMode('convenios'));
+    tabMenuConvenios?.addEventListener('click', (e) => {
+      if (!canAccessConvenios()) {
+        e.preventDefault();
+        e.stopPropagation();
+        alert('⚠️ La sección Convenios & Clínica es de uso exclusivo para Administradores y Cajeros.');
+        setMenuMode('almuerzos');
+        return;
+      }
+      setMenuMode('convenios');
+    });
 
     // 1. UNIVERSAL SEARCH ENGINE & QUICK FILTERS
     function runUniversalSearch(rawQuery) {
@@ -1926,10 +2037,42 @@ const searchableCatalog = allPosProducts.map((p) => ({
       });
     });
 
-    // Keyboard shortcuts: '/' or 'F2' to focus search, 'Escape' to clear/close modals
+    // Keyboard shortcuts: '/' or 'F2' to focus search, 'Escape' to clear/close modals, Alt+1/Alt+2/Alt+3 para categorías
     document.addEventListener('keydown', (e) => {
       const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
       const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+      // Atajos de categoría: Alt+1 (Almuerzos), Alt+2 (Rápidas), Alt+3 (Convenios)
+      if (e.altKey && !isTyping) {
+        if (e.key === '1') {
+          e.preventDefault();
+          setMenuMode('almuerzos');
+          return;
+        } else if (e.key === '2') {
+          e.preventDefault();
+          setMenuMode('rapidas');
+          return;
+        } else if (e.key === '3') {
+          e.preventDefault();
+          if (canAccessConvenios()) {
+            setMenuMode('convenios');
+          } else {
+            console.warn('Atajo Alt+3 bloqueado: El rol mesero no tiene permiso para acceder a Convenios & Clínica');
+          }
+          return;
+        }
+      }
+
+      // Bloquear cualquier intento de teclado para alternar a Convenios si no es admin o cajero
+      if (!canAccessConvenios()) {
+        // @ts-ignore
+        if (e.target && (e.target.id === 'tab-menu-convenios' || e.target.closest?.('#tab-menu-convenios'))) {
+          e.preventDefault();
+          e.stopPropagation();
+          setMenuMode('almuerzos');
+          return;
+        }
+      }
 
       if ((e.key === '/' || e.key === 'F2') && !isTyping) {
         e.preventDefault();
@@ -5528,8 +5671,15 @@ const searchableCatalog = allPosProducts.map((p) => ({
         const tipoParam = params.get('tipo');
         const menuParam = params.get('menu');
 
-        if (menuParam === 'convenios') setMenuMode('convenios');
-        else if (menuParam === 'rapidas') setMenuMode('rapidas');
+        if (menuParam === 'convenios') {
+          if (canAccessConvenios()) {
+            setMenuMode('convenios');
+          } else {
+            setMenuMode('almuerzos');
+          }
+        } else if (menuParam === 'rapidas') {
+          setMenuMode('rapidas');
+        }
 
         if (tipoParam === 'domicilio') setOrderType('domicilio');
         else if (tipoParam === 'para_llevar') setOrderType('para_llevar');
@@ -5559,7 +5709,14 @@ const searchableCatalog = allPosProducts.map((p) => ({
       } catch (e) {}
     }
 
+    enforceRoleConveniosPermissions();
     refreshReprintButton();
     initPosFromUrlParams();
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'sp_staff_session' || e.key === 'user_role' || e.key === 'sanparrilla_last_role') {
+        enforceRoleConveniosPermissions();
+      }
+    });
   </script>
 </StaffLayout>
