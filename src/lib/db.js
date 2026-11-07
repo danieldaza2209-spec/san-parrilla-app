@@ -54,9 +54,11 @@ export const fallbackDailySpecials = {
   acompanamientos: ['Puré de ahuyama', 'Deditos', 'Tajadas maduras'],
   especiales_16500: ['Hígado al ajillo', 'Desgranado de carne'],
   especiales_16500_etiqueta: '⭐ SOLO POR HOY',
+  mostrar_rotativos_16k: true,
   especial_arroz_nombre: 'Arroz ranchero',
   especial_arroz_etiqueta: '⭐ SOLO LOS LUNES',
   especial_arroz_precio: 18000,
+  mostrar_rotativo_fin_semana: true,
   updated_at: new Date().toISOString()
 };
 
@@ -102,6 +104,10 @@ export const lunchProductList = [
   { id: 't3-4', name: 'Pechuga hawaiana', price: 18000, category_id: 'fuertes_175', description: 'Pechuga gratinada con piña caramelizada y queso.', is_active: 1, is_featured: 0, sort_order: 16 },
   { id: 't3-4b', name: 'Pechuga en salsa bechamel', price: 18000, category_id: 'fuertes_175', description: 'Pechuga bañada en salsa bechamel casera. Incluye sopa, principio y acompañamiento.', is_active: 1, is_featured: 0, sort_order: 16 },
   { id: 't3-5', name: 'Combo Personal', price: 18000, category_id: 'fuertes_175', description: 'Opción rápida del asador.', is_active: 1, is_featured: 0, sort_order: 17 },
+  { id: 't3-7', name: 'Arroz con pollo', price: 18000, category_id: 'fuertes_175', description: 'Arroz amarillo sazonado con pechuga desmechada y verduras frescas.', is_active: 1, is_featured: 0, sort_order: 17.1 },
+  { id: 't3-8', name: 'Espagueti con pollo', price: 18000, category_id: 'fuertes_175', description: 'Pasta en salsa suave con generosos trozos de pechuga de pollo.', is_active: 1, is_featured: 0, sort_order: 17.2 },
+  { id: 't3-9', name: 'Arroz campesino', price: 18000, category_id: 'fuertes_175', description: 'Arroz salteado estilo campesino con carnes mixtas, maíz dulce y plátano.', is_active: 1, is_featured: 0, sort_order: 17.3 },
+  { id: 't3-10', name: 'Arroz mixto', price: 18000, category_id: 'fuertes_175', description: 'Arroz especial con carnes mixtas salteadas.', is_active: 1, is_featured: 0, sort_order: 17.4 },
   { id: 't3-6', name: 'Arroz ranchero', price: 18000, category_id: 'fuertes_175', description: 'Arroz especial de la casa con carnes y maíz.', is_active: 1, is_featured: 1, sort_order: 18, special_badge: '⭐ SOLO LOS LUNES' },
 
   // $21.000
@@ -150,16 +156,15 @@ export const lunchProductList = [
   { id: 'pic-3', name: 'Picada x 3', price: 44000, category_id: 'picadas', description: 'Gran porción familiar para tres personas.', is_active: 1, is_featured: 0, sort_order: 2 },
   { id: 'pic-4', name: 'Picada Berraca', price: 55000, category_id: 'picadas', description: 'Chicharrón crujiente, costilla, lomo y papitas criollas.', is_active: 1, is_featured: 1, sort_order: 3 },
 
-  // Bebidas
-  { id: 'beb-1', name: 'Gaseosa 400ml', price: 4000, category_id: 'bebidas', description: 'Postobón, Coca-Cola o Pepsi bien fría.', is_active: 1, is_featured: 0, sort_order: 0 },
-  { id: 'beb-2', name: 'Gaseosa 1.5L', price: 8000, category_id: 'bebidas', description: 'Ideal para compartir.', is_active: 1, is_featured: 0, sort_order: 1 },
-  { id: 'beb-3', name: 'Jugo Natural en Agua', price: 6000, category_id: 'bebidas', description: 'Mango, Maracuyá, Mora, Lulo o Fresa.', is_active: 1, is_featured: 0, sort_order: 2 },
-  { id: 'beb-4', name: 'Jugo Natural en Leche', price: 7500, category_id: 'bebidas', description: 'Cremoso y refrescante.', is_active: 1, is_featured: 0, sort_order: 3 },
-  { id: 'beb-5', name: 'Cerveza Club Colombia / Águila', price: 5500, category_id: 'bebidas', description: 'Botella fría.', is_active: 1, is_featured: 0, sort_order: 4 },
-  { id: 'beb-6', name: 'Porción de Papas a la Francesa', price: 6000, category_id: 'bebidas', description: 'Papas crocantes.', is_active: 1, is_featured: 0, sort_order: 5 },
-  { id: 'beb-7', name: 'Porción de Patacón con Hogao', price: 6500, category_id: 'bebidas', description: 'Con hogao tradicional de la casa.', is_active: 1, is_featured: 0, sort_order: 6 },
-  { id: 'beb-8', name: 'Botella de agua', price: 3000, category_id: 'bebidas', description: 'Botella de agua personal refrescante.', is_active: 1, is_featured: 0, sort_order: 7 },
-  { id: 'beb-9', name: 'Soda', price: 4500, category_id: 'bebidas', description: 'Soda bien fría.', is_active: 1, is_featured: 0, sort_order: 8 },
+  // Bebidas y Adicionales
+  { id: 'beb-8', name: 'Botella de Agua', price: 3000, category_id: 'bebidas', description: 'Botella de agua personal refrescante.', is_active: 1, is_featured: 0, sort_order: 0 },
+  { id: 'beb-5', name: 'Cerveza Club Colombia / Águila', price: 5500, category_id: 'bebidas', description: 'Botella fría.', is_active: 1, is_featured: 0, sort_order: 1 },
+  { id: 'beb-2', name: 'Gaseosa 1.5L', price: 8000, category_id: 'bebidas', description: 'Ideal para compartir.', is_active: 1, is_featured: 0, sort_order: 2 },
+  { id: 'beb-1', name: 'Gaseosa 400ml', price: 4000, category_id: 'bebidas', description: 'Postobón, Coca-Cola o Pepsi bien fría.', is_active: 1, is_featured: 0, sort_order: 3 },
+  { id: 'beb-3', name: 'Jugo Natural en Agua', price: 8500, category_id: 'bebidas', description: 'Mango, Maracuyá, Mora, Lulo o Fresa.', is_active: 1, is_featured: 0, sort_order: 4 },
+  { id: 'beb-4', name: 'Jugo Natural en Leche', price: 9500, category_id: 'bebidas', description: 'Cremoso y refrescante.', is_active: 1, is_featured: 0, sort_order: 5 },
+  { id: 'beb-9', name: 'Soda', price: 4500, category_id: 'bebidas', description: 'Soda bien fría.', is_active: 1, is_featured: 0, sort_order: 6 },
+  { id: 'beb-6', name: 'Porción de Papas a la Francesa', price: 5500, category_id: 'bebidas', description: 'Papas crocantes.', is_active: 1, is_featured: 0, sort_order: 7 },
 ];
 
 export const rapidasProductList = [
@@ -221,17 +226,17 @@ export const rapidasProductList = [
   { id: 'rap-esp-7', name: 'Costillitas BBQ', price: 23000, category_id: 'especiales_noche', menu_type: 'rapidas', is_active: 1, sort_order: 43 },
 
   // Granizados y Jugos
-  { id: 'rap-jug-1', name: 'Jugo / Granizado en Agua', price: 8000, category_id: 'granizados_jugos', menu_type: 'rapidas', is_active: 1, sort_order: 44, has_flavor: 1 },
+  { id: 'rap-jug-1', name: 'Jugo / Granizado en Agua', price: 8500, category_id: 'granizados_jugos', menu_type: 'rapidas', is_active: 1, sort_order: 44, has_flavor: 1 },
   { id: 'rap-jug-2', name: 'Jugo / Granizado en Leche', price: 9500, category_id: 'granizados_jugos', menu_type: 'rapidas', is_active: 1, sort_order: 45, has_flavor: 1 },
   { id: 'rap-jug-3', name: 'Limonada Cerezada', price: 10000, category_id: 'granizados_jugos', menu_type: 'rapidas', is_active: 1, sort_order: 46 },
 
   // Bebidas
-  { id: 'rap-beb-1', name: 'Botella de agua', price: 3000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 47 },
+  { id: 'rap-beb-1', name: 'Botella de Agua', price: 3000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 47 },
   { id: 'rap-beb-2', name: 'Soda', price: 4500, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 48 },
   { id: 'rap-beb-3', name: 'Gaseosa P400', price: 4000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 49 },
   { id: 'rap-beb-4', name: 'Gaseosa 1.5L', price: 8000, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 50 },
   { id: 'rap-beb-5', name: 'Gaseosa Mega', price: 13500, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 51 },
-  { id: 'rap-beb-6', name: 'Cerveza', price: 4500, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 52 },
+  { id: 'rap-beb-6', name: 'Cerveza Club Colombia / Águila', price: 5500, category_id: 'bebidas_rapidas', menu_type: 'rapidas', is_active: 1, sort_order: 52 },
 ];
 
 export const conveniosProductList = [
@@ -472,6 +477,15 @@ export function updateDailySpecials(sopa, principios, acompanamientos, extra = {
         : String(extra.especiales_16500).split(',').map(s => s.trim()).filter(Boolean))
     : (memSpecials.especiales_16500 || ['Hígado al ajillo', 'Desgranado de carne']);
 
+  const mostrar16k =
+    extra.mostrar_rotativos_16k !== undefined
+      ? Boolean(extra.mostrar_rotativos_16k)
+      : memSpecials.mostrar_rotativos_16k !== false;
+  const mostrarFinSemana =
+    extra.mostrar_rotativo_fin_semana !== undefined
+      ? Boolean(extra.mostrar_rotativo_fin_semana)
+      : memSpecials.mostrar_rotativo_fin_semana !== false;
+
   memSpecials = {
     ...memSpecials,
     sopa: cleanSopa,
@@ -480,9 +494,11 @@ export function updateDailySpecials(sopa, principios, acompanamientos, extra = {
     acompanamientos: cleanAcomp,
     especiales_16500: cleanEsp165,
     especiales_16500_etiqueta: extra.especiales_16500_etiqueta || memSpecials.especiales_16500_etiqueta || '⭐ SOLO POR HOY',
+    mostrar_rotativos_16k: mostrar16k,
     especial_arroz_nombre: extra.especial_arroz_nombre || memSpecials.especial_arroz_nombre || 'Arroz ranchero',
     especial_arroz_etiqueta: extra.especial_arroz_etiqueta || memSpecials.especial_arroz_etiqueta || '⭐ SOLO LOS LUNES',
     especial_arroz_precio: Number(extra.especial_arroz_precio || memSpecials.especial_arroz_precio || 18000),
+    mostrar_rotativo_fin_semana: mostrarFinSemana,
     updated_at: new Date().toISOString()
   };
   if (db) {

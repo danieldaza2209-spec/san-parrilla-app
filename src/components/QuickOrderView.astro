@@ -19,6 +19,8 @@ interface DailySpecials {
   sopa: string;
   principios: string[];
   acompanamientos: string[];
+  mostrar_rotativos_16k?: boolean;
+  mostrar_rotativo_fin_semana?: boolean;
 }
 
 interface Props {
@@ -66,7 +68,7 @@ const desayunos = showDesayunos
   : [];
 ---
 
-<div id="quick-order-view" class="space-y-10 sm:space-y-14">
+<div id="quick-order-view" class="space-y-10 sm:space-y-14" data-public-menu={showDesayunos ? 'false' : 'true'}>
   <!-- =========================================================
        1. SECCIÓN SUPERIOR: ACOMPAÑA TU PROTEÍNA - Especiales de Hoy
           (3 columnas lado a lado incluso en móvil: grid-cols-3)
@@ -190,7 +192,13 @@ const desayunos = showDesayunos
           <!-- Recuadro de Destacados del Día (ej. ⭐ SOLO POR HOY / ⭐ SOLO LOS LUNES) -->
           {col.specialItems.length > 0 && (
             <div
-              class="relative mt-3 sm:mt-4 pt-3 pb-1 px-2 sm:px-3.5 rounded-lg sm:rounded-xl border border-parrilla-gold/70 bg-orange-50/40"
+              class:list={[
+                'relative mt-3 sm:mt-4 pt-3 pb-1 px-2 sm:px-3.5 rounded-lg sm:rounded-xl border border-parrilla-gold/70 bg-orange-50/40',
+                (col.price === 16500 && dailySpecials?.mostrar_rotativos_16k === false) ||
+                ((col.price === 18000 || col.price === 18500) && dailySpecials?.mostrar_rotativo_fin_semana === false)
+                  ? 'hidden'
+                  : '',
+              ]}
               data-special-box-price={col.price}
             >
               <span
@@ -376,7 +384,7 @@ const desayunos = showDesayunos
       </div>
 
       <div class="bg-white rounded-xl sm:rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-3 sm:p-5 shadow-sm">
-        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+        <ul data-bebidas-list class="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
           {bebidas.map((item) => (
             <li class="py-2 flex items-center justify-between gap-2 border-b border-gray-100 last:border-b-0">
               <div class="min-w-0 flex-1">
@@ -422,16 +430,32 @@ const desayunos = showDesayunos
       return [];
     }
 
+    function decodeSpecialSwitchTag(rawTag, fallbackTag, explicitBool) {
+      const str = String(rawTag || fallbackTag || '').trim();
+      if (str.endsWith('||OFF')) {
+        return { tag: str.slice(0, -5).trim() || fallbackTag, visible: explicitBool !== undefined ? Boolean(explicitBool) : false };
+      }
+      if (str.endsWith('||ON')) {
+        return { tag: str.slice(0, -4).trim() || fallbackTag, visible: explicitBool !== undefined ? Boolean(explicitBool) : true };
+      }
+      return { tag: str || fallbackTag, visible: explicitBool !== undefined ? Boolean(explicitBool) : true };
+    }
+
     function applyLiveSpecialsToDOM(raw) {
       if (!raw || typeof raw !== 'object') return;
       const sopa = String(raw.sopa_dia || raw.sopa || '').trim();
       const principios = toArr(raw.principios);
       const acompanamientos = toArr(raw.acompanamientos);
       const esp165 = toArr(raw.especiales_16500);
-      const esp165Badge = String(raw.especiales_16500_etiqueta || '⭐ SOLO POR HOY').trim();
+      const decoded16k = decodeSpecialSwitchTag(raw.especiales_16500_etiqueta, '⭐ SOLO POR HOY', raw.mostrar_rotativos_16k);
+      const esp165Badge = decoded16k.tag;
+      const mostrar16k = decoded16k.visible;
       const arrozNombre = String(raw.especial_arroz_nombre || '').trim();
-      const arrozBadge = String(raw.especial_arroz_etiqueta || '⭐ ESPECIAL DE HOY').trim();
+      const decodedFin = decodeSpecialSwitchTag(raw.especial_arroz_etiqueta, '⭐ ESPECIAL DE HOY', raw.mostrar_rotativo_fin_semana);
+      const arrozBadge = decodedFin.tag;
+      const mostrarFinSemana = decodedFin.visible;
       const arrozPrecio = Number(raw.especial_arroz_precio || 18000);
+      const isPublicMenu = document.getElementById('quick-order-view')?.getAttribute('data-public-menu') === 'true';
 
       // 1. Actualizar Tarjeta Sopa del Día
       if (sopa) {
@@ -471,8 +495,15 @@ const desayunos = showDesayunos
       }
 
       // 4. Actualizar recuadro naranja ★ SOLO POR HOY en la caja de $16.500
-      if (esp165.length > 0) {
-        document.querySelectorAll('[data-special-box-price="16500"]').forEach((box) => {
+      document.querySelectorAll('[data-special-box-price="16500"]').forEach((box) => {
+        if (isPublicMenu && !mostrar16k) {
+          box.classList.add('hidden');
+          box.style.display = 'none';
+        } else {
+          box.classList.remove('hidden');
+          box.style.display = '';
+        }
+        if (esp165.length > 0) {
           const badgeEl = box.querySelector('[data-special-badge]');
           if (badgeEl) badgeEl.textContent = esp165Badge;
           const itemsUl = box.querySelector('[data-special-items]');
@@ -498,12 +529,19 @@ const desayunos = showDesayunos
               )
               .join('');
           }
-        });
-      }
+        }
+      });
 
       // 5. Actualizar recuadro naranja del Especial de Arroz/Pasta en la caja de $18.000 / $18.500
-      if (arrozNombre) {
-        document.querySelectorAll('[data-special-box-price="18000"]').forEach((box) => {
+      document.querySelectorAll('[data-special-box-price="18000"]').forEach((box) => {
+        if (isPublicMenu && !mostrarFinSemana) {
+          box.classList.add('hidden');
+          box.style.display = 'none';
+        } else {
+          box.classList.remove('hidden');
+          box.style.display = '';
+        }
+        if (arrozNombre) {
           const badgeEl = box.querySelector('[data-special-badge]');
           if (badgeEl) {
             badgeEl.textContent = arrozPrecio !== 18000 ? `${arrozBadge} • ${fmtCOP(arrozPrecio)}` : arrozBadge;
@@ -531,8 +569,8 @@ const desayunos = showDesayunos
                 </button>
               </li>`;
           }
-        });
-      }
+        }
+      });
 
       if (window.lucide) {
         try {
@@ -556,6 +594,8 @@ const desayunos = showDesayunos
         especial_arroz_nombre: arrozNombre || 'Arroz ranchero',
         especial_arroz_etiqueta: arrozBadge,
         especial_arroz_precio: arrozPrecio,
+        mostrar_rotativos_16k: mostrar16k,
+        mostrar_rotativo_fin_semana: mostrarFinSemana,
       };
 
       window.dispatchEvent(new CustomEvent('sp:specials-updated', { detail: normalizedDetail }));
@@ -575,20 +615,205 @@ const desayunos = showDesayunos
         .replace(/[\u0300-\u036f]/g, '');
     }
 
+    const CALIBRATED_BEVERAGES_MAP = new Map([
+      ['botella de agua', { nombre: 'Botella de Agua', precio: 3000 }],
+      ['agua', { nombre: 'Botella de Agua', precio: 3000 }],
+      ['cerveza club colombia / aguila', { nombre: 'Cerveza Club Colombia / Águila', precio: 5500 }],
+      ['cerveza', { nombre: 'Cerveza Club Colombia / Águila', precio: 5500 }],
+      ['gaseosa 1.5l', { nombre: 'Gaseosa 1.5L', precio: 8000 }],
+      ['gaseosa 400ml', { nombre: 'Gaseosa 400ml', precio: 4000 }],
+      ['jugo natural en agua', { nombre: 'Jugo Natural en Agua', precio: 8500 }],
+      ['jugo natural en leche', { nombre: 'Jugo Natural en Leche', precio: 9500 }],
+      ['soda', { nombre: 'Soda', precio: 4500 }],
+      ['porcion de papas a la francesa', { nombre: 'Porción de Papas a la Francesa', precio: 5500 }],
+      ['porcion de papa a la francesa', { nombre: 'Porción de Papas a la Francesa', precio: 5500 }],
+      ['porcion papas a la francesa', { nombre: 'Porción de Papas a la Francesa', precio: 5500 }],
+    ]);
+
+    function sanitizeLivePlatos(rawList) {
+      if (!Array.isArray(rawList)) return [];
+      const seen = new Set();
+      const result = [];
+      for (const item of rawList) {
+        if (!item) continue;
+        let nombre = String(item.nombre || item.name || '').trim();
+        if (!nombre) continue;
+        let key = normDishKey(nombre);
+        if (key.includes('patacon con hogao')) continue;
+        if (key === 'espaguetis con pollo' || key === 'espagueti con pollo') {
+          nombre = 'Espagueti con pollo';
+          key = 'espagueti con pollo';
+        }
+        let precio = Number(item.precio ?? item.price ?? 0);
+        if (CALIBRATED_BEVERAGES_MAP.has(key)) {
+          const cal = CALIBRATED_BEVERAGES_MAP.get(key);
+          nombre = cal.nombre;
+          precio = cal.precio;
+          key = normDishKey(nombre);
+        }
+        const desc = normDishKey(item.descripcion || item.description || '');
+        const isRapidas =
+          String(item.id || '').startsWith('rap-') ||
+          item.menu_type === 'rapidas' ||
+          desc.includes('comidas rapidas') ||
+          desc.includes('noche');
+        const dedupeKey = isRapidas && !CALIBRATED_BEVERAGES_MAP.has(key) ? `rap:${key}` : `alm:${key}`;
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        result.push({
+          ...item,
+          nombre,
+          name: nombre,
+          precio,
+          price: precio,
+          disponible: item.disponible !== false && item.activo !== false && item.in_stock !== 0 && item.is_active !== 0,
+        });
+      }
+      return result;
+    }
+
+    function isMainLunchDishCandidate(p) {
+      const key = normDishKey(p.nombre || p.name);
+      if (!key) return false;
+      if (CALIBRATED_BEVERAGES_MAP.has(key)) return false;
+      if (key.includes('patacon con hogao')) return false;
+      if (key.includes('clinica') || key.includes('hipo') || key.includes('desayuno') || key.includes('terpel') || key.includes('tubo')) return false;
+      if (key.startsWith('picada')) return false;
+      const desc = normDishKey(p.descripcion || p.description || '');
+      if (
+        String(p.id || '').startsWith('rap-') ||
+        p.menu_type === 'rapidas' ||
+        desc.includes('comidas rapidas') ||
+        desc.includes('noche') ||
+        key.includes('hamburguesa') ||
+        key.includes('burguer') ||
+        key.includes('burger') ||
+        key.includes('perro') ||
+        key.includes('suizo') ||
+        key.includes('salchipapa') ||
+        key.includes('papas locas') ||
+        key.includes('patacon') ||
+        key.includes('sandwich') ||
+        key.includes('granizado') ||
+        key.includes('gaseosa mega') ||
+        key.includes('gaseosa p400')
+      ) {
+        return false;
+      }
+      return true;
+    }
+
     function applyLivePlatosToDOM(platosArray) {
       if (!Array.isArray(platosArray) || platosArray.length === 0) return;
-      lastPlatosList = platosArray;
+      const cleanPlatos = sanitizeLivePlatos(platosArray);
+      lastPlatosList = cleanPlatos;
+      const isPublicMenu = document.getElementById('quick-order-view')?.getAttribute('data-public-menu') === 'true';
 
       const platoMap = new Map();
-      platosArray.forEach((p) => {
+      cleanPlatos.forEach((p) => {
         const key = normDishKey(p.nombre || p.name);
         if (key) platoMap.set(key, p);
       });
 
+      // En la carta pública: sincronizar dinámicamente la columna de $18.000 filtrando estrictamente por plato.disponible === true
+      if (isPublicMenu) {
+        const col18k = document.querySelector('[data-price-column="18000"]');
+        const ul18k = col18k?.querySelector(':scope > ul');
+        if (ul18k) {
+          const special18kNames = new Set(
+            Array.from(col18k.querySelectorAll('[data-special-items] .btn-add-cart[data-name]')).map((b) =>
+              normDishKey(b.getAttribute('data-name') || '')
+            )
+          );
+          const available18kDishes = cleanPlatos.filter(
+            (p) =>
+              Math.round(Number(p.precio ?? p.price ?? 0)) === 18000 &&
+              p.disponible === true &&
+              !p.special_badge &&
+              !special18kNames.has(normDishKey(p.nombre || p.name)) &&
+              isMainLunchDishCandidate(p)
+          );
+          ul18k.innerHTML = available18kDishes
+            .map(
+              (item) => `
+              <li class="flex items-center justify-between gap-1.5 py-1.5 sm:py-2.5 border-b border-gray-100 last:border-b-0">
+                <span class="text-xs sm:text-sm font-medium text-parrilla-ivory leading-tight min-w-0 flex-1">
+                  ${esc(item.nombre || item.name)}
+                </span>
+                <button
+                  type="button"
+                  data-name="${esc(item.nombre || item.name)}"
+                  data-price="18000"
+                  data-customizable="true"
+                  aria-label="Agregar ${esc(item.nombre || item.name)} al pedido"
+                  class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 sm:w-4 sm:h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                </button>
+              </li>`
+            )
+            .join('');
+        }
+
+        // Sincronizar dinámicamente la lista de Bebidas y Adicionales calibrada y sin duplicados
+        const bebidasUl = document.querySelector('[data-bebidas-list]');
+        if (bebidasUl) {
+          const calibratedOrder = [
+            'Botella de Agua',
+            'Cerveza Club Colombia / Águila',
+            'Gaseosa 1.5L',
+            'Gaseosa 400ml',
+            'Jugo Natural en Agua',
+            'Jugo Natural en Leche',
+            'Soda',
+            'Porción de Papas a la Francesa',
+          ];
+          const bebidasItems = calibratedOrder
+            .map((name) => platoMap.get(normDishKey(name)))
+            .filter((item) => item && item.disponible === true);
+
+          if (bebidasItems.length > 0) {
+            bebidasUl.innerHTML = bebidasItems
+              .map(
+                (item) => `
+                <li class="py-2 flex items-center justify-between gap-2 border-b border-gray-100 last:border-b-0">
+                  <div class="min-w-0 flex-1">
+                    <span class="text-xs sm:text-sm font-medium text-parrilla-ivory block truncate">
+                      ${esc(item.nombre || item.name)}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="font-display font-bold text-xs sm:text-base text-parrilla-gold">
+                      ${fmtCOP(item.precio ?? item.price)}
+                    </span>
+                    <button
+                      type="button"
+                      data-name="${esc(item.nombre || item.name)}"
+                      data-price="${item.precio ?? item.price}"
+                      data-customizable="false"
+                      aria-label="Agregar ${esc(item.nombre || item.name)} al pedido"
+                      class="btn-add-cart w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 sm:w-4 sm:h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    </button>
+                  </div>
+                </li>`
+              )
+              .join('');
+          }
+        }
+      }
+
       // 1. Actualizar todos los botones .btn-add-cart en QuickOrderView y vistas hermanas
       document.querySelectorAll('.btn-add-cart[data-name]').forEach((btn) => {
         const dishName = btn.getAttribute('data-name') || '';
-        const info = platoMap.get(normDishKey(dishName));
+        const normName = normDishKey(dishName);
+        if (normName.includes('patacon con hogao')) {
+          const row = btn.closest('li') || btn.closest('.pos-rapida-card') || btn.parentElement?.parentElement;
+          if (row) row.remove();
+          return;
+        }
+        const info = platoMap.get(normName);
         if (!info) return;
 
         const newPrice = Number(info.precio ?? info.price ?? btn.getAttribute('data-price') ?? 0);
@@ -614,14 +839,13 @@ const desayunos = showDesayunos
 
         // Reorganización visual dinámica: si cambió de precio, moverlo a la caja de precio correspondiente
         const parentCol = btn.closest('[data-price-column]');
-        if (parentCol && newPrice > 0) {
+        if (parentCol && newPrice > 0 && !btn.closest('[data-special-items]')) {
           const currentColPrice = Number(parentCol.getAttribute('data-price-column') || 0);
           if (currentColPrice > 0 && newPrice !== currentColPrice) {
             const li = btn.closest('li');
             if (li) {
               let targetCol = document.querySelector(`[data-price-column="${newPrice}"]`);
               if (!targetCol) {
-                // Crear caja de columna de precio en el DOM si aún no existe
                 const newCol = document.createElement('div');
                 newCol.className = 'bg-white rounded-xl sm:rounded-2xl border border-parrilla-border border-t-2 border-t-parrilla-gold p-2.5 sm:p-5 shadow-sm flex flex-col';
                 newCol.setAttribute('data-price-column', String(newPrice));
@@ -657,12 +881,18 @@ const desayunos = showDesayunos
                 }
               }
 
-              // Ocultar la columna de precio anterior si quedó vacía
               const remainingItems = parentCol.querySelectorAll(':scope > ul > li, [data-special-items] > li');
               if (remainingItems.length === 0) {
                 parentCol.style.display = 'none';
               }
             }
+          }
+        }
+
+        // En la carta pública, ocultar platos con disponible === false; en POS, mostrar badge Agotado por hoy
+        if (isPublicMenu && !btn.closest('[data-special-items]')) {
+          if (rowOrCard) {
+            rowOrCard.style.display = isAvailable ? '' : 'none';
           }
         }
 
@@ -675,7 +905,7 @@ const desayunos = showDesayunos
           if (rowOrCard) {
             rowOrCard.classList.add('opacity-60');
           }
-          if (nameSpan && !nameSpan.querySelector('[data-soldout-badge]')) {
+          if (!isPublicMenu && nameSpan && !nameSpan.querySelector('[data-soldout-badge]')) {
             const badge = document.createElement('span');
             badge.setAttribute('data-soldout-badge', 'true');
             badge.className =
@@ -712,7 +942,7 @@ const desayunos = showDesayunos
         });
       });
 
-      window.dispatchEvent(new CustomEvent('sp:platos-updated', { detail: platosArray }));
+      window.dispatchEvent(new CustomEvent('sp:platos-updated', { detail: cleanPlatos }));
     }
 
     async function fetchAndSyncLivePlatos() {

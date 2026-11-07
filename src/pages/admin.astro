@@ -529,9 +529,24 @@ const formatPrice = (val) => {
 
           <!-- BLOQUE A: Especiales Rotativos Caja $16.500 (★ SOLO POR HOY) -->
           <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-300 space-y-2.5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-black uppercase text-amber-950">★ Especiales Rotativos Caja $16.500</span>
-              <span class="px-2 py-0.5 rounded-md bg-amber-500 text-white font-bold text-[10px]">$16.500</span>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-black uppercase text-amber-950">★ Especiales Rotativos Caja $16.500</span>
+                <span class="px-2 py-0.5 rounded-md bg-amber-500 text-white font-bold text-[10px]">$16.500</span>
+              </div>
+              <label class="inline-flex items-center gap-2 cursor-pointer select-none bg-white/90 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
+                <span class="text-[10px] font-extrabold uppercase text-amber-950">Mostrar en Carta:</span>
+                <input
+                  type="checkbox"
+                  id="specials-mostrar-16k"
+                  checked={specials?.mostrar_rotativos_16k !== false}
+                  class="sr-only peer"
+                />
+                <div class="relative w-8 h-4 bg-slate-300 rounded-full peer peer-checked:bg-emerald-600 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-4"></div>
+                <span id="specials-mostrar-16k-label" class="text-[10px] font-black uppercase text-emerald-700">
+                  {specials?.mostrar_rotativos_16k !== false ? 'ON' : 'OFF'}
+                </span>
+              </label>
             </div>
 
             <div>
@@ -573,9 +588,24 @@ const formatPrice = (val) => {
 
           <!-- BLOQUE B: Especial Rotativo de Arroz / Pasta ($18.000 / $18.500) -->
           <div class="p-3.5 rounded-xl bg-orange-50/70 border border-orange-300 space-y-2.5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-black uppercase text-orange-950">★ Especial Rotativo de Arroz / Pasta</span>
-              <span class="px-2 py-0.5 rounded-md bg-orange-600 text-white font-bold text-[10px]">$18.000 / $18.500</span>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-black uppercase text-orange-950">★ Especial Rotativo de Arroz / Pasta</span>
+                <span class="px-2 py-0.5 rounded-md bg-orange-600 text-white font-bold text-[10px]">$18.000 / $18.500</span>
+              </div>
+              <label class="inline-flex items-center gap-2 cursor-pointer select-none bg-white/90 px-2.5 py-1 rounded-lg border border-orange-300 shadow-2xs">
+                <span class="text-[10px] font-extrabold uppercase text-orange-950">Mostrar en Carta:</span>
+                <input
+                  type="checkbox"
+                  id="specials-mostrar-fin-semana"
+                  checked={specials?.mostrar_rotativo_fin_semana !== false}
+                  class="sr-only peer"
+                />
+                <div class="relative w-8 h-4 bg-slate-300 rounded-full peer peer-checked:bg-emerald-600 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-4"></div>
+                <span id="specials-mostrar-fin-semana-label" class="text-[10px] font-black uppercase text-emerald-700">
+                  {specials?.mostrar_rotativo_fin_semana !== false ? 'ON' : 'OFF'}
+                </span>
+              </label>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1100,6 +1130,28 @@ const formatPrice = (val) => {
     const nombreArrozEl = document.getElementById('specials-arroz-nombre');
     const precioArrozEl = document.getElementById('specials-arroz-precio');
     const etiquetaArrozEl = document.getElementById('specials-arroz-etiqueta');
+    const mostrar16kEl = document.getElementById('specials-mostrar-16k');
+    const mostrar16kLabelEl = document.getElementById('specials-mostrar-16k-label');
+    const mostrarFinSemanaEl = document.getElementById('specials-mostrar-fin-semana');
+    const mostrarFinSemanaLabelEl = document.getElementById('specials-mostrar-fin-semana-label');
+
+    function syncSpecialSwitchLabels() {
+      if (mostrar16kEl && mostrar16kLabelEl) {
+        // @ts-ignore
+        const isOn = Boolean(mostrar16kEl.checked);
+        mostrar16kLabelEl.textContent = isOn ? 'ON' : 'OFF';
+        mostrar16kLabelEl.className = `text-[10px] font-black uppercase ${isOn ? 'text-emerald-700' : 'text-slate-500'}`;
+      }
+      if (mostrarFinSemanaEl && mostrarFinSemanaLabelEl) {
+        // @ts-ignore
+        const isOn = Boolean(mostrarFinSemanaEl.checked);
+        mostrarFinSemanaLabelEl.textContent = isOn ? 'ON' : 'OFF';
+        mostrarFinSemanaLabelEl.className = `text-[10px] font-black uppercase ${isOn ? 'text-emerald-700' : 'text-slate-500'}`;
+      }
+    }
+
+    if (mostrar16kEl) mostrar16kEl.addEventListener('change', syncSpecialSwitchLabels);
+    if (mostrarFinSemanaEl) mostrarFinSemanaEl.addEventListener('change', syncSpecialSwitchLabels);
 
     if (preset16500El && dish1El && dish2El) {
       preset16500El.addEventListener('change', (e) => {
@@ -1179,17 +1231,28 @@ const formatPrice = (val) => {
       }
 
       if (cfg.especial_arroz_etiqueta && etiquetaArrozEl) {
+        const cleanTag = String(cfg.especial_arroz_etiqueta).replace(/\|\|(ON|OFF)$/i, '').trim();
         // @ts-ignore
-        const hasTag = Array.from(etiquetaArrozEl.options).some(o => o.value === cfg.especial_arroz_etiqueta);
+        const hasTag = Array.from(etiquetaArrozEl.options).some(o => o.value === cleanTag);
         if (!hasTag) {
           const opt = document.createElement('option');
-          opt.value = cfg.especial_arroz_etiqueta;
-          opt.textContent = cfg.especial_arroz_etiqueta;
+          opt.value = cleanTag;
+          opt.textContent = cleanTag;
           etiquetaArrozEl.appendChild(opt);
         }
         // @ts-ignore
-        etiquetaArrozEl.value = cfg.especial_arroz_etiqueta;
+        etiquetaArrozEl.value = cleanTag;
       }
+
+      if (mostrar16kEl) {
+        // @ts-ignore
+        mostrar16kEl.checked = cfg.mostrar_rotativos_16k !== false;
+      }
+      if (mostrarFinSemanaEl) {
+        // @ts-ignore
+        mostrarFinSemanaEl.checked = cfg.mostrar_rotativo_fin_semana !== false;
+      }
+      syncSpecialSwitchLabels();
     }
 
     async function loadLiveSpecialsIntoAdmin() {
@@ -1230,6 +1293,11 @@ const formatPrice = (val) => {
         // @ts-ignore
         const especial_arroz_etiqueta = (etiquetaArrozEl?.value || '⭐ SOLO POR HOY').trim();
 
+        // @ts-ignore
+        const mostrar_rotativos_16k = mostrar16kEl ? Boolean(mostrar16kEl.checked) : true;
+        // @ts-ignore
+        const mostrar_rotativo_fin_semana = mostrarFinSemanaEl ? Boolean(mostrarFinSemanaEl.checked) : true;
+
         const btnSave = document.getElementById('btn-save-specials');
         if (btnSave) btnSave.textContent = 'Guardando en Neon DB...';
 
@@ -1242,7 +1310,9 @@ const formatPrice = (val) => {
           especiales_16500_etiqueta: '⭐ SOLO POR HOY',
           especial_arroz_nombre,
           especial_arroz_etiqueta,
-          especial_arroz_precio
+          especial_arroz_precio,
+          mostrar_rotativos_16k,
+          mostrar_rotativo_fin_semana
         };
 
         try {
@@ -1289,13 +1359,57 @@ const formatPrice = (val) => {
       // Precios estándar de Almuerzos y Platos Fuertes
       16500, 17500, 18000, 18500, 21000, 22000, 23000, 27500, 33000,
       // Bebidas, adiciones y convenios
-      0, 3000, 4000, 4500, 5500, 6000, 6500, 7500, 8000, 9500, 10000,
+      0, 3000, 4000, 4500, 5500, 6000, 6500, 7500, 8000, 8500, 9500, 10000,
       12000, 13500, 14000, 15000,
       // Comidas rápidas y noche
       15500, 16000, 17000, 19500, 20000, 20500, 22500, 23500, 24000, 26000, 28000, 30000,
       // Picadas grandes noche
       50000, 55000, 66000
     ];
+
+    function sanitizeAdminPlatos(rawList) {
+      if (!Array.isArray(rawList)) return [];
+      const CALIBRATED_BEVERAGES = new Map([
+        ['botella de agua', { nombre: 'Botella de Agua', precio: 3000 }],
+        ['agua', { nombre: 'Botella de Agua', precio: 3000 }],
+        ['cerveza club colombia / aguila', { nombre: 'Cerveza Club Colombia / Águila', precio: 5500 }],
+        ['cerveza', { nombre: 'Cerveza Club Colombia / Águila', precio: 5500 }],
+        ['gaseosa 1.5l', { nombre: 'Gaseosa 1.5L', precio: 8000 }],
+        ['gaseosa 400ml', { nombre: 'Gaseosa 400ml', precio: 4000 }],
+        ['jugo natural en agua', { nombre: 'Jugo Natural en Agua', precio: 8500 }],
+        ['jugo natural en leche', { nombre: 'Jugo Natural en Leche', precio: 9500 }],
+        ['soda', { nombre: 'Soda', precio: 4500 }],
+        ['porcion de papas a la francesa', { nombre: 'Porción de Papas a la Francesa', precio: 5500 }],
+        ['porcion de papa a la francesa', { nombre: 'Porción de Papas a la Francesa', precio: 5500 }],
+        ['porcion papas a la francesa', { nombre: 'Porción de Papas a la Francesa', precio: 5500 }]
+      ]);
+      const seenKeys = new Set();
+      const result = [];
+      for (const item of rawList) {
+        if (!item || !item.nombre) continue;
+        let nombre = String(item.nombre).trim();
+        let n = normDishText(nombre);
+        if (n.includes('patacon con hogao')) continue;
+        if (n === 'espaguetis con pollo' || n === 'espagueti con pollo') {
+          nombre = 'Espagueti con pollo';
+          n = 'espagueti con pollo';
+        }
+        let precio = Number(item.precio || 0);
+        if (CALIBRATED_BEVERAGES.has(n)) {
+          const cal = CALIBRATED_BEVERAGES.get(n);
+          nombre = cal.nombre;
+          precio = cal.precio;
+          n = normDishText(nombre);
+        }
+        const descNorm = normDishText(item.descripcion || '');
+        const isRapidas = descNorm.includes('comidas rapidas') || descNorm.includes('noche');
+        const dedupeKey = isRapidas && !CALIBRATED_BEVERAGES.has(n) ? `rap:${n}` : `alm:${n}`;
+        if (seenKeys.has(dedupeKey)) continue;
+        seenKeys.add(dedupeKey);
+        result.push({ ...item, nombre, precio });
+      }
+      return result;
+    }
 
     function buildPriceOptionsHtml(currentPrice) {
       const prNum = Math.round(Number(currentPrice || 0));
@@ -1377,13 +1491,14 @@ const formatPrice = (val) => {
         key: 'OTROS_BEBIDAS',
         family: 'OTROS',
         title: '🥤 Bebidas, Jugos y Porciones Adicionales',
-        subtitle: 'Gaseosas, Jugos Naturales, Cerveza y Porciones de Papa / Patacón',
+        subtitle: 'Gaseosas, Jugos Naturales, Cerveza y Porción de Papas a la Francesa',
         badgeColor: 'bg-teal-700 text-white',
         names: [
-          'Gaseosa 400ml', 'Gaseosa 1.5L', 'Jugo Natural en Agua',
-          'Jugo Natural en Leche', 'Cerveza Club Colombia / Águila',
-          'Porción de Papas a la Francesa', 'Porción de Patacón con Hogao',
-          'Botella de agua', 'Agua', 'Soda'
+          'Botella de Agua', 'Botella de agua', 'Agua',
+          'Cerveza Club Colombia / Águila', 'Cerveza',
+          'Gaseosa 1.5L', 'Gaseosa 400ml',
+          'Jugo Natural en Agua', 'Jugo Natural en Leche',
+          'Soda', 'Porción de Papas a la Francesa'
         ]
       }
     ];
@@ -1823,7 +1938,7 @@ const formatPrice = (val) => {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
-            allLivePlatos = data;
+            allLivePlatos = sanitizeAdminPlatos(data);
             broadcastPlatosUpdate(allLivePlatos);
             renderAdminPriceGroups();
             const badge = document.getElementById('platos-sync-badge');

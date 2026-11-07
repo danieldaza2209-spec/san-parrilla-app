@@ -11,16 +11,62 @@ const categories = (rawCategories && rawCategories.length > 0) ? rawCategories :
 
 // Solo platos del menú: los productos internos (ej. prueba de impresión) nunca llegan al público.
 const rawProducts = getPublicProducts();
-const products = rawProducts.map((p) => {
-  if (p.id === 'pic-4' || p.name === 'Picada Berraca') {
-    return {
-      ...p,
-      is_featured: 0,
-      description: 'Lomo de cerdo, chorizo, chicharrón, costillas de cerdo, papa a la francesa.',
-    };
-  }
-  return p;
-});
+const CALIBRATED_BEVERAGE_PRICES: Record<string, { name: string; price: number }> = {
+  'botella de agua': { name: 'Botella de Agua', price: 3000 },
+  'agua': { name: 'Botella de Agua', price: 3000 },
+  'cerveza club colombia / aguila': { name: 'Cerveza Club Colombia / Águila', price: 5500 },
+  'cerveza': { name: 'Cerveza Club Colombia / Águila', price: 5500 },
+  'gaseosa 1.5l': { name: 'Gaseosa 1.5L', price: 8000 },
+  'gaseosa 400ml': { name: 'Gaseosa 400ml', price: 4000 },
+  'jugo natural en agua': { name: 'Jugo Natural en Agua', price: 8500 },
+  'jugo natural en leche': { name: 'Jugo Natural en Leche', price: 9500 },
+  'soda': { name: 'Soda', price: 4500 },
+  'porcion de papas a la francesa': { name: 'Porción de Papas a la Francesa', price: 5500 },
+  'porcion de papa a la francesa': { name: 'Porción de Papas a la Francesa', price: 5500 },
+  'porcion papas a la francesa': { name: 'Porción de Papas a la Francesa', price: 5500 },
+};
+
+const normKey = (s: string) =>
+  String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const seenPublicKeys = new Set<string>();
+const products = rawProducts
+  .filter((p) => {
+    const n = normKey(p.name);
+    if (n.includes('patacon con hogao')) return false;
+    if (p.is_active === 0 || p.disponible === false) return false;
+    return true;
+  })
+  .map((p) => {
+    let item = { ...p };
+    const n = normKey(item.name);
+    if (n === 'espaguetis con pollo' || n === 'espagueti con pollo') {
+      item.name = 'Espagueti con pollo';
+    }
+    if (CALIBRATED_BEVERAGE_PRICES[n]) {
+      item.name = CALIBRATED_BEVERAGE_PRICES[n].name;
+      item.price = CALIBRATED_BEVERAGE_PRICES[n].price;
+    }
+    if (item.id === 'pic-4' || item.name === 'Picada Berraca') {
+      item = {
+        ...item,
+        is_featured: 0,
+        description: 'Lomo de cerdo, chorizo, chicharrón, costillas de cerdo, papa a la francesa.',
+      };
+    }
+    return item;
+  })
+  .filter((p) => {
+    const scope = p.id.startsWith('rap-') || p.menu_type === 'rapidas' ? 'rap' : 'alm';
+    const key = `${scope}:${normKey(p.name)}`;
+    if (seenPublicKeys.has(key)) return false;
+    seenPublicKeys.add(key);
+    return true;
+  });
 
 const dailySpecials = getDailySpecials() || fallbackDailySpecials;
 
