@@ -1066,6 +1066,13 @@ const formatPrice = (val) => {
           </div>
           <button
             type="button"
+            id="btn-save-all-platos-state"
+            class="px-3.5 py-2 rounded-xl bg-parrilla-gold hover:bg-parrilla-goldLight text-white text-xs font-extrabold shadow-sm transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+          >
+            <span>💾 Guardar Disponibilidad y Precios</span>
+          </button>
+          <button
+            type="button"
             id="btn-refresh-platos-admin"
             class="px-3 py-2 rounded-xl bg-parrilla-dark hover:bg-slate-200 border border-parrilla-border text-xs font-bold text-parrilla-ivory transition cursor-pointer"
           >
@@ -1073,6 +1080,14 @@ const formatPrice = (val) => {
           </button>
         </div>
       </div>
+
+      <!-- Toast flotante de confirmación de guardado de platos -->
+      <div
+        id="admin-plato-toast"
+        class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl shadow-xl border text-xs font-extrabold transition-all duration-200"
+        role="status"
+        aria-live="polite"
+      ></div>
 
       <!-- Pestañas rápidas por familia de menú -->
       <div class="flex flex-wrap items-center gap-2 mb-5">
@@ -1625,6 +1640,20 @@ const formatPrice = (val) => {
       return blocks;
     }
 
+    let adminPlatoToastTimer = null;
+    function showAdminPlatoToast(message, isError = false) {
+      const toastEl = document.getElementById('admin-plato-toast');
+      if (!toastEl) return;
+      toastEl.textContent = message;
+      toastEl.className = isError
+        ? 'fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-xl shadow-xl border text-xs font-extrabold transition-all duration-200 bg-red-600 text-white border-red-800'
+        : 'fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-xl shadow-xl border text-xs font-extrabold transition-all duration-200 bg-emerald-700 text-white border-emerald-900';
+      if (adminPlatoToastTimer) clearTimeout(adminPlatoToastTimer);
+      adminPlatoToastTimer = setTimeout(() => {
+        toastEl.classList.add('hidden');
+      }, 2800);
+    }
+
     function renderAdminPriceGroups() {
       const container = document.getElementById('admin-price-groups-container');
       if (!container) return;
@@ -1672,7 +1701,7 @@ const formatPrice = (val) => {
           <div class="bg-parrilla-dark/70 rounded-2xl border border-parrilla-border overflow-hidden flex flex-col shadow-sm" data-block-key="${block.key}">
             <!-- Encabezado del Bloque de Precio + Actualización Masiva -->
             <div class="p-4 bg-white border-b border-parrilla-border space-y-3">
-              <div class="flex items-start justify-between gap-2">
+              <div class="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <span data-block-counter="${block.key}" class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${block.badgeColor} mb-1">
                     ${block.items.length} PLATOS • ${disponiblesCount} DISPONIBLES
@@ -1680,6 +1709,13 @@ const formatPrice = (val) => {
                   <h3 class="font-display font-black text-sm sm:text-base text-parrilla-ivory leading-tight">${block.title}</h3>
                   <p class="text-[11px] text-parrilla-muted mt-0.5">${block.subtitle}</p>
                 </div>
+                <button
+                  type="button"
+                  data-save-block-btn="${block.key}"
+                  class="btn-save-block-state px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-[11px] whitespace-nowrap shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1"
+                >
+                  <span>💾 Guardar Disponibilidad y Precios</span>
+                </button>
               </div>
 
               <!-- Barra de actualización masiva del grupo -->
@@ -1713,8 +1749,9 @@ const formatPrice = (val) => {
               ${block.items.map(dish => {
                 const isDisp = dish.disponible !== false && dish.activo !== false;
                 const priceNum = Math.round(Number(dish.precio || 0));
+                const safeNameAttr = String(dish.nombre || '').replace(/"/g, '&quot;');
                 return `
-                  <div class="dish-item-row flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 px-3 py-2 rounded-xl transition ${isDisp ? 'bg-white hover:bg-slate-50' : 'bg-red-50/40 border border-red-200/70'}" data-plato-id="${dish.id}">
+                  <div class="dish-item-row flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 px-3 py-2 rounded-xl transition ${isDisp ? 'bg-white hover:bg-slate-50' : 'bg-red-50/40 border border-red-200/70'}" data-plato-id="${dish.id}" data-plato-name="${safeNameAttr}" data-plato-price="${priceNum}">
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-1.5">
                         <span class="dish-name-el font-bold text-xs text-parrilla-ivory truncate ${!isDisp ? 'text-slate-600' : ''}">${dish.nombre}</span>
@@ -1726,6 +1763,7 @@ const formatPrice = (val) => {
                       <!-- Selector estático de precio -->
                       <select
                         data-single-price-select="${dish.id}"
+                        data-plato-name="${safeNameAttr}"
                         class="select-single-plato-price px-2.5 py-1.5 rounded-lg bg-parrilla-dark border border-parrilla-border text-xs font-mono font-black text-parrilla-gold focus:border-parrilla-gold outline-none cursor-pointer"
                         title="Cambiar precio y mover plato a otro bloque de precio"
                       >
@@ -1736,6 +1774,8 @@ const formatPrice = (val) => {
                       <button
                         type="button"
                         data-toggle-disp-id="${dish.id}"
+                        data-plato-name="${safeNameAttr}"
+                        data-plato-price="${priceNum}"
                         data-block-key="${block.key}"
                         data-current-disp="${isDisp ? '1' : '0'}"
                         class="btn-toggle-plato-disp px-2.5 py-1.5 rounded-lg font-extrabold text-[10px] transition cursor-pointer whitespace-nowrap ${
@@ -1755,6 +1795,70 @@ const formatPrice = (val) => {
         `;
       }).join('');
 
+      // Bind botón de respaldo por bloque: "💾 Guardar Disponibilidad y Precios"
+      container.querySelectorAll('.btn-save-block-state').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const blockKey = btn.getAttribute('data-save-block-btn');
+          const blockEl = blockKey ? container.querySelector(`[data-block-key="${blockKey}"]`) : null;
+          if (!blockEl) return;
+
+          const itemsPayload = [];
+          blockEl.querySelectorAll('.dish-item-row').forEach(rowEl => {
+            const pid = rowEl.getAttribute('data-plato-id') || '';
+            const pname = rowEl.getAttribute('data-plato-name') || '';
+            const selEl = rowEl.querySelector('.select-single-plato-price');
+            const dispBtn = rowEl.querySelector('.btn-toggle-plato-disp');
+            // @ts-ignore
+            const pprice = Number(selEl?.value || rowEl.getAttribute('data-plato-price') || 0);
+            const pdisp = dispBtn ? dispBtn.getAttribute('data-current-disp') === '1' : true;
+            itemsPayload.push({
+              id: pid,
+              nombre: pname,
+              precio: pprice,
+              disponible: pdisp,
+              activo: pdisp
+            });
+          });
+
+          const origHtml = btn.innerHTML;
+          btn.textContent = '⏳ Guardando...';
+          // @ts-ignore
+          btn.disabled = true;
+          try {
+            const res = await fetch('/api/platos/bulk-save', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: itemsPayload })
+            });
+            if (!res.ok) throw new Error('Error HTTP ' + res.status);
+            const mapByName = new Map(itemsPayload.map(i => [normDishText(i.nombre), i]));
+            allLivePlatos = allLivePlatos.map(p => {
+              const match = mapByName.get(normDishText(p.nombre));
+              if (!match) return p;
+              return {
+                ...p,
+                precio: match.precio,
+                disponible: match.disponible,
+                activo: match.disponible
+              };
+            });
+            broadcastPlatosUpdate(allLivePlatos);
+            showAdminPlatoToast('✓ Disponibilidad y precios del bloque guardados en base de datos');
+            btn.textContent = '✓ Guardado';
+            setTimeout(() => {
+              btn.innerHTML = origHtml;
+              // @ts-ignore
+              btn.disabled = false;
+            }, 1400);
+          } catch (err) {
+            showAdminPlatoToast('✕ Error al guardar bloque: ' + (err.message || err), true);
+            btn.innerHTML = origHtml;
+            // @ts-ignore
+            btn.disabled = false;
+          }
+        });
+      });
+
       // Bind eventos de actualización masiva por bloque
       container.querySelectorAll('.btn-apply-bulk-price').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -1771,21 +1875,27 @@ const formatPrice = (val) => {
             return;
           }
 
+          const idSet = new Set(platoIds.map(String));
+          const nombresGrupo = allLivePlatos
+            .filter(p => idSet.has(String(p.id)))
+            .map(p => p.nombre);
+
           const origText = btn.textContent;
           btn.textContent = 'Aplicando...';
           try {
             const res = await fetch('/api/platos/bulk-price', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ plato_ids: platoIds, nuevo_precio: nuevoPrecio })
+              body: JSON.stringify({ plato_ids: platoIds, nombres: nombresGrupo, nuevo_precio: nuevoPrecio })
             });
             if (!res.ok) throw new Error('Error HTTP ' + res.status);
             // Actualizar estado local y propagar a POS e Index
-            const idSet = new Set(platoIds.map(String));
             allLivePlatos = allLivePlatos.map(p => idSet.has(String(p.id)) ? { ...p, precio: nuevoPrecio } : p);
             broadcastPlatosUpdate(allLivePlatos);
+            showAdminPlatoToast(`✓ Precio del grupo actualizado a ${fmtCOP(nuevoPrecio)}`);
             renderAdminPriceGroups();
           } catch (err) {
+            showAdminPlatoToast('✕ No se pudo actualizar el precio del grupo: ' + (err.message || err), true);
             alert('No se pudo actualizar el precio del grupo: ' + (err.message || err));
             btn.textContent = origText;
           }
@@ -1796,6 +1906,10 @@ const formatPrice = (val) => {
       container.querySelectorAll('.select-single-plato-price').forEach(sel => {
         sel.addEventListener('change', async () => {
           const platoId = sel.getAttribute('data-single-price-select');
+          const dishName = sel.getAttribute('data-plato-name') || '';
+          const rowEl = sel.closest('.dish-item-row');
+          const dispBtn = rowEl?.querySelector('.btn-toggle-plato-disp');
+          const curDisp = dispBtn ? dispBtn.getAttribute('data-current-disp') === '1' : true;
           // @ts-ignore
           const nuevoPrecio = Number(sel.value || 0);
           if (!platoId || isNaN(nuevoPrecio) || nuevoPrecio < 0) return;
@@ -1803,23 +1917,24 @@ const formatPrice = (val) => {
           // @ts-ignore
           sel.disabled = true;
           try {
-            let res = await fetch(`/api/platos/${platoId}`, {
+            let res = await fetch(`/api/platos/${encodeURIComponent(platoId)}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ precio: nuevoPrecio })
+              body: JSON.stringify({ id: platoId, nombre: dishName, precio: nuevoPrecio, disponible: curDisp, activo: curDisp })
             });
             if (!res.ok) {
-              res = await fetch(`/api/platos/${platoId}`, {
+              res = await fetch(`/api/platos/${encodeURIComponent(platoId)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ precio: nuevoPrecio })
+                body: JSON.stringify({ id: platoId, nombre: dishName, precio: nuevoPrecio, disponible: curDisp, activo: curDisp })
               });
             }
             if (!res.ok) throw new Error('Error HTTP ' + res.status);
             let updated = null;
             try { updated = await res.json(); } catch (_) {}
+            const normTarget = normDishText(dishName);
             allLivePlatos = allLivePlatos.map(p =>
-              String(p.id) === String(platoId)
+              String(p.id) === String(platoId) || (normTarget && normDishText(p.nombre) === normTarget)
                 ? {
                     ...p,
                     ...(updated && updated.nombre ? { nombre: updated.nombre } : {}),
@@ -1828,9 +1943,11 @@ const formatPrice = (val) => {
                 : p
             );
             broadcastPlatosUpdate(allLivePlatos);
+            showAdminPlatoToast(`✓ Precio de ${dishName || 'plato'} guardado (${fmtCOP(nuevoPrecio)})`);
             // Reorganizar visualmente de inmediato al bloque de precio correspondiente
             renderAdminPriceGroups();
           } catch (err) {
+            showAdminPlatoToast('✕ Error actualizando precio de ' + (dishName || 'plato'), true);
             alert('Error actualizando precio del plato: ' + (err.message || err));
             // @ts-ignore
             sel.disabled = false;
@@ -1838,35 +1955,58 @@ const formatPrice = (val) => {
         });
       });
 
-      // Bind interruptor 1-Clic Disponible / No Disponible (Mantiene la fila intacta en pantalla)
+      // Bind interruptor 1-Clic Disponible / No Disponible (Persistencia inmediata en segundo plano + Toast)
       container.querySelectorAll('.btn-toggle-plato-disp').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const platoId = btn.getAttribute('data-toggle-disp-id');
+          const platoId = btn.getAttribute('data-toggle-disp-id') || '';
+          const rowEl = btn.closest('.dish-item-row');
+          const dishName =
+            btn.getAttribute('data-plato-name') ||
+            rowEl?.getAttribute('data-plato-name') ||
+            rowEl?.querySelector('.dish-name-el')?.textContent?.trim() ||
+            '';
+          const selEl = rowEl?.querySelector('.select-single-plato-price');
+          // @ts-ignore
+          const dishPrice = Number(selEl?.value || btn.getAttribute('data-plato-price') || 0);
           const curDisp = btn.getAttribute('data-current-disp') === '1';
           const nextDisp = !curDisp;
 
           const origText = btn.textContent;
-          btn.textContent = '⏳...';
+          const origClass = btn.className;
+          btn.textContent = '⏳ Guardando...';
           // @ts-ignore
           btn.disabled = true;
           try {
-            let res = await fetch(`/api/platos/${platoId}`, {
+            let res = await fetch(`/api/platos/${encodeURIComponent(platoId)}/disponibilidad`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ disponible: nextDisp, activo: nextDisp })
+              body: JSON.stringify({
+                id: platoId,
+                nombre: dishName,
+                precio: dishPrice,
+                disponible: nextDisp,
+                activo: nextDisp
+              })
             });
             if (!res.ok) {
-              res = await fetch(`/api/platos/${platoId}`, {
-                method: 'PUT',
+              res = await fetch(`/api/platos/${encodeURIComponent(platoId)}`, {
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ disponible: nextDisp, activo: nextDisp })
+                body: JSON.stringify({
+                  id: platoId,
+                  nombre: dishName,
+                  precio: dishPrice,
+                  disponible: nextDisp,
+                  activo: nextDisp
+                })
               });
             }
             if (!res.ok) throw new Error('Error HTTP ' + res.status);
 
-            // Actualizar estado en allLivePlatos preservando nombre y precio intactos
+            // Actualizar estado en allLivePlatos por ID y por nombre normalizado preservando nombre y precio intactos
+            const normTarget = normDishText(dishName);
             allLivePlatos = allLivePlatos.map(p => {
-              if (String(p.id) === String(platoId)) {
+              if (String(p.id) === String(platoId) || (normTarget && normDishText(p.nombre) === normTarget)) {
                 return {
                   ...p,
                   disponible: nextDisp,
@@ -1890,7 +2030,6 @@ const formatPrice = (val) => {
             }
 
             // Actualizar estilo visual de la fila en pantalla (la fila permanece visible siempre)
-            const rowEl = btn.closest('.dish-item-row');
             if (rowEl) {
               const pill = rowEl.querySelector('.dish-status-pill');
               const nameEl = rowEl.querySelector('.dish-name-el');
@@ -1922,11 +2061,17 @@ const formatPrice = (val) => {
                 counterEl.textContent = `${totalInBlock} PLATOS • ${dispInBlock} DISPONIBLES`;
               }
             }
+
+            showAdminPlatoToast(`✓ Estado de ${dishName || 'plato'} guardado (${nextDisp ? 'Disponible' : 'No disponible'})`);
           } catch (err) {
-            alert('Error cambiando disponibilidad del plato: ' + (err.message || err));
+            // Revertir visualmente el botón si el servidor falla y mostrar mensaje claro
+            btn.setAttribute('data-current-disp', curDisp ? '1' : '0');
             // @ts-ignore
             btn.disabled = false;
             btn.textContent = origText;
+            btn.className = origClass;
+            showAdminPlatoToast(`✕ No se pudo guardar el estado de ${dishName || 'plato'}: ${err.message || err}`, true);
+            alert('Error guardando disponibilidad de ' + (dishName || 'plato') + ': ' + (err.message || err));
           }
         });
       });
@@ -1976,6 +2121,44 @@ const formatPrice = (val) => {
     const btnRefreshPlatosAdmin = document.getElementById('btn-refresh-platos-admin');
     if (btnRefreshPlatosAdmin) {
       btnRefreshPlatosAdmin.addEventListener('click', () => loadLivePlatosIntoAdmin());
+    }
+
+    const btnSaveAllPlatosState = document.getElementById('btn-save-all-platos-state');
+    if (btnSaveAllPlatosState) {
+      btnSaveAllPlatosState.addEventListener('click', async () => {
+        const itemsPayload = allLivePlatos.map(p => ({
+          id: p.id,
+          nombre: p.nombre,
+          precio: Number(p.precio || 0),
+          disponible: p.disponible !== false && p.activo !== false,
+          activo: p.disponible !== false && p.activo !== false
+        }));
+        const origHtml = btnSaveAllPlatosState.innerHTML;
+        btnSaveAllPlatosState.textContent = '⏳ Guardando todo...';
+        // @ts-ignore
+        btnSaveAllPlatosState.disabled = true;
+        try {
+          const res = await fetch('/api/platos/bulk-save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: itemsPayload })
+          });
+          if (!res.ok) throw new Error('Error HTTP ' + res.status);
+          broadcastPlatosUpdate(allLivePlatos);
+          showAdminPlatoToast('✓ Disponibilidad y precios de todo el catálogo guardados en base de datos');
+          btnSaveAllPlatosState.textContent = '✓ Catálogo Guardado';
+          setTimeout(() => {
+            btnSaveAllPlatosState.innerHTML = origHtml;
+            // @ts-ignore
+            btnSaveAllPlatosState.disabled = false;
+          }, 1500);
+        } catch (err) {
+          showAdminPlatoToast('✕ Error al guardar catálogo: ' + (err.message || err), true);
+          btnSaveAllPlatosState.innerHTML = origHtml;
+          // @ts-ignore
+          btnSaveAllPlatosState.disabled = false;
+        }
+      });
     }
 
     // =====================================================================

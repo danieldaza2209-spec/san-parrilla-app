@@ -44,6 +44,8 @@ def update_plato(
     if not plato:
         raise LookupError(f"Plato con ID {plato_id} no encontrado.")
 
+    old_norm = _normalizar_texto(plato.nombre)
+
     if data.nombre is not None and data.nombre.strip():
         plato.nombre = data.nombre.strip()
     if data.descripcion is not None:
@@ -60,6 +62,20 @@ def update_plato(
     elif data.activo is not None:
         plato.activo = bool(data.activo)
         plato.disponible = bool(data.activo)
+
+    new_norm = _normalizar_texto(plato.nombre)
+    target_norms = {old_norm, new_norm}
+    if "espagueti con pollo" in target_norms or "espaguetis con pollo" in target_norms:
+        target_norms.update({"espagueti con pollo", "espaguetis con pollo"})
+
+    # Sincronizar cualquier fila duplicada en Neon DB que comparta el mismo nombre normalizado
+    for sibling in db.query(models.Plato).filter(models.Plato.id != plato.id).all():
+        if _normalizar_texto(sibling.nombre) in target_norms:
+            if data.disponible is not None or data.activo is not None:
+                sibling.disponible = plato.disponible
+                sibling.activo = plato.activo
+            if data.precio is not None and float(data.precio) >= 0:
+                sibling.precio = plato.precio
 
     db.commit()
     db.refresh(plato)

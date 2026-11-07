@@ -399,15 +399,151 @@ const metaById = new Map(
   ])
 );
 
+const normProdKey = (str) =>
+  String(str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const dishOverridesMap = new Map();
+
+export function setDishOverride(nameOrId, { disponible, precio } = {}) {
+  const k = normProdKey(nameOrId);
+  if (!k) return;
+  const prev = dishOverridesMap.get(k) || {};
+  const next = {
+    ...prev,
+    ...(disponible !== undefined ? { disponible: Boolean(disponible) } : {}),
+    ...(precio !== undefined && Number(precio) > 0 ? { precio: Number(precio) } : {}),
+  };
+  dishOverridesMap.set(k, next);
+  if (k === 'espagueti con pollo' || k === 'espaguetis con pollo') {
+    dishOverridesMap.set('espagueti con pollo', next);
+    dishOverridesMap.set('espaguetis con pollo', next);
+  }
+}
+
+export function getDishOverrides() {
+  const out = {};
+  for (const [k, v] of dishOverridesMap.entries()) {
+    out[k] = v;
+  }
+  return out;
+}
+
+export function applyDishOverridesMap(rawMap = {}) {
+  if (!rawMap || typeof rawMap !== 'object') return;
+  for (const [k, v] of Object.entries(rawMap)) {
+    if (v && typeof v === 'object') {
+      setDishOverride(k, v);
+      if (v.disponible !== undefined) {
+        toggleProductStock(k, v.disponible, k);
+      }
+      if (v.precio !== undefined && Number(v.precio) > 0) {
+        updateProductPrice(k, v.precio, k);
+      }
+    }
+  }
+}
+
+export const SP_OVR_PREFIX = '__SP_OVR__';
+
+export function extractOverridesFromAcomp(rawAcomp) {
+  const arr = Array.isArray(rawAcomp)
+    ? rawAcomp.map((x) => String(x).trim()).filter(Boolean)
+    : typeof rawAcomp === 'string' && rawAcomp.trim()
+    ? rawAcomp.split(',').map((x) => x.trim()).filter(Boolean)
+    : [];
+  const cleanAcomp = [];
+  let decodedMap = {};
+  for (const item of arr) {
+    if (item.startsWith(SP_OVR_PREFIX)) {
+      const b64 = item.slice(SP_OVR_PREFIX.length).trim();
+      if (b64) {
+        try {
+          const jsonStr = Buffer.from(b64, 'base64url').toString('utf8');
+          const parsed = JSON.parse(jsonStr);
+          if (parsed && typeof parsed === 'object') {
+            decodedMap = { ...decodedMap, ...parsed };
+          }
+        } catch (_) {}
+      }
+    } else {
+      cleanAcomp.push(item);
+    }
+  }
+  const normalizedMap = normalizeDecodedOverrides(decodedMap);
+  if (Object.keys(normalizedMap).length > 0) {
+    applyDishOverridesMap(normalizedMap);
+  }
+  return { cleanAcomp, overrides: normalizedMap };
+}
+
+export function encodeOverridesToken(overridesObj = null) {
+  const mapToEncode = overridesObj && typeof overridesObj === 'object' ? { ...getDishOverrides(), ...overridesObj } : getDishOverrides();
+  const compact = {};
+  for (const [k, v] of Object.entries(mapToEncode)) {
+    if (!k || !v || typeof v !== 'object') continue;
+    const entry = {};
+    if (v.disponible !== undefined) entry.d = v.disponible ? 1 : 0;
+    if (v.precio !== undefined && Number(v.precio) > 0) entry.p = Math.round(Number(v.precio));
+    if (entry.d !== undefined || entry.p !== undefined) {
+      compact[k] = entry;
+    }
+  }
+  if (Object.keys(compact).length === 0) return '';
+  try {
+    return `${SP_OVR_PREFIX}${Buffer.from(JSON.stringify(compact), 'utf8').toString('base64url')}`;
+  } catch (_) {
+    return '';
+  }
+}
+
+export function normalizeDecodedOverrides(rawMap = {}) {
+  const out = {};
+  if (!rawMap || typeof rawMap !== 'object') return out;
+  for (const [k, v] of Object.entries(rawMap)) {
+    if (!k || !v || typeof v !== 'object') continue;
+    const normK = normProdKey(k);
+    const entry = {};
+    if (v.disponible !== undefined) entry.disponible = Boolean(v.disponible);
+    else if (v.d !== undefined) entry.disponible = Boolean(v.d);
+    if (v.precio !== undefined && Number(v.precio) > 0) entry.precio = Number(v.precio);
+    else if (v.p !== undefined && Number(v.p) > 0) entry.precio = Number(v.p);
+    if (entry.disponible !== undefined || entry.precio !== undefined) {
+      out[normK] = entry;
+    }
+  }
+  return out;
+}
+
 function enrichProductRow(row) {
   if (!row) return row;
   const meta = metaById.get(row.id);
-  if (!meta) return row;
+  const nKey = normProdKey(row.name || row.nombre);
+  const ovrByName = dishOverridesMap.get(nKey);
+  const ovrById = dishOverridesMap.get(normProdKey(row.id));
+  const ovr = ovrByName || ovrById;
+  const isAct =
+    ovr?.disponible !== undefined
+      ? (ovr.disponible ? 1 : 0)
+      : row.disponible !== undefined
+      ? (row.disponible ? 1 : 0)
+      : row.is_active !== undefined
+      ? Number(row.is_active)
+      : 1;
+  const finalPrice = ovr?.precio !== undefined ? Number(ovr.precio) : Number(row.price ?? row.precio ?? 0);
+
   return {
     ...row,
-    menu_type: row.menu_type || meta.menu_type,
-    has_flavor: row.has_flavor ?? meta.has_flavor,
-    special_badge: row.special_badge || meta.special_badge || undefined,
+    price: finalPrice,
+    is_active: isAct,
+    in_stock: Boolean(isAct),
+    disponible: Boolean(isAct),
+    menu_type: row.menu_type || meta?.menu_type,
+    has_flavor: row.has_flavor ?? meta?.has_flavor,
+    special_badge: row.special_badge || meta?.special_badge || undefined,
   };
 }
 
@@ -889,24 +1025,55 @@ export function getAllProducts() {
   return getProducts(false);
 }
 
-export function updateProductPrice(id, price) {
+export function updateProductPrice(id, price, nombre = '') {
   const numPrice = Number(price || 0);
+  const targetKey = normProdKey(nombre || id);
+  if (targetKey) {
+    const prev = dishOverridesMap.get(targetKey) || {};
+    dishOverridesMap.set(targetKey, { ...prev, precio: numPrice });
+  }
   if (db) {
     try {
-      db.prepare('UPDATE products SET price = ? WHERE id = ?').run(numPrice, String(id));
+      db.prepare('UPDATE products SET price = ? WHERE id = ? OR lower(name) = lower(?)').run(numPrice, String(id), String(nombre || id));
     } catch (e) {}
   }
-  memProducts = memProducts.map(p => String(p.id) === String(id) ? { ...p, price: numPrice } : p);
+  memProducts = memProducts.map(p => {
+    if (String(p.id) === String(id) || (targetKey && normProdKey(p.name) === targetKey)) {
+      return { ...p, price: numPrice };
+    }
+    return p;
+  });
 }
 
-export function toggleProductStock(id, isActive) {
+export function toggleProductStock(id, isActive, nombre = '') {
   const act = isActive ? 1 : 0;
+  const boolDisp = Boolean(isActive);
+  const targetKey = normProdKey(nombre || id);
+  if (targetKey) {
+    const prev = dishOverridesMap.get(targetKey) || {};
+    dishOverridesMap.set(targetKey, { ...prev, disponible: boolDisp });
+    if (targetKey === 'espagueti con pollo' || targetKey === 'espaguetis con pollo') {
+      dishOverridesMap.set('espagueti con pollo', { ...(dishOverridesMap.get('espagueti con pollo') || {}), disponible: boolDisp });
+      dishOverridesMap.set('espaguetis con pollo', { ...(dishOverridesMap.get('espaguetis con pollo') || {}), disponible: boolDisp });
+    }
+  }
   if (db) {
     try {
-      db.prepare('UPDATE products SET is_active = ? WHERE id = ?').run(act, String(id));
+      db.prepare('UPDATE products SET is_active = ? WHERE id = ? OR lower(name) = lower(?)').run(act, String(id), String(nombre || id));
     } catch (e) {}
   }
-  memProducts = memProducts.map(p => String(p.id) === String(id) ? { ...p, is_active: act, in_stock: Boolean(isActive) } : p);
+  memProducts = memProducts.map(p => {
+    const pKey = normProdKey(p.name);
+    const isMatch =
+      String(p.id) === String(id) ||
+      (targetKey && pKey === targetKey) ||
+      ((targetKey === 'espagueti con pollo' || targetKey === 'espaguetis con pollo') &&
+        (pKey === 'espagueti con pollo' || pKey === 'espaguetis con pollo'));
+    if (isMatch) {
+      return { ...p, is_active: act, in_stock: boolDisp, disponible: boolDisp };
+    }
+    return p;
+  });
 }
 
 export { db };

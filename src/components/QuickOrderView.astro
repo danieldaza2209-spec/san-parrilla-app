@@ -425,8 +425,8 @@ const desayunos = showDesayunos
       new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(val || 0));
 
     function toArr(v) {
-      if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
-      if (typeof v === 'string' && v.trim()) return v.split(',').map((x) => x.trim()).filter(Boolean);
+      if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter((x) => x && !x.startsWith('__SP_OVR__'));
+      if (typeof v === 'string' && v.trim()) return v.split(',').map((x) => x.trim()).filter((x) => x && !x.startsWith('__SP_OVR__'));
       return [];
     }
 
@@ -712,7 +712,13 @@ const desayunos = showDesayunos
       const platoMap = new Map();
       cleanPlatos.forEach((p) => {
         const key = normDishKey(p.nombre || p.name);
-        if (key) platoMap.set(key, p);
+        if (key) {
+          platoMap.set(key, p);
+          if (key === 'espagueti con pollo' || key === 'espaguetis con pollo') {
+            platoMap.set('espagueti con pollo', p);
+            platoMap.set('espaguetis con pollo', p);
+          }
+        }
       });
 
       // En la carta pública: sincronizar dinámicamente la columna de $18.000 filtrando estrictamente por plato.disponible === true
@@ -889,10 +895,19 @@ const desayunos = showDesayunos
           }
         }
 
-        // En la carta pública, ocultar platos con disponible === false; en POS, mostrar badge Agotado por hoy
-        if (isPublicMenu && !btn.closest('[data-special-items]')) {
+        // En la carta pública, ocultar platos con disponible === false (incluyendo especiales rotativos); en POS, mostrar badge Agotado por hoy
+        if (isPublicMenu) {
           if (rowOrCard) {
             rowOrCard.style.display = isAvailable ? '' : 'none';
+          }
+          const specialBox = btn.closest('[data-special-box-price]');
+          if (specialBox) {
+            const visibleSpecialRows = Array.from(specialBox.querySelectorAll('[data-special-items] > li')).filter(
+              (liEl) => liEl.style.display !== 'none'
+            );
+            if (visibleSpecialRows.length === 0) {
+              specialBox.style.display = 'none';
+            }
           }
         }
 
@@ -976,17 +991,20 @@ const desayunos = showDesayunos
       } catch (e) {}
     }
 
-    // 1. Aplicar caché local de inmediato si existe
-    try {
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
-      if (cached && (cached.sopa_dia || cached.sopa)) {
-        applyLiveSpecialsToDOM(cached);
-      }
-      const cachedPlatos = JSON.parse(localStorage.getItem(PLATOS_CACHE_KEY) || 'null');
-      if (Array.isArray(cachedPlatos) && cachedPlatos.length > 0) {
-        applyLivePlatosToDOM(cachedPlatos);
-      }
-    } catch (e) {}
+    // 1. En POS interno aplicar caché local de inmediato si existe; en carta pública usar siempre datos frescos de servidor + API en vivo
+    const isPublicMenuInit = document.getElementById('quick-order-view')?.getAttribute('data-public-menu') === 'true';
+    if (!isPublicMenuInit) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+        if (cached && (cached.sopa_dia || cached.sopa)) {
+          applyLiveSpecialsToDOM(cached);
+        }
+        const cachedPlatos = JSON.parse(localStorage.getItem(PLATOS_CACHE_KEY) || 'null');
+        if (Array.isArray(cachedPlatos) && cachedPlatos.length > 0) {
+          applyLivePlatosToDOM(cachedPlatos);
+        }
+      } catch (e) {}
+    }
 
     // 2. Consultar Neon DB en vivo
     function syncAllLive() {

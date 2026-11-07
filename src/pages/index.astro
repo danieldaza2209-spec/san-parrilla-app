@@ -1,13 +1,39 @@
 ---
-export const prerender = true;
+export const prerender = false;
 import PublicLayout from '../layouts/PublicLayout.astro';
 import CartDrawer from '../components/CartDrawer.astro';
 import QuickOrderView from '../components/QuickOrderView.astro';
 import StyledMenuView from '../components/StyledMenuView.astro';
 import { getCategories, getPublicProducts, getDailySpecials, fallbackCategories, fallbackDailySpecials } from '../lib/db.js';
+import { fetchLiveSanitizedPlatos } from './api/platos/[...action].js';
+
+Astro.response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 
 const rawCategories = getCategories();
 const categories = (rawCategories && rawCategories.length > 0) ? rawCategories : fallbackCategories;
+
+const normKey = (s: string) =>
+  String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+// Consultar catálogo vivo sincronizado con Neon DB y overrides de disponibilidad/precios
+let livePlatosMap = new Map<string, any>();
+try {
+  const livePlatos = await fetchLiveSanitizedPlatos();
+  if (Array.isArray(livePlatos)) {
+    for (const lp of livePlatos) {
+      const k = normKey(lp.nombre || lp.name);
+      if (k) livePlatosMap.set(k, lp);
+      if (k === 'espaguetis con pollo' || k === 'espagueti con pollo') {
+        livePlatosMap.set('espagueti con pollo', lp);
+        livePlatosMap.set('espaguetis con pollo', lp);
+      }
+    }
+  }
+} catch (_) {}
 
 // Solo platos del menú: los productos internos (ej. prueba de impresión) nunca llegan al público.
 const rawProducts = getPublicProducts();
@@ -26,21 +52,8 @@ const CALIBRATED_BEVERAGE_PRICES: Record<string, { name: string; price: number }
   'porcion papas a la francesa': { name: 'Porción de Papas a la Francesa', price: 5500 },
 };
 
-const normKey = (s: string) =>
-  String(s || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-
 const seenPublicKeys = new Set<string>();
 const products = rawProducts
-  .filter((p) => {
-    const n = normKey(p.name);
-    if (n.includes('patacon con hogao')) return false;
-    if (p.is_active === 0 || p.disponible === false) return false;
-    return true;
-  })
   .map((p) => {
     let item = { ...p };
     const n = normKey(item.name);
@@ -50,6 +63,19 @@ const products = rawProducts
     if (CALIBRATED_BEVERAGE_PRICES[n]) {
       item.name = CALIBRATED_BEVERAGE_PRICES[n].name;
       item.price = CALIBRATED_BEVERAGE_PRICES[n].price;
+    }
+    const liveMatch = livePlatosMap.get(normKey(item.name)) || livePlatosMap.get(n);
+    if (liveMatch) {
+      const liveDisp = liveMatch.disponible !== false && liveMatch.activo !== false && liveMatch.in_stock !== 0;
+      item.disponible = liveDisp;
+      item.activo = liveDisp;
+      item.in_stock = liveDisp ? 1 : 0;
+      if (Number(liveMatch.precio ?? liveMatch.price) > 0 && !CALIBRATED_BEVERAGE_PRICES[n]) {
+        item.price = Number(liveMatch.precio ?? liveMatch.price);
+        item.precio = item.price;
+      }
+    } else {
+      item.disponible = item.disponible !== false && item.in_stock !== 0 && item.is_active !== 0;
     }
     if (item.id === 'pic-4' || item.name === 'Picada Berraca') {
       item = {
@@ -61,6 +87,11 @@ const products = rawProducts
     return item;
   })
   .filter((p) => {
+    const n = normKey(p.name);
+    if (n.includes('patacon con hogao')) return false;
+    return p.disponible === true;
+  })
+  .filter((p) => {
     const scope = p.id.startsWith('rap-') || p.menu_type === 'rapidas' ? 'rap' : 'alm';
     const key = `${scope}:${normKey(p.name)}`;
     if (seenPublicKeys.has(key)) return false;
@@ -68,7 +99,27 @@ const products = rawProducts
     return true;
   });
 
-const dailySpecials = getDailySpecials() || fallbackDailySpecials;
+const rawSpecials = getDailySpecials() || fallbackDailySpecials;
+const isDishAvailableByName = (dishName: string) => {
+  const k = normKey(dishName);
+  if (!k) return false;
+  const lm = livePlatosMap.get(k);
+  if (lm) {
+    return lm.disponible !== false && lm.activo !== false && lm.in_stock !== 0;
+  }
+  return true;
+};
+
+const dailySpecials = {
+  ...rawSpecials,
+  especiales_16500: Array.isArray(rawSpecials.especiales_16500)
+    ? rawSpecials.especiales_16500.filter((name: string) => isDishAvailableByName(name))
+    : [],
+  especial_arroz_nombre:
+    rawSpecials.especial_arroz_nombre && isDishAvailableByName(rawSpecials.especial_arroz_nombre)
+      ? rawSpecials.especial_arroz_nombre
+      : '',
+};
 
 // Platos fuertes: llevan sopa, principio, acompañamiento y ensalada a elección en el carrito.
 // Picadas y bebidas se agregan tal cual, sin esas opciones.

@@ -88,17 +88,54 @@ def actualizar_plato_por_nombre(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@platos_direct_router.put("/{plato_id}/disponibilidad", response_model=schemas.PlatoOut)
+@platos_direct_router.patch("/{plato_id}/disponibilidad", response_model=schemas.PlatoOut)
+@platos_direct_router.post("/{plato_id}/disponibilidad", response_model=schemas.PlatoOut)
+@router.put("/platos/{plato_id}/disponibilidad", response_model=schemas.PlatoOut)
+@router.patch("/platos/{plato_id}/disponibilidad", response_model=schemas.PlatoOut)
+@router.post("/platos/{plato_id}/disponibilidad", response_model=schemas.PlatoOut)
+def actualizar_disponibilidad_plato(
+    plato_id: str,
+    payload: schemas.PlatoUpdate,
+    db: Session = Depends(get_db),
+):
+    try:
+        if plato_id.isdigit():
+            try:
+                return crud.update_plato(db, int(plato_id), payload)
+            except LookupError:
+                if payload.nombre:
+                    return crud.update_plato_by_name(db, payload.nombre, payload)
+                raise
+        if payload.nombre:
+            return crud.update_plato_by_name(db, payload.nombre, payload)
+        raise LookupError(f"Plato '{plato_id}' no encontrado.")
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @platos_direct_router.put("/{plato_id}", response_model=schemas.PlatoOut)
 @platos_direct_router.patch("/{plato_id}", response_model=schemas.PlatoOut)
 @router.put("/platos/{plato_id}", response_model=schemas.PlatoOut)
 @router.patch("/platos/{plato_id}", response_model=schemas.PlatoOut)
 def actualizar_plato_individual(
-    plato_id: int,
+    plato_id: str,
     payload: schemas.PlatoUpdate,
     db: Session = Depends(get_db),
 ):
     try:
-        return crud.update_plato(db, plato_id, payload)
+        if plato_id.isdigit():
+            try:
+                return crud.update_plato(db, int(plato_id), payload)
+            except LookupError:
+                if payload.nombre:
+                    return crud.update_plato_by_name(db, payload.nombre, payload)
+                raise
+        if payload.nombre:
+            return crud.update_plato_by_name(db, payload.nombre, payload)
+        raise LookupError(f"Plato '{plato_id}' no encontrado.")
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:

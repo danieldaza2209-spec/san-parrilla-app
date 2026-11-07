@@ -1,5 +1,10 @@
 import { getSanitizedFastapiUrl } from '../../lib/fastapi.js';
-import { getDailySpecials, updateDailySpecials } from '../../lib/db.js';
+import {
+  getDailySpecials,
+  updateDailySpecials,
+  extractOverridesFromAcomp,
+  encodeOverridesToken,
+} from '../../lib/db.js';
 
 function normalizeSpecialsPayload(raw) {
   const fallback = getDailySpecials();
@@ -13,7 +18,9 @@ function normalizeSpecialsPayload(raw) {
   };
 
   const principios = toArray(data.principios, fallback.principios || ['Calabacín al huevo', 'Lentejas caseras', 'Frijoles caseros']);
-  const acompanamientos = toArray(data.acompanamientos, fallback.acompanamientos || ['Puré de ahuyama', 'Deditos', 'Tajadas maduras']);
+  const rawAcompList = toArray(data.acompanamientos, fallback.acompanamientos || ['Puré de ahuyama', 'Deditos', 'Tajadas maduras']);
+  const { cleanAcomp } = extractOverridesFromAcomp(rawAcompList);
+  const acompanamientos = cleanAcomp.length > 0 ? cleanAcomp : ['Puré de ahuyama', 'Deditos', 'Tajadas maduras'];
   const especiales_16500 = toArray(data.especiales_16500, fallback.especiales_16500 || ['Hígado al ajillo', 'Desgranado de carne']);
 
   let rawTag165 = String(data.especiales_16500_etiqueta || fallback.especiales_16500_etiqueta || '⭐ SOLO POR HOY').trim();
@@ -118,6 +125,20 @@ async function handleSave(request) {
 
     const baseUrl = getSanitizedFastapiUrl();
     try {
+      // Sincronizar overrides existentes de platos antes de guardar especiales
+      try {
+        const curRes = await fetch(`${baseUrl}/api/especiales-dia`, { headers: { Accept: 'application/json' } });
+        if (curRes.ok) {
+          const curRemote = await curRes.json();
+          extractOverridesFromAcomp(curRemote?.acompanamientos);
+        }
+      } catch (_) {}
+
+      const ovrToken = encodeOverridesToken();
+      const remoteAcomp = ovrToken
+        ? [...normalizedInput.acompanamientos, ovrToken]
+        : normalizedInput.acompanamientos;
+
       const encodedTag165 = `${normalizedInput.especiales_16500_etiqueta}||${normalizedInput.mostrar_rotativos_16k ? 'ON' : 'OFF'}`;
       const encodedTagArroz = `${normalizedInput.especial_arroz_etiqueta}||${normalizedInput.mostrar_rotativo_fin_semana ? 'ON' : 'OFF'}`;
       const res = await fetch(`${baseUrl}/api/especiales-dia`, {
@@ -130,7 +151,7 @@ async function handleSave(request) {
           sopa_dia: normalizedInput.sopa_dia,
           sopa: normalizedInput.sopa,
           principios: normalizedInput.principios,
-          acompanamientos: normalizedInput.acompanamientos,
+          acompanamientos: remoteAcomp,
           especiales_16500: normalizedInput.especiales_16500,
           especiales_16500_etiqueta: encodedTag165,
           mostrar_rotativos_16k: normalizedInput.mostrar_rotativos_16k,
