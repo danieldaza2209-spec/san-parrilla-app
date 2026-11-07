@@ -15,28 +15,28 @@ const WHATSAPP = 'https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20deseo
 ---
 
 <BaseLayout title={title} description={description}>
-  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-parrilla-border">
-    <div class="w-full max-w-2xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-3 group" aria-label="San Parrilla - Inicio">
-        <img src="/logo.png" alt="San Parrilla" class="h-10 w-auto rounded-full ring-2 ring-parrilla-gold/30 group-hover:ring-parrilla-gold transition" />
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-parrilla-border w-full">
+    <div class="w-full max-w-lg lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+      <a href="/" class="flex items-center gap-2 sm:gap-3 group shrink-0" aria-label="San Parrilla - Inicio">
+        <img src="/logo.png" alt="San Parrilla" class="h-9 sm:h-10 w-auto rounded-full ring-2 ring-parrilla-gold/30 group-hover:ring-parrilla-gold transition" />
         <div class="flex flex-col">
-          <span class="font-display font-extrabold text-xl tracking-tight leading-none text-parrilla-ivory">
+          <span class="font-display font-extrabold text-lg sm:text-xl tracking-tight leading-none text-parrilla-ivory whitespace-nowrap">
             SAN <span class="text-parrilla-gold">PARRILLA</span>
           </span>
-          <span class="text-[10px] tracking-widest text-parrilla-muted uppercase font-medium">Sazón & Fogón</span>
+          <span class="hidden sm:inline text-[10px] tracking-widest text-parrilla-muted uppercase font-medium">Sazón & Fogón</span>
         </div>
       </a>
 
       <!-- Selector de Menú Header: ☀️ Almuerzos vs 🍔 Comidas Rápidas -->
       <div
-        class="inline-flex items-center bg-slate-100 p-1 rounded-xl border border-parrilla-border shadow-xs"
+        class="inline-flex items-center bg-slate-100 p-0.5 sm:p-1 rounded-xl border border-parrilla-border shadow-xs shrink-0"
         role="tablist"
         aria-label="Selector de menú"
       >
         <button
           type="button"
           data-menu-switch="almuerzos"
-          class="menu-switch-btn active px-2.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-black transition bg-parrilla-gold text-white shadow-xs cursor-pointer flex items-center gap-1.5"
+          class="menu-switch-btn active px-2 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-sm font-black transition bg-parrilla-gold text-white shadow-xs cursor-pointer flex items-center gap-1"
         >
           <span>☀️</span>
           <span>Almuerzos</span>
@@ -44,7 +44,7 @@ const WHATSAPP = 'https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20deseo
         <button
           type="button"
           data-menu-switch="rapidas"
-          class="menu-switch-btn px-2.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-extrabold transition text-parrilla-ivory hover:text-parrilla-gold cursor-pointer flex items-center gap-1.5"
+          class="menu-switch-btn px-2 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-sm font-extrabold transition text-parrilla-ivory hover:text-parrilla-gold cursor-pointer flex items-center gap-1"
         >
           <span>🍔</span>
           <span class="hidden sm:inline">Comidas Rápidas</span>
@@ -52,12 +52,13 @@ const WHATSAPP = 'https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20deseo
         </button>
       </div>
 
-      <div class="flex items-center gap-2 sm:gap-3">
+      <div class="flex items-center shrink-0">
         <a href={WHATSAPP} target="_blank" rel="noopener noreferrer"
-           class="inline-flex items-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs sm:text-sm px-3.5 py-2 rounded-lg shadow-sm hover:shadow transition active:scale-95">
+           class="inline-flex items-center gap-1.5 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-bold text-xs sm:text-sm px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg shadow-sm hover:shadow transition active:scale-95"
+           title="Pedir por WhatsApp">
           <i data-lucide="message-circle" class="w-4 h-4"></i>
           <span class="hidden md:inline">Pedir por WhatsApp</span>
-          <span class="md:hidden">WhatsApp</span>
+          <span class="hidden sm:inline md:hidden">WhatsApp</span>
         </a>
       </div>
     </div>
@@ -93,12 +94,12 @@ const WHATSAPP = 'https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20deseo
     -->
   </header>
 
-  <main class="flex-1 w-full">
+  <main class="flex-1 w-full overflow-x-hidden">
     <slot />
   </main>
 
-  <footer class="bg-white border-t border-parrilla-border py-8 text-xs text-parrilla-muted">
-    <div class="w-full max-w-2xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+  <footer class="bg-white border-t border-parrilla-border py-8 text-xs text-parrilla-muted w-full overflow-hidden">
+    <div class="w-full max-w-lg lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
       <div class="flex items-center gap-2">
         <span class="font-display font-bold text-parrilla-gold text-sm">SAN PARRILLA</span>
         <span>•</span>

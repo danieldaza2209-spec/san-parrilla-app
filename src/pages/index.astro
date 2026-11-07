@@ -47,26 +47,37 @@ const formatPrice = (val) => {
 
 <PublicLayout title="San Parrilla | Menú Digital & Brasas">
   <!-- Hero Section -->
-  <section class="relative min-h-[50vh] sm:min-h-[58vh] flex items-center justify-center overflow-hidden border-b border-parrilla-border bg-gradient-to-b from-slate-100/60 to-parrilla-dark">
+  <section class="w-full overflow-hidden relative border-b border-parrilla-border bg-gradient-to-b from-slate-100/60 to-parrilla-dark">
     <!-- Background Image with Soft Light Warm Overlay -->
-    <div class="absolute inset-0 z-0">
-      <img src="/hero-bg.jpg" alt="Parrilla San Parrilla" class="w-full h-full object-cover object-center filter brightness-105 opacity-20 scale-105 transform hover:scale-100 transition duration-1000" />
-      <div class="absolute inset-0 bg-gradient-to-t from-parrilla-dark via-parrilla-dark/70 to-transparent"></div>
+    <div class="absolute inset-0 z-0 w-full h-full pointer-events-none">
+      <img
+        src="/hero-bg.jpg"
+        alt="Parrilla San Parrilla"
+        class="absolute inset-0 w-full h-full object-cover object-center filter brightness-105 opacity-25"
+      />
+      <div class="absolute inset-0 bg-gradient-to-t from-parrilla-dark via-parrilla-dark/75 to-transparent"></div>
     </div>
 
-    <div class="relative z-10 w-full max-w-2xl lg:max-w-4xl mx-auto px-4 py-12 sm:py-16 text-center">
-      <h1 class="font-display font-black text-3xl sm:text-6xl lg:text-7xl tracking-tight text-parrilla-ivory mb-6 sm:mb-8 leading-tight">
+    <div class="px-4 py-8 sm:py-12 relative z-10 w-full max-w-md mx-auto flex flex-col items-center text-center">
+      <h1 class="font-display font-black text-3xl sm:text-5xl lg:text-6xl tracking-tight text-parrilla-ivory mb-5 sm:mb-6 leading-tight">
         RESTAURANTE <span class="text-transparent bg-clip-text bg-gradient-to-r from-parrilla-gold via-orange-600 to-amber-700">SAN PARRILLA</span>
       </h1>
 
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full">
-        <a href="#menu-carta" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-extrabold px-6 py-3.5 rounded-xl text-base shadow-md hover:shadow-lg transition active:scale-95">
-          <i data-lucide="book-open" class="w-5 h-5"></i>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+        <a
+          href="#menu-carta"
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-parrilla-gold hover:bg-parrilla-goldLight text-white font-extrabold px-6 py-3 rounded-xl text-sm sm:text-base shadow-md hover:shadow-lg transition active:scale-95"
+        >
+          <i data-lucide="book-open" class="w-4 h-4 sm:w-5 sm:h-5"></i>
           <span>Ver Carta Completa</span>
         </a>
 
-        <a href="https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20deseo%20hacer%20un%20pedido" target="_blank" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-parrilla-ivory hover:text-parrilla-gold font-bold px-6 py-3.5 rounded-xl border border-parrilla-border text-base shadow-sm transition active:scale-95">
-          <i data-lucide="message-circle" class="w-5 h-5 text-parrilla-accent"></i>
+        <a
+          href="https://wa.me/573183821787?text=Hola%20San%20Parrilla,%20deseo%20hacer%20un%20pedido"
+          target="_blank"
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-parrilla-ivory hover:text-parrilla-gold font-bold px-6 py-3 rounded-xl border border-parrilla-border text-sm sm:text-base shadow-sm transition active:scale-95"
+        >
+          <i data-lucide="message-circle" class="w-4 h-4 sm:w-5 sm:h-5 text-parrilla-accent"></i>
           <span>Pedir a Domicilio</span>
         </a>
       </div>
@@ -74,32 +85,32 @@ const formatPrice = (val) => {
   </section>
 
   <!-- Menu Carta Section -->
-  <section id="menu-carta" class="w-full max-w-2xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-14 pb-24">
+  <section id="menu-carta" class="w-full max-w-lg lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-24">
     <!-- Selector Prominente de Menú: ☀️ Almuerzos vs 🍔 Comidas Rápidas -->
-    <div class="flex flex-col items-center justify-center mb-8 sm:mb-12">
-      <span class="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-parrilla-gold block mb-2">
+    <div class="flex flex-col items-center justify-center mb-6 sm:mb-10 w-full">
+      <span class="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-parrilla-gold block mb-2 text-center">
         SELECCIONA TU MENÚ
       </span>
       <div
-        class="inline-flex items-center justify-center bg-white p-1.5 rounded-2xl border-2 border-parrilla-gold/40 shadow-md w-full sm:w-auto"
+        class="inline-flex items-center justify-center bg-white p-1 rounded-2xl border-2 border-parrilla-gold/40 shadow-md w-full max-w-md mx-auto"
         role="tablist"
         aria-label="Selector de menú"
       >
         <button
           type="button"
           data-menu-switch="almuerzos"
-          class="menu-switch-btn active flex-1 sm:flex-none px-3.5 sm:px-8 py-2.5 sm:py-3.5 rounded-xl text-xs sm:text-sm font-black transition bg-parrilla-gold text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2"
+          class="menu-switch-btn active flex-1 px-3 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black transition bg-parrilla-gold text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
         >
           <span class="text-base sm:text-lg">☀️</span>
-          <span>Almuerzos (Menú del Día)</span>
+          <span class="truncate">Almuerzos</span>
         </button>
         <button
           type="button"
           data-menu-switch="rapidas"
-          class="menu-switch-btn flex-1 sm:flex-none px-3.5 sm:px-8 py-2.5 sm:py-3.5 rounded-xl text-xs sm:text-sm font-extrabold transition text-parrilla-ivory hover:text-parrilla-gold cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2"
+          class="menu-switch-btn flex-1 px-3 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition text-parrilla-ivory hover:text-parrilla-gold cursor-pointer flex items-center justify-center gap-1.5"
         >
           <span class="text-base sm:text-lg">🍔</span>
-          <span>Comidas Rápidas</span>
+          <span class="truncate">Comidas Rápidas</span>
         </button>
       </div>
     </div>
@@ -227,15 +238,17 @@ const formatPrice = (val) => {
   <CartDrawer specials={dailySpecials} />
 
   <style>
-    /* Carta pública móvil: alinear cuadrícula al 100% simétrica con los márgenes del navbar */
+    /* Carta pública móvil: alinear cuadrícula al 100% simétrica con los márgenes del navbar y evitar desbordes */
     @media (max-width: 639px) {
       #view-panel-almuerzos :global(.grid) {
         padding-left: 0 !important;
         padding-right: 0 !important;
+        max-width: 100% !important;
       }
       #view-panel-almuerzos :global(.max-w-2xl) {
         padding-left: 0 !important;
         padding-right: 0 !important;
+        max-width: 100% !important;
       }
     }
   </style>
