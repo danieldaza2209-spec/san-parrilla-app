@@ -435,52 +435,13 @@ const searchableCatalog = allPosProducts.map((p) => ({
                             </div>
                           </div>
 
-                          <!-- Botones de incremento rápido (+1, +5, +10) -->
-                          <div class="flex items-center gap-1 flex-shrink-0" onclick="event.stopPropagation()">
+                          <!-- Botón Agregar Directo -->
+                          <div class="flex items-center flex-shrink-0">
                             <button
                               type="button"
-                              data-id={item.id}
-                              data-name={item.name}
-                              data-price={item.price}
-                              data-cat="convenios_clinica"
-                              data-menu="convenios"
-                              data-customizable="false"
-                              data-hospital="true"
-                              data-qty="1"
-                              class="btn-add-cart-qty px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 font-black text-xs transition cursor-pointer active:scale-95 shadow-2xs"
-                              title={`Agregar 1x ${item.name} al pabellón activo`}
+                              class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition shadow-2xs flex items-center gap-1 pointer-events-none"
                             >
-                              +1
-                            </button>
-                            <button
-                              type="button"
-                              data-id={item.id}
-                              data-name={item.name}
-                              data-price={item.price}
-                              data-cat="convenios_clinica"
-                              data-menu="convenios"
-                              data-customizable="false"
-                              data-hospital="true"
-                              data-qty="5"
-                              class="btn-add-cart-qty px-2.5 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-700 text-emerald-900 hover:text-white border border-emerald-400 font-black text-xs transition cursor-pointer active:scale-95 shadow-2xs"
-                              title={`Agregar 5x ${item.name} al pabellón activo`}
-                            >
-                              +5
-                            </button>
-                            <button
-                              type="button"
-                              data-id={item.id}
-                              data-name={item.name}
-                              data-price={item.price}
-                              data-cat="convenios_clinica"
-                              data-menu="convenios"
-                              data-customizable="false"
-                              data-hospital="true"
-                              data-qty="10"
-                              class="btn-add-cart-qty px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition cursor-pointer active:scale-95 shadow-2xs"
-                              title={`Agregar 10x ${item.name} al pabellón activo`}
-                            >
-                              +10
+                              <span>+ Agregar</span>
                             </button>
                           </div>
                         </div>
@@ -498,8 +459,17 @@ const searchableCatalog = allPosProducts.map((p) => ({
       <!-- RIGHT SECTION: ORDER BUILDER & TICKET SUMMARY (5 cols) -->
       <div class="lg:col-span-5 bg-white rounded-2xl border border-parrilla-border p-4 sm:p-5 flex flex-col gap-4 sticky top-20 shadow-xl">
         
+        <!-- ENCABEZADO INSTITUCIONAL CONVENIO (Visible Únicamente en Convenios & Clínica) -->
+        <div id="convenios-cart-header" class="hidden bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 mb-1 flex items-center justify-between shadow-2xs">
+          <div>
+            <span class="text-xs font-bold text-emerald-800 uppercase block">Convenio Activo</span>
+            <span class="text-sm font-extrabold text-emerald-950">🏥 Clínica Primero de Mayo (Pacientes)</span>
+          </div>
+          <span class="text-[11px] font-bold bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded font-mono">Fiado Institucional</span>
+        </div>
+
         <!-- Order Type Selector (Mesa / Domicilio / Para Llevar) -->
-        <div>
+        <div id="order-type-selector-wrapper">
           <label class="block text-xs font-bold text-parrilla-gold uppercase tracking-wider mb-2">Tipo de Pedido</label>
           <div class="grid grid-cols-3 gap-2">
             <button type="button" id="type-mesa" class="order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-extrabold text-xs shadow-sm transition">
@@ -668,39 +638,39 @@ const searchableCatalog = allPosProducts.map((p) => ({
                 />
               </div>
             </div>
+          </div>
+        </div>
 
-            <!-- Campo Especial Clínica / Convenios: Cantidad de Domicilios / Envíos Realizados en el Turno -->
-            <div id="clinica-domicilios-box" class="bg-emerald-50/90 border border-emerald-300 rounded-xl p-2.5 space-y-1.5">
-              <div class="flex items-center justify-between">
-                <label for="clinica-domicilios-count" class="text-[11px] font-black text-emerald-900 uppercase flex items-center gap-1">
-                  <span>🛵 Cantidad de Domicilios / Envíos Realizados (Turno Clínica / Convenio)</span>
-                </label>
-                <span id="clinica-domicilios-badge" class="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-200/70 px-1.5 py-0.5 rounded">0 envíos</span>
-              </div>
-              <div class="grid grid-cols-2 gap-2 items-center">
-                <div>
-                  <span class="block text-[10px] text-emerald-800 font-semibold mb-0.5">N° de Envíos / Domicilios:</span>
-                  <input
-                    type="number"
-                    id="clinica-domicilios-count"
-                    min="0"
-                    step="1"
-                    value="0"
-                    class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-emerald-300 text-xs font-mono font-black text-slate-900 focus:border-emerald-600 outline-none"
-                  />
-                </div>
-                <div>
-                  <span class="block text-[10px] text-emerald-800 font-semibold mb-0.5">Tarifa por Envío ($):</span>
-                  <input
-                    type="number"
-                    id="clinica-domicilio-unit-fee"
-                    min="0"
-                    step="500"
-                    value="3000"
-                    class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-emerald-300 text-xs font-mono font-bold text-slate-900 focus:border-emerald-600 outline-none"
-                  />
-                </div>
-              </div>
+        <!-- Campo Especial Clínica / Convenios: Cantidad de Domicilios / Envíos Realizados en el Turno -->
+        <div id="clinica-domicilios-box" class="hidden bg-emerald-50/90 border border-emerald-300 rounded-xl p-2.5 space-y-1.5 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <label for="clinica-domicilios-count" class="text-[11px] font-black text-emerald-900 uppercase flex items-center gap-1">
+              <span>🛵 Cantidad de Domicilios / Envíos Realizados (Turno Clínica / Convenio)</span>
+            </label>
+            <span id="clinica-domicilios-badge" class="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-200/70 px-1.5 py-0.5 rounded">0 envíos</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 items-center">
+            <div>
+              <span class="block text-[10px] text-emerald-800 font-semibold mb-0.5">N° de Envíos / Domicilios:</span>
+              <input
+                type="number"
+                id="clinica-domicilios-count"
+                min="0"
+                step="1"
+                value="0"
+                class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-emerald-300 text-xs font-mono font-black text-slate-900 focus:border-emerald-600 outline-none"
+              />
+            </div>
+            <div>
+              <span class="block text-[10px] text-emerald-800 font-semibold mb-0.5">Tarifa por Envío ($):</span>
+              <input
+                type="number"
+                id="clinica-domicilio-unit-fee"
+                min="0"
+                step="500"
+                value="3000"
+                class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-emerald-300 text-xs font-mono font-bold text-slate-900 focus:border-emerald-600 outline-none"
+              />
             </div>
           </div>
         </div>
@@ -1736,6 +1706,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
       }
 
       resetUniversalSearch();
+      updateCustomerFormVisibility();
     }
 
     tabMenuAlmuerzos?.addEventListener('click', () => setMenuMode('almuerzos'));
@@ -2271,7 +2242,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
       // Si es dieta clínica hospitalaria: NUNCA abrir modal de sopas/principios, agregar fila independiente por renglón
       if (isHospitalDiet) {
         const targetLoc = currentActiveHospitalLocation || 'Torre A';
-        const cartRowId = 'diet_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        const cartRowId = 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
         const item = {
           uid: cartRowId,
           cart_row_id: cartRowId,
@@ -2414,16 +2385,20 @@ const searchableCatalog = allPosProducts.map((p) => ({
       const totalHipoQty = cart.reduce((acc, it) => {
         return isHipoDietName(it.name) ? acc + Number(it.quantity || 1) : acc;
       }, 0);
-      if (totalHipoQty <= 0) return;
-
       const waterName = 'Botella con Agua (Dieta Hipo Clínica)';
-      const existingWater = cart.find(
+      const existingWaterIdx = cart.findIndex(
         (it) => normalizeStr(it.name).includes('botella con agua') && Number(it.price || 0) === 0
       );
-      if (existingWater) {
-        if (existingWater.quantity < totalHipoQty) {
-          existingWater.quantity = totalHipoQty;
+
+      if (totalHipoQty <= 0) {
+        if (existingWaterIdx !== -1) {
+          cart.splice(existingWaterIdx, 1);
         }
+        return;
+      }
+
+      if (existingWaterIdx !== -1) {
+        cart[existingWaterIdx].quantity = totalHipoQty;
       } else {
         cart.push({
           uid: 'c_agua_' + Date.now(),
@@ -2742,7 +2717,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
                   <span class="text-xs font-bold text-slate-400">]</span>
                 </div>
 
-                <!-- 2. Nombre de la Dieta -->
+                <!-- 2. Nombre de la Dieta y Servicio -->
                 <div class="flex-1 min-w-0 px-1">
                   <div class="font-black text-xs text-slate-900 leading-tight truncate" title="${escapeHtml(item.name)}">
                     ${escapeHtml(item.name)}
@@ -2752,9 +2727,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
                   </div>
                 </div>
 
-                <!-- 3. Selector de Ubicación/Pabellón directo en el renglón -->
+                <!-- 3. Selector de Ubicación/Torre directo en el renglón -->
                 <div class="flex-shrink-0">
-                  <select class="pabellon-select pos-inline-select text-xs font-bold bg-gray-50 border border-gray-300 rounded p-1 outline-none focus:ring-1 focus:ring-emerald-600 cursor-pointer text-slate-800" data-field="hospitalLocation" data-uid="${item.uid}">
+                  <select class="cart-pabellon-select pos-inline-select text-xs font-bold bg-amber-50 border border-amber-300 rounded px-2 py-1 text-gray-800 outline-none focus:ring-1 focus:ring-emerald-600 cursor-pointer" data-field="hospitalLocation" data-uid="${item.uid}">
                     <option value="Torre A" ${loc === 'Torre A' ? 'selected' : ''}>Torre A</option>
                     <option value="Torre B" ${loc === 'Torre B' ? 'selected' : ''}>Torre B</option>
                     <option value="Urgencias" ${loc === 'Urgencias' ? 'selected' : ''}>Urgencias</option>
@@ -2771,14 +2746,24 @@ const searchableCatalog = allPosProducts.map((p) => ({
                   ✕
                 </button>
               </div>
-              <div class="mt-1 flex items-center gap-1.5">
+
+              <!-- Fila secundaria: Notas opcionales y Botón [+ Agregar otra torre] -->
+              <div class="mt-2 pt-1.5 border-t border-emerald-200/60 flex items-center justify-between gap-2">
                 <input
                   type="text"
-                  class="pos-inline-notes w-full py-0.5 px-2 bg-white/90 rounded border border-emerald-200 text-[10px] font-medium text-slate-700 placeholder:text-slate-400 focus:border-emerald-600 outline-none"
+                  class="pos-inline-notes flex-1 py-1 px-2 bg-white rounded-lg border border-emerald-200 text-[10px] font-medium text-slate-700 placeholder:text-slate-400 focus:border-emerald-600 outline-none"
                   data-uid="${item.uid}"
                   placeholder="Nota opcional: Habitación, cama..."
                   value="${escapeHtml(item.extraNotes || '')}"
                 />
+                <button
+                  type="button"
+                  class="btn-clone-diet-tower flex-shrink-0 px-2.5 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                  data-uid="${item.uid}"
+                  title="Duplicar esta dieta para otra torre/ubicación"
+                >
+                  <span>+ Agregar otra torre</span>
+                </button>
               </div>
             </div>
           `;
@@ -2925,6 +2910,37 @@ const searchableCatalog = allPosProducts.map((p) => ({
             // @ts-ignore
             e.target.blur();
           }
+        });
+      });
+
+      // Botón [+ Agregar otra torre]: Clona la dieta con la siguiente ubicación
+      document.querySelectorAll('.btn-clone-diet-tower').forEach((b) => {
+        b.addEventListener('click', (e) => {
+          // @ts-ignore
+          const uid = e.currentTarget.getAttribute('data-uid');
+          const idx = cart.findIndex((it) => it.uid === uid);
+          if (idx === -1) return;
+          const source = cart[idx];
+          const currLoc = source.hospitalLocation || source.ubicacion || 'Torre A';
+          let nextLoc = 'Torre B';
+          if (currLoc === 'Torre A') nextLoc = 'Torre B';
+          else if (currLoc === 'Torre B') nextLoc = 'Urgencias';
+          else if (currLoc === 'Urgencias') nextLoc = 'Torre A';
+
+          const newRowId = 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+          const cloned = {
+            ...source,
+            uid: newRowId,
+            cart_row_id: newRowId,
+            quantity: 1,
+            hospitalLocation: nextLoc,
+            ubicacion: nextLoc,
+            extraNotes: ''
+          };
+          cloned.notes = buildPlateNotes(cloned);
+          cart.splice(idx + 1, 0, cloned);
+          syncHospitalHipoWaterInCart();
+          renderCart();
         });
       });
 
@@ -3151,6 +3167,63 @@ const searchableCatalog = allPosProducts.map((p) => ({
     const custAddressLabel = document.getElementById('cust-address-label');
 
     function updateCustomerFormVisibility() {
+      const conveniosCartHeader = document.getElementById('convenios-cart-header');
+      const orderTypeSelectorWrapper = document.getElementById('order-type-selector-wrapper');
+      const clinicaDomiciliosBox = document.getElementById('clinica-domicilios-box');
+
+      if (activeMenuMode === 'convenios') {
+        // EN MODO CONVENIOS & CLÍNICA:
+        // 1. Mostrar encabezado limpio institucional
+        if (conveniosCartHeader) {
+          conveniosCartHeader.classList.remove('hidden');
+          conveniosCartHeader.style.display = 'flex';
+        }
+        // 2. Ocultar selector de tipo de pedido (Mesa / Domicilio / Para Llevar)
+        if (orderTypeSelectorWrapper) {
+          orderTypeSelectorWrapper.classList.add('hidden');
+          orderTypeSelectorWrapper.style.display = 'none';
+        }
+        // 3. Ocultar formularios de Mesa, Llevar y Domicilio / Fiado ordinario
+        if (formMesa) {
+          formMesa.style.display = 'none';
+          formMesa.classList.add('hidden');
+        }
+        if (formLlevar) {
+          formLlevar.classList.add('hidden');
+          formLlevar.classList.remove('flex');
+          formLlevar.style.display = 'none';
+        }
+        if (formDomicilio) {
+          formDomicilio.style.display = 'none';
+          formDomicilio.classList.add('hidden');
+        }
+        // 4. Mostrar únicamente el bloque de domicilios/envíos de la clínica
+        if (clinicaDomiciliosBox) {
+          clinicaDomiciliosBox.classList.remove('hidden');
+          clinicaDomiciliosBox.style.display = 'block';
+        }
+        // 5. Botón directo de cerrar a fiado siempre visible en convenios
+        if (btnCloseFiadoDirect) {
+          btnCloseFiadoDirect.classList.remove('hidden');
+          btnCloseFiadoDirect.classList.add('flex');
+        }
+        return;
+      }
+
+      // MODO ORDINARIO (ALMUERZOS / RÁPIDAS):
+      if (conveniosCartHeader) {
+        conveniosCartHeader.classList.add('hidden');
+        conveniosCartHeader.style.display = 'none';
+      }
+      if (orderTypeSelectorWrapper) {
+        orderTypeSelectorWrapper.classList.remove('hidden');
+        orderTypeSelectorWrapper.style.display = 'block';
+      }
+      if (clinicaDomiciliosBox) {
+        clinicaDomiciliosBox.classList.add('hidden');
+        clinicaDomiciliosBox.style.display = 'none';
+      }
+
       const isDom = currentOrderType === 'domicilio';
       const isFiado = currentPaymentMethod === 'fiado' || selectedSingleMethod === 'FIADO';
 
@@ -3187,6 +3260,38 @@ const searchableCatalog = allPosProducts.map((p) => ({
       } else {
         formDomicilio.style.display = 'none';
         formDomicilio.classList.add('hidden');
+      }
+
+      if (currentOrderType === 'mesa') {
+        if (formMesa) {
+          formMesa.style.display = 'flex';
+          formMesa.classList.remove('hidden');
+        }
+        if (formLlevar) {
+          formLlevar.classList.add('hidden');
+          formLlevar.classList.remove('flex');
+          formLlevar.style.display = 'none';
+        }
+      } else if (currentOrderType === 'para_llevar') {
+        if (formMesa) {
+          formMesa.style.display = 'none';
+          formMesa.classList.add('hidden');
+        }
+        if (formLlevar) {
+          formLlevar.classList.remove('hidden');
+          formLlevar.classList.add('flex');
+          formLlevar.style.display = 'flex';
+        }
+      } else {
+        if (formMesa) {
+          formMesa.style.display = 'none';
+          formMesa.classList.add('hidden');
+        }
+        if (formLlevar) {
+          formLlevar.classList.add('hidden');
+          formLlevar.classList.remove('flex');
+          formLlevar.style.display = 'none';
+        }
       }
     }
 
@@ -3836,27 +3941,33 @@ const searchableCatalog = allPosProducts.map((p) => ({
         return;
       }
 
-      if (currentOrderType === 'domicilio') {
-        // @ts-ignore
-        if (!custPhoneInput.value.trim() || !custNameInput.value.trim() || !custAddressInput.value.trim()) {
-          alert('Para domicilios es obligatorio indicar Teléfono, Nombre y Dirección.');
-          return;
+      if (activeMenuMode === 'convenios') {
+        if (custPhoneInput && !custPhoneInput.value) custPhoneInput.value = 'CONV-CLINICA-PAC';
+        if (custNameInput && !custNameInput.value) custNameInput.value = 'Clínica Primero de Mayo (Pacientes)';
+        if (custAddressInput && !custAddressInput.value) custAddressInput.value = 'Clínica Primero de Mayo - Área Hospitalización';
+      } else {
+        if (currentOrderType === 'domicilio') {
+          // @ts-ignore
+          if (!custPhoneInput.value.trim() || !custNameInput.value.trim() || !custAddressInput.value.trim()) {
+            alert('Para domicilios es obligatorio indicar Teléfono, Nombre y Dirección.');
+            return;
+          }
         }
-      }
 
-      if (currentPaymentMethod === 'fiado') {
-        // @ts-ignore
-        const fPhone = (custPhoneInput?.value || '').trim();
-        // @ts-ignore
-        const fName = (custNameInput?.value || '').trim();
-        if (!fPhone || !fName) {
-          updateCustomerFormVisibility();
-          alert('⚠️ Para pedidos en FIADO es obligatorio seleccionar o ingresar el Teléfono y Nombre del Cliente.');
+        if (currentPaymentMethod === 'fiado') {
           // @ts-ignore
-          if (!fPhone) custPhoneInput?.focus();
+          const fPhone = (custPhoneInput?.value || '').trim();
           // @ts-ignore
-          else custNameInput?.focus();
-          return;
+          const fName = (custNameInput?.value || '').trim();
+          if (!fPhone || !fName) {
+            updateCustomerFormVisibility();
+            alert('⚠️ Para pedidos en FIADO es obligatorio seleccionar o ingresar el Teléfono y Nombre del Cliente.');
+            // @ts-ignore
+            if (!fPhone) custPhoneInput?.focus();
+            // @ts-ignore
+            else custNameInput?.focus();
+            return;
+          }
         }
       }
 
@@ -3936,14 +4047,19 @@ const searchableCatalog = allPosProducts.map((p) => ({
         nombreCliente = typedName || (editingOpenOrder && editingOpenOrder.cliente_nombre ? editingOpenOrder.cliente_nombre.trim() : '') || mesaStr;
       }
 
-      const custPhone = typedPhone;
-      const custName = nombreCliente.trim() || (tipoPedido === 'MOSTRADOR' ? 'Mostrador' : (tipoPedido === 'MESA' ? (mesaStr || 'Mesa 1') : 'Cliente General'));
+      const isConvenios = activeMenuMode === 'convenios';
+      const custPhone = isConvenios ? 'CONV-CLINICA-PAC' : typedPhone;
+      const custName = isConvenios
+        ? 'Clínica Primero de Mayo (Pacientes)'
+        : (nombreCliente.trim() || (tipoPedido === 'MOSTRADOR' ? 'Mostrador' : (tipoPedido === 'MESA' ? (mesaStr || 'Mesa 1') : 'Cliente General')));
       // @ts-ignore
-      const custAddress = (custAddressInput?.value || '').trim();
+      const custAddress = isConvenios ? 'Clínica Primero de Mayo - Área Hospitalización' : (custAddressInput?.value || '').trim();
       // @ts-ignore
-      const custNeighborhood = (custNeighborhoodInput?.value || '').trim();
+      const custNeighborhood = isConvenios ? 'Convenio Institucional Pacientes' : (custNeighborhoodInput?.value || '').trim();
       // @ts-ignore
       const staffCreator = String(window.__SP_STAFF_NAME__ || 'Colaborador').trim();
+      const metodoPago = isConvenios ? 'FIADO' : (selectedSingleMethod || 'EFECTIVO');
+      const convenioCodigo = isConvenios ? 'CONV-CLINICA-PAC' : null;
 
       const notasPartes = [];
       if (custAddress) notasPartes.push(`Dirección: ${custAddress}`);
@@ -3961,7 +4077,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
       const detallesPayload = cart.map((item) => {
         let finalNotes = item.notes || '';
-        const loc = item.hospitalLocation || (item.isHospitalDiet ? (currentActiveHospitalLocation || 'Torre A') : null);
+        const loc = item.hospitalLocation || item.ubicacion || (item.isHospitalDiet ? (currentActiveHospitalLocation || 'Torre A') : null);
         if (item.isHospitalDiet && loc) {
           const tag = getHospitalDietTag(item.name, loc);
           if (!finalNotes.includes(tag)) {
@@ -3983,31 +4099,50 @@ const searchableCatalog = allPosProducts.map((p) => ({
       });
 
       const payload = {
-        tipo: tipoBackend,
+        tipo: isConvenios ? 'DOMICILIO' : tipoBackend,
         mesa: mesaStr || null,
-        cliente_id: selectedCustomerId || null,
+        cliente_id: isConvenios ? 9001 : (selectedCustomerId || null),
         cliente_nombre: custName,
         customer_name: custName,
         cliente_telefono: custPhone || null,
         direccion: custAddress || null,
         barrio: custNeighborhood || null,
+        metodo_pago: metodoPago,
+        convenio_codigo: convenioCodigo,
+        cantidad_envios: cantDomClinica,
+        cantidad_domicilios: cantDomClinica,
+        flete_domicilio: deliveryFee,
+        delivery_fee: deliveryFee,
         notas: notasPedido || null,
         creado_por: staffCreator,
-        cantidad_domicilios: cantDomClinica,
         subtotal: subtotal,
         packaging_fee: packagingFee,
-        delivery_fee: deliveryFee,
         total,
         impreso_cocina: false,
         impreso_caja: true,
-        detalles: detallesPayload
+        detalles: detallesPayload,
+        items: detallesPayload
       };
       if (estadoOverride) {
         payload.estado = estadoOverride;
       }
       return {
         payload,
-        meta: { tipoBackend, mesaStr, custPhone, custName, custAddress, custNeighborhood, subtotal, packagingFee, deliveryFee, total, detallesPayload, staffCreator, cantDomClinica }
+        meta: {
+          tipoBackend: payload.tipo,
+          mesaStr,
+          custPhone,
+          custName,
+          custAddress,
+          custNeighborhood,
+          subtotal,
+          packagingFee,
+          deliveryFee,
+          total,
+          detallesPayload,
+          staffCreator,
+          cantDomClinica
+        }
       };
     }
 
@@ -4018,9 +4153,18 @@ const searchableCatalog = allPosProducts.map((p) => ({
         return;
       }
       // @ts-ignore
-      const fName = (custNameInput?.value || modalFiadoName?.value || '').trim();
+      let fName = (custNameInput?.value || modalFiadoName?.value || '').trim();
       // @ts-ignore
-      const fPhone = (custPhoneInput?.value || modalFiadoPhone?.value || '').trim();
+      let fPhone = (custPhoneInput?.value || modalFiadoPhone?.value || '').trim();
+
+      if (activeMenuMode === 'convenios') {
+        fName = 'Clínica Primero de Mayo (Pacientes)';
+        fPhone = 'CONV-CLINICA-PAC';
+        if (custNameInput) custNameInput.value = fName;
+        if (custPhoneInput) custPhoneInput.value = fPhone;
+        if (custAddressInput && !custAddressInput.value) custAddressInput.value = 'Clínica Primero de Mayo - Área Hospitalización';
+      }
+
       if (!fName) {
         updateCustomerFormVisibility();
         alert('⚠️ Para cerrar un pedido a FIADO debes seleccionar una de las 6 Empresas de Convenio o ingresar el Nombre y Teléfono del Cliente.');
@@ -4046,27 +4190,33 @@ const searchableCatalog = allPosProducts.map((p) => ({
         return;
       }
 
-      if (currentOrderType === 'domicilio') {
-        // @ts-ignore
-        if (!custPhoneInput.value.trim() || !custNameInput.value.trim() || !custAddressInput.value.trim()) {
-          alert('Para domicilios es obligatorio indicar Teléfono, Nombre y Dirección.');
-          return;
+      if (activeMenuMode === 'convenios') {
+        if (custPhoneInput && !custPhoneInput.value) custPhoneInput.value = 'CONV-CLINICA-PAC';
+        if (custNameInput && !custNameInput.value) custNameInput.value = 'Clínica Primero de Mayo (Pacientes)';
+        if (custAddressInput && !custAddressInput.value) custAddressInput.value = 'Clínica Primero de Mayo - Área Hospitalización';
+      } else {
+        if (currentOrderType === 'domicilio') {
+          // @ts-ignore
+          if (!custPhoneInput.value.trim() || !custNameInput.value.trim() || !custAddressInput.value.trim()) {
+            alert('Para domicilios es obligatorio indicar Teléfono, Nombre y Dirección.');
+            return;
+          }
         }
-      }
 
-      if (currentPaymentMethod === 'fiado') {
-        // @ts-ignore
-        const fPhone = (custPhoneInput?.value || '').trim();
-        // @ts-ignore
-        const fName = (custNameInput?.value || '').trim();
-        if (!fPhone || !fName) {
-          updateCustomerFormVisibility();
-          alert('⚠️ Para pedidos en FIADO es obligatorio vincular un cliente indicando su Teléfono y Nombre.');
+        if (currentPaymentMethod === 'fiado') {
           // @ts-ignore
-          if (!fPhone) custPhoneInput?.focus();
+          const fPhone = (custPhoneInput?.value || '').trim();
           // @ts-ignore
-          else custNameInput?.focus();
-          return;
+          const fName = (custNameInput?.value || '').trim();
+          if (!fPhone || !fName) {
+            updateCustomerFormVisibility();
+            alert('⚠️ Para pedidos en FIADO es obligatorio vincular un cliente indicando su Teléfono y Nombre.');
+            // @ts-ignore
+            if (!fPhone) custPhoneInput?.focus();
+            // @ts-ignore
+            else custNameInput?.focus();
+            return;
+          }
         }
       }
 
@@ -4096,7 +4246,9 @@ const searchableCatalog = allPosProducts.map((p) => ({
           nombreCliente = rawInputCliente || (editingOpenOrder?.cliente_nombre?.trim() || '') || (tableInput?.value || '').trim();
         }
 
-        const clienteNombreFinal = nombreCliente.trim() || (tipoPedido === 'MOSTRADOR' ? 'Mostrador' : (tipoPedido === 'MESA' ? (tableInput?.value || 'Mesa 1').trim() : 'Cliente General'));
+        const clienteNombreFinal = activeMenuMode === 'convenios'
+          ? 'Clínica Primero de Mayo (Pacientes)'
+          : (nombreCliente.trim() || (tipoPedido === 'MOSTRADOR' ? 'Mostrador' : (tipoPedido === 'MESA' ? (tableInput?.value || 'Mesa 1').trim() : 'Cliente General')));
 
         const { payload, meta } = buildFastapiPedidoPayload('EN_PREPARACION');
         payload.cliente_nombre = clienteNombreFinal;
