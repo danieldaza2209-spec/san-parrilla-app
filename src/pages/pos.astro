@@ -409,7 +409,18 @@ const searchableCatalog = allPosProducts.map((p) => ({
                       };
 
                       return (
-                        <div class="flex items-center justify-between gap-2 bg-white p-3 rounded-xl border border-slate-200 hover:border-emerald-400 transition shadow-2xs">
+                        <div
+                          class="btn-add-cart flex items-center justify-between gap-2 bg-white p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 transition shadow-2xs cursor-pointer select-none"
+                          data-id={item.id}
+                          data-name={item.name}
+                          data-price={item.price}
+                          data-cat="convenios_clinica"
+                          data-menu="convenios"
+                          data-customizable="false"
+                          data-hospital="true"
+                          data-qty="1"
+                          title={`Clic para agregar 1x ${diet.shortName} al pabellón activo`}
+                        >
                           <div class="min-w-0 flex-1">
                             <div class="font-black text-xs sm:text-sm text-slate-900 leading-tight">{diet.shortName}</div>
                             <div class="flex flex-wrap items-center gap-1.5 mt-1">
@@ -418,14 +429,14 @@ const searchableCatalog = allPosProducts.map((p) => ({
                               </span>
                               {diet.isHipo && (
                                 <span class="text-[9px] font-extrabold bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded border border-sky-200">
-                                  💧 +Agua $0 Auto
+                                  💧 +Botella con Agua ($0)
                                 </span>
                               )}
                             </div>
                           </div>
 
                           <!-- Botones de incremento rápido (+1, +5, +10) -->
-                          <div class="flex items-center gap-1 flex-shrink-0">
+                          <div class="flex items-center gap-1 flex-shrink-0" onclick="event.stopPropagation()">
                             <button
                               type="button"
                               data-id={item.id}
@@ -1417,8 +1428,18 @@ const searchableCatalog = allPosProducts.map((p) => ({
     let cart = [];
     let currentOrderType = 'mesa';
     let currentPaymentMethod = 'efectivo';
-    let activeMenuMode = 'almuerzos'; // 'almuerzos' | 'rapidas'
+    let selectedSingleMethod = 'CASH';
+    let activeMenuMode = 'almuerzos'; // 'almuerzos' | 'rapidas' | 'convenios'
     let currentActiveHospitalLocation = 'Torre A';
+
+    const methodFrontToBackMap = {
+      efectivo: 'CASH',
+      nequi: 'NEQUI',
+      bancolombia: 'BANCOLOMBIA',
+      daviplata: 'DAVIPLATA',
+      tarjeta: 'CARD',
+      fiado: 'FIADO'
+    };
 
     // Format COP Currency
     const fmt = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
@@ -1615,12 +1636,25 @@ const searchableCatalog = allPosProducts.map((p) => ({
       // 1. Establecer tipo de pedido en Domicilio
       setOrderType('domicilio');
 
-      // 2. Activar método de pago FIADO automáticamente
-      const fiadoBtn = document.querySelector('.pay-btn[data-method="fiado"]');
-      if (fiadoBtn) {
-        // @ts-ignore
-        fiadoBtn.click();
-      }
+      // 2. Activar método de pago FIADO de forma segura y directa
+      currentPaymentMethod = 'fiado';
+      selectedSingleMethod = 'FIADO';
+      payButtons?.forEach((b) => {
+        const isFiado = b.getAttribute('data-method') === 'fiado';
+        b.className = isFiado
+          ? 'pay-btn active py-2 px-1 rounded-lg text-[11px] font-bold bg-parrilla-gold text-white shadow-sm transition cursor-pointer'
+          : 'pay-btn py-2 px-1 rounded-lg text-[11px] font-bold bg-white text-parrilla-ivory hover:text-parrilla-gold border border-parrilla-border transition cursor-pointer';
+      });
+      document.querySelectorAll('.single-pay-btn').forEach((b) => {
+        const isMatch = b.getAttribute('data-method') === 'FIADO';
+        b.className = isMatch
+          ? 'single-pay-btn active py-2.5 rounded-xl border border-parrilla-gold bg-parrilla-gold text-white font-bold text-xs flex flex-col items-center gap-1 shadow-sm cursor-pointer'
+          : 'single-pay-btn py-2.5 rounded-xl border border-parrilla-border bg-slate-50 hover:bg-slate-100 text-parrilla-ivory font-bold text-xs flex flex-col items-center gap-1 cursor-pointer';
+      });
+      if (cashChangeBox) cashChangeBox.style.display = 'none';
+      if (singleCashCalc) singleCashCalc.classList.add('hidden');
+      updateCustomerFormVisibility();
+      updateModalFiadoBoxVisibility();
 
       // 3. Vincular datos institucionales del cliente CONV-CLINICA-PAC
       applySelectedCustomer({
@@ -1662,7 +1696,25 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
       const universalSearchContainer = document.getElementById('pos-universal-search-container');
 
-      if (mode === 'rapidas') {
+      if (mode === 'convenios') {
+        // OCULTAR por completo el menú ordinario del restaurante (sopas, principios, carnes)
+        quickMenuWrapper?.classList.add('hidden');
+        rapidasMenuWrapper?.classList.add('hidden');
+        // MOSTRAR ÚNICAMENTE el catálogo de dietas hospitalarias
+        conveniosMenuWrapper?.classList.remove('hidden');
+        // Ocultar buscador universal y filtros de almuerzo/rápidas
+        universalSearchContainer?.classList.add('hidden');
+        posFiltersAlmuerzo?.classList.add('hidden');
+        posFiltersRapidas?.classList.add('hidden');
+        try {
+          linkClinicaPrimeroDeMayoPacientes();
+        } catch (e) {
+          console.error('Error linking clinica customer:', e);
+        }
+      } else if (mode === 'rapidas') {
+        quickMenuWrapper?.classList.add('hidden');
+        rapidasMenuWrapper?.classList.remove('hidden');
+        conveniosMenuWrapper?.classList.add('hidden');
         universalSearchContainer?.classList.remove('hidden');
         posFiltersAlmuerzo?.classList.add('hidden');
         posFiltersRapidas?.classList.remove('hidden');
@@ -1670,13 +1722,10 @@ const searchableCatalog = allPosProducts.map((p) => ({
           // @ts-ignore
           searchInput.placeholder = '🔍 Buscar comida rápida... (ej: hamburguesa, perro, salchipapa, jugo)';
         }
-      } else if (mode === 'convenios') {
-        // Ocultar buscador universal en vista Convenios & Clínica y vincular cliente automáticamente
-        universalSearchContainer?.classList.add('hidden');
-        posFiltersAlmuerzo?.classList.add('hidden');
-        posFiltersRapidas?.classList.add('hidden');
-        linkClinicaPrimeroDeMayoPacientes();
       } else {
+        quickMenuWrapper?.classList.remove('hidden');
+        rapidasMenuWrapper?.classList.add('hidden');
+        conveniosMenuWrapper?.classList.add('hidden');
         universalSearchContainer?.classList.remove('hidden');
         posFiltersRapidas?.classList.add('hidden');
         posFiltersAlmuerzo?.classList.remove('hidden');
@@ -2213,11 +2262,41 @@ const searchableCatalog = allPosProducts.map((p) => ({
     // 1-CLICK: Agregar plato al carrito sin bloquear con modal (soporta cantidades directas)
     function addDishToCartInOneClick({ id, name, price, isCustomizable, category_id, menu_type, quantity = 1 }) {
       const numPrice = Number(price);
-      const isRapFood = isRapidasFoodProduct({ id, name, category_id, menu_type });
       const isHospitalDiet = isHospitalDietProduct({ id, name, category_id, menu_type });
+      const isRapFood = isRapidasFoodProduct({ id, name, category_id, menu_type });
       const isJuice = isJuiceProduct(name, category_id);
       const isDrink = isDrinkProduct(name, category_id);
       const addQty = Math.max(1, parseInt(String(quantity || 1), 10) || 1);
+
+      // Si es dieta clínica hospitalaria: NUNCA abrir modal de sopas/principios, agregar fila independiente por renglón
+      if (isHospitalDiet) {
+        const targetLoc = currentActiveHospitalLocation || 'Torre A';
+        const cartRowId = 'diet_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        const item = {
+          uid: cartRowId,
+          cart_row_id: cartRowId,
+          id: id || name,
+          name,
+          price: numPrice,
+          quantity: addQty,
+          category_id: category_id || 'convenios_clinica',
+          isCustomizable: false,
+          isRapidasFood: false,
+          isJuice: false,
+          isDrink: false,
+          isHospitalDiet: true,
+          hospitalLocation: targetLoc,
+          ubicacion: targetLoc,
+          packaging: globalPackagingType,
+          extraNotes: '',
+          notes: ''
+        };
+        item.notes = buildPlateNotes(item);
+        cart.push(item);
+        syncHospitalHipoWaterInCart();
+        renderCart();
+        return;
+      }
 
       if (isCustomizable) {
         const isFixed = isFixedGarnishDish(name);
@@ -2269,44 +2348,6 @@ const searchableCatalog = allPosProducts.map((p) => ({
         };
         item.notes = buildPlateNotes(item);
         cart.push(item);
-
-      } else if (isHospitalDiet) {
-        // Clave compuesta: id + ubicación seleccionada para separar por pabellón/torre
-        const targetLoc = currentActiveHospitalLocation || 'Torre A';
-        const locCode = targetLoc.replace(/\s+/g, '_').toUpperCase();
-        const baseId = id || name;
-        const cartKey = `${baseId}_${locCode}`;
-
-        const existing = cart.find(
-          (it) => it.isHospitalDiet && (it.cartKey === cartKey || (it.name === name && (it.hospitalLocation || 'Torre A') === targetLoc))
-        );
-        if (existing) {
-          existing.quantity += addQty;
-          existing.cartKey = cartKey;
-          existing.hospitalLocation = targetLoc;
-          existing.notes = buildPlateNotes(existing);
-        } else {
-          const item = {
-            uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-            id: id || name,
-            cartKey: cartKey,
-            name,
-            price: numPrice,
-            quantity: addQty,
-            category_id: category_id || 'convenios_clinica',
-            isCustomizable: false,
-            isRapidasFood: false,
-            isJuice: false,
-            isDrink: false,
-            isHospitalDiet: true,
-            hospitalLocation: targetLoc,
-            packaging: globalPackagingType,
-            extraNotes: '',
-            notes: ''
-          };
-          item.notes = buildPlateNotes(item);
-          cart.push(item);
-        }
 
       } else if (isJuice) {
         const isCerezada = normalizeStr(name).includes('cerezada');
@@ -2682,32 +2723,60 @@ const searchableCatalog = allPosProducts.map((p) => ({
             </div>
           `;
         } else if (item.isHospitalDiet) {
-          const locOptions = ['Torre A', 'Torre B', 'Urgencias'];
-          const optHtml = (arr, sel) =>
-            arr
-              .map((val) => `<option value="${escapeHtml(val)}" ${val === sel ? 'selected' : ''}>🏢 ${escapeHtml(val)}</option>`)
-              .join('');
-          const tag = getHospitalDietTag(item.name, item.hospitalLocation || 'Torre A');
+          const loc = item.hospitalLocation || item.ubicacion || 'Torre A';
+          return `
+            <div class="p-2 sm:p-2.5 bg-emerald-50/70 border border-emerald-300 rounded-xl transition shadow-2xs mb-2">
+              <div class="flex items-center justify-between gap-1.5 sm:gap-2">
+                <!-- 1. Input de Cantidad Numérica Directa -->
+                <div class="flex items-center gap-0.5 flex-shrink-0">
+                  <span class="text-xs font-bold text-slate-400">[</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="999"
+                    value="${item.quantity}"
+                    class="cart-qty-input w-14 sm:w-16 text-center font-black text-xs text-slate-900 bg-white border border-emerald-300 rounded-lg py-1 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    data-uid="${item.uid}"
+                    title="Escribe la cantidad directamente"
+                  />
+                  <span class="text-xs font-bold text-slate-400">]</span>
+                </div>
 
-          inlineControls = `
-            <div class="mt-2 pt-2 border-t-2 border-emerald-400 bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200 space-y-1.5 text-xs">
-              <div class="flex items-center justify-between">
-                <label class="block text-[10px] font-black uppercase text-emerald-900 tracking-wider">
-                  🏥 Ubicación Paciente:
-                </label>
-                <span class="text-[10px] font-black font-mono text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300">
-                  ${tag}
-                </span>
+                <!-- 2. Nombre de la Dieta -->
+                <div class="flex-1 min-w-0 px-1">
+                  <div class="font-black text-xs text-slate-900 leading-tight truncate" title="${escapeHtml(item.name)}">
+                    ${escapeHtml(item.name)}
+                  </div>
+                  <div class="text-[10px] text-emerald-800 font-mono font-bold">
+                    ${fmt(item.price)} c/u
+                  </div>
+                </div>
+
+                <!-- 3. Selector de Ubicación/Pabellón directo en el renglón -->
+                <div class="flex-shrink-0">
+                  <select class="pabellon-select pos-inline-select text-xs font-bold bg-gray-50 border border-gray-300 rounded p-1 outline-none focus:ring-1 focus:ring-emerald-600 cursor-pointer text-slate-800" data-field="hospitalLocation" data-uid="${item.uid}">
+                    <option value="Torre A" ${loc === 'Torre A' ? 'selected' : ''}>Torre A</option>
+                    <option value="Torre B" ${loc === 'Torre B' ? 'selected' : ''}>Torre B</option>
+                    <option value="Urgencias" ${loc === 'Urgencias' ? 'selected' : ''}>Urgencias</option>
+                  </select>
+                </div>
+
+                <!-- 4. Subtotal calculado -->
+                <div class="font-mono font-black text-xs text-slate-900 text-right min-w-[65px] sm:min-w-[75px]">
+                  ${fmt(itemTotal)}
+                </div>
+
+                <!-- 5. Botón de eliminar renglón -->
+                <button type="button" class="btn-remove-item text-slate-400 hover:text-red-600 p-1 font-bold cursor-pointer text-sm" data-uid="${item.uid}" data-idx="${idx}" aria-label="Eliminar renglón">
+                  ✕
+                </button>
               </div>
-              <select class="pos-inline-select w-full py-1.5 px-2 bg-white rounded-lg border-2 border-emerald-400 text-xs font-black text-emerald-950 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-none cursor-pointer" data-field="hospitalLocation" data-uid="${item.uid}">
-                ${optHtml(locOptions, item.hospitalLocation || 'Torre A')}
-              </select>
-              <div>
+              <div class="mt-1 flex items-center gap-1.5">
                 <input
                   type="text"
-                  class="pos-inline-notes w-full py-1 px-2 bg-white rounded-lg border border-emerald-300 text-[11px] font-medium text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 outline-none transition"
+                  class="pos-inline-notes w-full py-0.5 px-2 bg-white/90 rounded border border-emerald-200 text-[10px] font-medium text-slate-700 placeholder:text-slate-400 focus:border-emerald-600 outline-none"
                   data-uid="${item.uid}"
-                  placeholder="Nota de entrega: ej. Habitación 302, Cama 1..."
+                  placeholder="Nota opcional: Habitación, cama..."
                   value="${escapeHtml(item.extraNotes || '')}"
                 />
               </div>
@@ -2717,21 +2786,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
           inlineControls = `<div class="text-[10px] text-parrilla-muted mt-1 leading-tight bg-slate-100/80 px-1.5 py-0.5 rounded border border-parrilla-border/60">${escapeHtml(item.notes)}</div>`;
         }
 
-        let itemTitleHtml = '';
-        if (item.isHospitalDiet) {
-          const cleanDiet = formatHospitalDietShortName(item.name);
-          const loc = item.hospitalLocation || 'Torre A';
-          itemTitleHtml = `
-            <div class="font-bold text-xs text-parrilla-ivory leading-snug flex flex-wrap items-center gap-1.5">
-              <span class="text-emerald-700 font-black text-xs font-mono bg-emerald-100/90 px-1 py-0.5 rounded">${item.quantity}x</span>
-              <span class="font-black text-slate-900">${escapeHtml(cleanDiet)}</span>
-              <span class="text-slate-400 font-bold">—</span>
-              <span class="bg-emerald-50 text-emerald-900 border border-emerald-300 font-extrabold text-[11px] px-1.5 py-0.5 rounded">${escapeHtml(loc)}</span>
-            </div>
-          `;
-        } else {
-          itemTitleHtml = `<div class="font-bold text-xs text-parrilla-ivory leading-snug">${escapeHtml(item.name)}</div>`;
-        }
+        let itemTitleHtml = `<div class="font-bold text-xs text-parrilla-ivory leading-snug">${escapeHtml(item.name)}</div>`;
 
         return `
           <div class="p-2.5 bg-slate-50/70 border border-parrilla-border/80 hover:border-parrilla-gold/60 rounded-xl transition shadow-2xs mb-2">
@@ -2899,18 +2954,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
           if (item && field) {
             item[field] = target.value;
             if (field === 'hospitalLocation') {
-              // Si ya existe otro renglón con la misma dieta y la misma ubicación destino, unificarlos
-              const mergeTarget = cart.find(
-                (it) => it.uid !== uid && it.isHospitalDiet && it.name === item.name && (it.hospitalLocation || 'Torre A') === target.value && (it.extraNotes || '') === (item.extraNotes || '')
-              );
-              if (mergeTarget) {
-                mergeTarget.quantity += item.quantity;
-                const idx = cart.indexOf(item);
-                if (idx !== -1) cart.splice(idx, 1);
-              } else {
-                item.hospitalLocation = target.value;
-                item.cartKey = `${item.id || item.name}_${target.value.replace(/\s+/g, '_').toUpperCase()}`;
-              }
+              item.ubicacion = target.value;
             }
             item.notes = buildPlateNotes(item);
             syncHospitalHipoWaterInCart();
@@ -3435,15 +3479,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
       }
     });
 
-    // 6. PAYMENT METHOD SWITCHER
-    const methodFrontToBackMap = {
-      efectivo: 'CASH',
-      nequi: 'NEQUI',
-      bancolombia: 'BANCOLOMBIA',
-      daviplata: 'DAVIPLATA',
-      tarjeta: 'CARD',
-      fiado: 'FIADO'
-    };
+    // 6. PAYMENT METHOD SWITCHER (Map inicializado en el encabezado de estado)
 
     // 6.1 SINCRONIZACIÓN EN VIVO DE ESPECIALES DEL DÍA Y PLATOS ROTATIVOS EN POS
     function syncPosLiveSpecials(data) {
@@ -3675,7 +3711,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
     const viewSplit = document.getElementById('cobro-view-split');
 
     let cobroPaymentMode = 'single'; // 'single' | 'split'
-    let selectedSingleMethod = 'CASH';
+    selectedSingleMethod = 'CASH';
     const singleCashCalc = document.getElementById('single-cash-calc');
     const singleCashReceived = document.getElementById('single-cash-received');
     const singleChangeDisplay = document.getElementById('single-change-display');
@@ -5298,9 +5334,12 @@ const searchableCatalog = allPosProducts.map((p) => ({
         const price = Number(det.precio_unitario || det.plato?.precio || 0);
         const notes = det.notas_item || '';
         const isHosp = isHospitalDietProduct({ id: det.plato_id, name }) || /TORRE A|TORRE B|URGENCIAS/i.test(notes);
-        let hospLoc = 'Torre A';
-        if (/TORRE B/i.test(notes)) hospLoc = 'Torre B';
-        else if (/URGENCIAS/i.test(notes)) hospLoc = 'Urgencias';
+        const locFromDb = det.ubicacion_hospitalaria || det.ubicacion;
+        let hospLoc = locFromDb || 'Torre A';
+        if (!locFromDb) {
+          if (/TORRE B/i.test(notes)) hospLoc = 'Torre B';
+          else if (/URGENCIAS/i.test(notes)) hospLoc = 'Urgencias';
+        }
 
         return {
           uid: 'open_' + order.id + '_' + i + '_' + Date.now(),
@@ -5316,6 +5355,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
           isDrink: false,
           isHospitalDiet: isHosp,
           hospitalLocation: hospLoc,
+          ubicacion: hospLoc,
           extraNotes: notes,
           notes
         };
