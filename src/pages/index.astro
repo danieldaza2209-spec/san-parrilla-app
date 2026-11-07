@@ -10,7 +10,17 @@ const rawCategories = getCategories();
 const categories = (rawCategories && rawCategories.length > 0) ? rawCategories : fallbackCategories;
 
 // Solo platos del menú: los productos internos (ej. prueba de impresión) nunca llegan al público.
-const products = getPublicProducts();
+const rawProducts = getPublicProducts();
+const products = rawProducts.map((p) => {
+  if (p.id === 'pic-4' || p.name === 'Picada Berraca') {
+    return {
+      ...p,
+      is_featured: 0,
+      description: 'Lomo de cerdo, chorizo, chicharrón, costillas de cerdo, papa a la francesa.',
+    };
+  }
+  return p;
+});
 
 const dailySpecials = getDailySpecials() || fallbackDailySpecials;
 

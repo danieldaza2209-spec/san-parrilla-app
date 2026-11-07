@@ -97,9 +97,6 @@ const desayunos = showDesayunos
           <h3 data-special-sopa class="font-display font-black text-sm sm:text-2xl text-parrilla-ivory mt-1 leading-tight">
             {dailySpecials.sopa}
           </h3>
-          <p class="text-[10px] sm:text-xs text-parrilla-muted mt-1 leading-snug">
-            Con el sabor casero tradicional de nuestro fogón.
-          </p>
         </div>
 
         <!-- Tarjeta 2: PRINCIPIOS -->
@@ -312,48 +309,56 @@ const desayunos = showDesayunos
       </div>
 
       <div class="grid grid-cols-2 gap-2.5 sm:gap-5 px-1 sm:px-2">
-        {picadas.map((item) => (
-          <div
-            class:list={[
-              'bg-white rounded-xl sm:rounded-2xl border p-3 sm:p-5 shadow-sm flex flex-col justify-between gap-2.5',
-              item.is_featured === 1
-                ? 'border-parrilla-gold bg-orange-50/20'
-                : 'border-parrilla-border',
-            ]}
-          >
-            <div>
-              {item.is_featured === 1 && (
-                <span class="inline-block bg-parrilla-gold text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full mb-1">
-                  ⭐ ¡La más buscada!
-                </span>
-              )}
-              <h3 class="font-display font-black text-sm sm:text-xl text-parrilla-ivory leading-tight">
-                {item.name}
-              </h3>
-              {item.description && (
-                <p class="text-[11px] sm:text-sm text-parrilla-muted mt-1 leading-snug">
-                  {item.description}
-                </p>
-              )}
-            </div>
+        {picadas.map((item) => {
+          const isBerraca = item.id === 'pic-4' || item.name === 'Picada Berraca';
+          const description = isBerraca
+            ? 'Lomo de cerdo, chorizo, chicharrón, costillas de cerdo, papa a la francesa.'
+            : item.description;
+          const showBadge = item.is_featured === 1 && !isBerraca;
 
-            <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
-              <span class="font-display font-black text-sm sm:text-xl text-parrilla-gold">
-                {formatPrice(item.price)}
-              </span>
-              <button
-                type="button"
-                data-name={item.name}
-                data-price={item.price}
-                data-customizable="false"
-                aria-label={`Agregar ${item.name} al pedido`}
-                class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
-              >
-                <i data-lucide="plus" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
-              </button>
+          return (
+            <div
+              class:list={[
+                'bg-white rounded-xl sm:rounded-2xl border p-3 sm:p-5 shadow-sm flex flex-col justify-between gap-2.5',
+                showBadge
+                  ? 'border-parrilla-gold bg-orange-50/20'
+                  : 'border-parrilla-border',
+              ]}
+            >
+              <div>
+                {showBadge && (
+                  <span class="inline-block bg-parrilla-gold text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full mb-1">
+                    ⭐ ¡La más buscada!
+                  </span>
+                )}
+                <h3 class="font-display font-black text-sm sm:text-xl text-parrilla-ivory leading-tight">
+                  {item.name}
+                </h3>
+                {description && (
+                  <p class="text-[11px] sm:text-sm text-parrilla-muted mt-1 leading-snug">
+                    {description}
+                  </p>
+                )}
+              </div>
+
+              <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
+                <span class="font-display font-black text-sm sm:text-xl text-parrilla-gold">
+                  {formatPrice(item.price)}
+                </span>
+                <button
+                  type="button"
+                  data-name={item.name}
+                  data-price={item.price}
+                  data-customizable="false"
+                  aria-label={`Agregar ${item.name} al pedido`}
+                  class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
+                >
+                  <i data-lucide="plus" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   )}
