@@ -1652,11 +1652,31 @@ const searchableCatalog = allPosProducts.map((p) => ({
     }
 
     function isRapidasFoodProduct(item) {
-      const isRap = item.menu_type === 'rapidas' ||
-        String(item.id || '').startsWith('rap-') ||
-        ['hamburguesas', 'perros_calientes', 'salchipapas_papas_locas', 'patacones', 'sandwich', 'picadas_noche', 'especiales_noche'].includes(item.category_id);
-      if (!isRap) return false;
-      return !isJuiceProduct(item.name, item.category_id) && !isDrinkProduct(item.name, item.category_id);
+      if (!item) return false;
+      const cat = String(item.category_id || '').toLowerCase();
+      const name = normalizeStr(item.name || '');
+      const id = String(item.id || '').toLowerCase();
+      const menu = String(item.menu_type || '').toLowerCase();
+
+      if (isJuiceProduct(item.name, item.category_id) || isDrinkProduct(item.name, item.category_id)) return false;
+
+      const rapidasCategoriesList = [
+        'hamburguesas',
+        'perros_calientes',
+        'salchipapas_papas_locas',
+        'patacones',
+        'sandwich',
+        'picadas',
+        'picadas_noche',
+        'especiales_noche',
+        'rapidas',
+        'comidas_rapidas'
+      ];
+      if (rapidasCategoriesList.includes(cat)) return true;
+      if (menu === 'rapidas' || id.startsWith('rap-')) return true;
+      if (/picada|hamburguesa|perro caliente|salchipapa|papas locas|patacon|sandwich|alitas/i.test(name)) return true;
+
+      return false;
     }
 
     function isHospitalDietProduct(item) {
@@ -2220,16 +2240,61 @@ const searchableCatalog = allPosProducts.map((p) => ({
       });
     }
 
-    // Cuenta cuántos platos de comida hay en la comanda (excluye bebidas/líquidos)
+    // Determina si un producto en comanda representa un plato fuerte que requiere empaque
+    function esPlatoFuerte(item) {
+      if (!item) return false;
+      if (Number(item.price || 0) <= 0) return false; // Cortesías o ítems $0 no cobran empaque
+
+      const cat = String(item.category_id || '').toLowerCase();
+      const name = normalizeStr(item.name || '');
+
+      // Excluir bebidas líquidas, gaseosas, aguas y jugos
+      if (cat === 'bebidas' || cat === 'bebidas_rapidas' || cat === 'granizados_jugos') return false;
+      if (item.isJuice || item.isDrink) return false;
+      if (isJuiceProduct(item.name, item.category_id) || isDrinkProduct(item.name, item.category_id)) return false;
+
+      // Lista estándar de categorías de platos fuertes con empaque
+      const categoriasConEmpaque = [
+        'almuerzos',
+        'rapidas',
+        'comidas_rapidas',
+        'hamburguesas',
+        'perros',
+        'perros_calientes',
+        'salchipapas',
+        'salchipapas_papas_locas',
+        'patacones',
+        'sandwich',
+        'picadas',
+        'picadas_noche',
+        'especiales_noche',
+        'fuertes_165',
+        'fuertes_175',
+        'especiales_21',
+        'especiales_hoy',
+        'desayunos',
+        'convenios_clinica'
+      ];
+      if (categoriasConEmpaque.includes(cat)) return true;
+
+      // Clasificaciones específicas del POS
+      if (item.isCustomizable || item.isRapidasFood || item.isHospitalDiet || item.isBreakfast) return true;
+
+      // Productos del menú rápido o ID rápido
+      if (item.menu_type === 'rapidas' || String(item.id || '').startsWith('rap-')) return true;
+
+      // Detección por palabras clave de comidas / platos fuertes
+      if (/picada|hamburguesa|perro|salchipapa|patacon|sandwich|alitas|desgranado|churrasco|pechuga|carne|costilla|pescado|mojarra|sancocho|mondongo|arroz|cazuela|dieta|desayuno/i.test(name)) {
+        return true;
+      }
+
+      return false;
+    }
+
+    // Cuenta cuántos platos de comida hay en la comanda (cada unidad suma 1 empaque)
     function countFoodPlates() {
       return cart.reduce((acc, it) => {
-        if (it.isRapidasFood || it.isCustomizable || it.isHospitalDiet || it.isBreakfast) {
-          return acc + it.quantity;
-        }
-        if (it.isJuice || it.isDrink || isJuiceProduct(it.name, it.category_id) || isDrinkProduct(it.name, it.category_id)) {
-          return acc;
-        }
-        return acc + it.quantity;
+        return esPlatoFuerte(it) ? acc + (Number(it.quantity) || 1) : acc;
       }, 0);
     }
 
@@ -2238,9 +2303,11 @@ const searchableCatalog = allPosProducts.map((p) => ({
       const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
       const isDeliveryOrTakeout = currentOrderType === 'domicilio' || currentOrderType === 'para_llevar';
 
-      if (isDeliveryOrTakeout && !manualPackagingOverride) {
-        packagingQty = countFoodPlates();
-      } else if (!isDeliveryOrTakeout) {
+      if (isDeliveryOrTakeout) {
+        if (!manualPackagingOverride) {
+          packagingQty = countFoodPlates();
+        }
+      } else {
         packagingQty = 0;
       }
 
@@ -2593,25 +2660,46 @@ const searchableCatalog = allPosProducts.map((p) => ({
         cart.push(item);
 
       } else {
-        const existing = cart.find((it) => it.name === name && !it.isCustomizable && !it.isRapidasFood && !it.isJuice && !it.isHospitalDiet);
-        if (existing) {
-          existing.quantity += 1;
-        } else {
-          cart.push({
+        const isFood = esPlatoFuerte({ id, name, price: numPrice, category_id, menu_type });
+        if (isFood) {
+          const item = {
             uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
             id: id || name,
             name,
             price: numPrice,
-            quantity: 1,
-            category_id: category_id || 'bebidas',
+            quantity: addQty,
+            category_id: category_id || 'rapidas',
             isCustomizable: false,
-            isRapidasFood: false,
+            isRapidasFood: true,
             isJuice: false,
-            isDrink: true,
-            packaging: null,
+            isDrink: false,
+            packaging: globalPackagingType,
             extraNotes: '',
             notes: ''
-          });
+          };
+          item.notes = buildPlateNotes(item);
+          cart.push(item);
+        } else {
+          const existing = cart.find((it) => it.name === name && !it.isCustomizable && !it.isRapidasFood && !it.isJuice && !it.isHospitalDiet);
+          if (existing) {
+            existing.quantity += addQty;
+          } else {
+            cart.push({
+              uid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+              id: id || name,
+              name,
+              price: numPrice,
+              quantity: addQty,
+              category_id: category_id || 'bebidas',
+              isCustomizable: false,
+              isRapidasFood: false,
+              isJuice: false,
+              isDrink: true,
+              packaging: null,
+              extraNotes: '',
+              notes: ''
+            });
+          }
         }
       }
 
@@ -2619,7 +2707,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
       // Si se seleccionó una dieta que contenga "Hiposódica" o "Hipoglúcida", asegurar automáticamente "Botella con Agua (Dieta Hipo Clínica)" a $0
       syncHospitalHipoWaterInCart();
 
-      if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
+      if (currentOrderType !== 'mesa') {
+        manualPackagingOverride = false;
         packagingQty = countFoodPlates();
       }
       renderCart();
@@ -3126,7 +3215,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
             cart.splice(idx, 1);
           }
 
-          if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
+          if (currentOrderType !== 'mesa') {
+            manualPackagingOverride = false;
             packagingQty = countFoodPlates();
           }
           syncHospitalHipoWaterInCart();
@@ -3159,7 +3249,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
             item.quantity += 1;
           }
 
-          if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
+          if (currentOrderType !== 'mesa') {
+            manualPackagingOverride = false;
             packagingQty = countFoodPlates();
           }
           syncHospitalHipoWaterInCart();
@@ -3181,7 +3272,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
           if (item.isHospitalDiet) {
             item.notes = buildPlateNotes(item);
           }
-          if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
+          if (currentOrderType !== 'mesa') {
+            manualPackagingOverride = false;
             packagingQty = countFoodPlates();
           }
           syncHospitalHipoWaterInCart();
@@ -3222,6 +3314,10 @@ const searchableCatalog = allPosProducts.map((p) => ({
           };
           cloned.notes = buildPlateNotes(cloned);
           cart.splice(idx + 1, 0, cloned);
+          if (currentOrderType !== 'mesa') {
+            manualPackagingOverride = false;
+            packagingQty = countFoodPlates();
+          }
           syncHospitalHipoWaterInCart();
           renderCart();
         });
@@ -3234,7 +3330,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
           const idx = cart.findIndex((it) => it.uid === uid);
           if (idx !== -1) {
             cart.splice(idx, 1);
-            if (currentOrderType !== 'mesa' && !manualPackagingOverride) {
+            if (currentOrderType !== 'mesa') {
+              manualPackagingOverride = false;
               packagingQty = countFoodPlates();
             }
             renderCart();
@@ -3600,9 +3697,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
           formLlevar.classList.add('hidden');
           formLlevar.classList.remove('flex');
         }
-        if (!manualPackagingOverride) {
-          packagingQty = countFoodPlates();
-        }
+        manualPackagingOverride = false;
+        packagingQty = countFoodPlates();
       } else {
         typeLlevarBtn.className = 'order-type-btn active flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-amber-600 bg-amber-600 text-white font-extrabold text-xs shadow-sm transition';
         formMesa.style.display = 'none';
@@ -3610,9 +3706,8 @@ const searchableCatalog = allPosProducts.map((p) => ({
           formLlevar.classList.remove('hidden');
           formLlevar.classList.add('flex');
         }
-        if (!manualPackagingOverride) {
-          packagingQty = countFoodPlates();
-        }
+        manualPackagingOverride = false;
+        packagingQty = countFoodPlates();
       }
 
       updateCustomerFormVisibility();
@@ -4409,6 +4504,10 @@ const searchableCatalog = allPosProducts.map((p) => ({
         creado_por: staffCreator,
         subtotal: subtotal,
         packaging_fee: packagingFee,
+        costo_empaques: packagingFee,
+        cantidad_empaques: packagingQty,
+        packaging_qty: packagingQty,
+        packaging_type: globalPackagingType,
         total,
         impreso_cocina: false,
         impreso_caja: true,

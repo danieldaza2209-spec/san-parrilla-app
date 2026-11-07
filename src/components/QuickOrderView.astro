@@ -177,8 +177,11 @@ const desayunos = showDesayunos
 
                 <button
                   type="button"
+                  data-id={item.id}
                   data-name={item.name}
                   data-price={item.price}
+                  data-cat={item.category_id}
+                  data-menu="almuerzo"
                   data-customizable="true"
                   aria-label={`Agregar ${item.name} al pedido`}
                   class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
@@ -217,8 +220,11 @@ const desayunos = showDesayunos
 
                     <button
                       type="button"
+                      data-id={item.id}
                       data-name={item.name}
                       data-price={item.price}
+                      data-cat={item.category_id}
+                      data-menu="almuerzo"
                       data-customizable="true"
                       aria-label={`Agregar ${item.name} al pedido`}
                       class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-parrilla-gold hover:bg-parrilla-goldLight text-white border border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
@@ -355,8 +361,11 @@ const desayunos = showDesayunos
                 </span>
                 <button
                   type="button"
+                  data-id={item.id}
                   data-name={item.name}
                   data-price={item.price}
+                  data-cat={item.category_id || 'picadas'}
+                  data-menu="almuerzo"
                   data-customizable="false"
                   aria-label={`Agregar ${item.name} al pedido`}
                   class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
@@ -398,8 +407,11 @@ const desayunos = showDesayunos
                 </span>
                 <button
                   type="button"
+                  data-id={item.id}
                   data-name={item.name}
                   data-price={item.price}
+                  data-cat={item.category_id || 'bebidas'}
+                  data-menu="almuerzo"
                   data-customizable="false"
                   aria-label={`Agregar ${item.name} al pedido`}
                   class="btn-add-cart w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
@@ -519,6 +531,8 @@ const desayunos = showDesayunos
                     type="button"
                     data-name="${esc(dishName)}"
                     data-price="16500"
+                    data-cat="fuertes_165"
+                    data-menu="almuerzo"
                     data-customizable="true"
                     aria-label="Agregar ${esc(dishName)} al pedido"
                     class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-parrilla-gold hover:bg-parrilla-goldLight text-white border border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
@@ -561,6 +575,8 @@ const desayunos = showDesayunos
                   type="button"
                   data-name="${esc(arrozNombre)}"
                   data-price="${arrozPrecio}"
+                  data-cat="fuertes_180"
+                  data-menu="almuerzo"
                   data-customizable="true"
                   aria-label="Agregar ${esc(arrozNombre)} al pedido"
                   class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-parrilla-gold hover:bg-parrilla-goldLight text-white border border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
@@ -761,6 +777,8 @@ const desayunos = showDesayunos
                   type="button"
                   data-name="${esc(item.nombre || item.name)}"
                   data-price="18000"
+                  data-cat="fuertes_180"
+                  data-menu="almuerzo"
                   data-customizable="true"
                   aria-label="Agregar ${esc(item.nombre || item.name)} al pedido"
                   class="btn-add-cart flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
@@ -807,6 +825,8 @@ const desayunos = showDesayunos
                       type="button"
                       data-name="${esc(item.nombre || item.name)}"
                       data-price="${item.precio ?? item.price}"
+                      data-cat="bebidas"
+                      data-menu="almuerzo"
                       data-customizable="false"
                       aria-label="Agregar ${esc(item.nombre || item.name)} al pedido"
                       class="btn-add-cart w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-orange-50 hover:bg-parrilla-gold text-parrilla-gold hover:text-white border border-orange-200 hover:border-parrilla-gold flex items-center justify-center transition active:scale-90 cursor-pointer"
