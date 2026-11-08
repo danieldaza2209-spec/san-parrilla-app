@@ -7,7 +7,10 @@ import StyledMenuView from '../components/StyledMenuView.astro';
 import { getCategories, getPublicProducts, getDailySpecials, fallbackCategories, fallbackDailySpecials } from '../lib/db.js';
 import { fetchLiveSanitizedPlatos } from './api/platos/[...action].js';
 
-Astro.response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
+);
 
 const rawCategories = getCategories();
 const categories = (rawCategories && rawCategories.length > 0) ? rawCategories : fallbackCategories;
@@ -19,11 +22,14 @@ const normKey = (s: string) =>
     .toLowerCase()
     .trim();
 
-// Consultar catálogo vivo sincronizado con Neon DB y overrides de disponibilidad/precios
+// Consultar catálogo vivo sincronizado con Neon DB y overrides de disponibilidad/precios con timeout defensivo
 let livePlatosMap = new Map<string, any>();
 try {
-  const livePlatos = await fetchLiveSanitizedPlatos();
-  if (Array.isArray(livePlatos)) {
+  const livePlatos = await Promise.race([
+    fetchLiveSanitizedPlatos(),
+    new Promise<any[]>((resolve) => setTimeout(() => resolve([]), 3500))
+  ]);
+  if (Array.isArray(livePlatos) && livePlatos.length > 0) {
     for (const lp of livePlatos) {
       const k = normKey(lp.nombre || lp.name);
       if (k) livePlatosMap.set(k, lp);
