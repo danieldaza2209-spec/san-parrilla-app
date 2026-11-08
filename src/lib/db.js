@@ -103,7 +103,7 @@ export const lunchProductList = [
   { id: 'bistec_caballo', neon_id: 23, name: 'Bistec a caballo', price: 18000, category_id: 'fuertes_175', description: 'Carne en salsa criolla coronada con huevo frito.', is_active: 1, is_featured: 0, sort_order: 15 },
   { id: 'pechuga_hawaiana', neon_id: 24, name: 'Pechuga hawaiana', price: 18000, category_id: 'fuertes_175', description: 'Pechuga gratinada con piña caramelizada y queso.', is_active: 1, is_featured: 0, sort_order: 16 },
   { id: 'pechuga_bechamel', neon_id: 63, name: 'Pechuga en salsa bechamel', price: 18000, category_id: 'fuertes_175', description: 'Pechuga bañada en salsa bechamel casera. Incluye sopa, principio y acompañamiento.', is_active: 1, is_featured: 0, sort_order: 16.5 },
-  { id: 'combo_personal', neon_id: 25, name: 'Combo Personal', price: 18000, category_id: 'fuertes_175', description: 'Opción rápida del asador con plato fuerte y acompañamiento.', is_active: 1, is_featured: 0, sort_order: 17 },
+  { id: 'combo_personal', neon_id: 25, name: 'Combo Personal', price: 18000, category_id: 'fuertes_175', tipo_producto: 'combo', description: 'Incluye arroz especial del día, papas a la francesa, proteína a elección (Lomo de cerdo a la plancha o Milanesa de pollo) y bebida (Gaseosa o Botella con Agua).', is_active: 1, is_featured: 0, sort_order: 17 },
   { id: 'sancocho_gallina', neon_id: 26, name: 'Sancocho de gallina', price: 18000, category_id: 'fuertes_175', description: 'Tradicional sancocho de gallina criolla con plátano, yuca, mazorca, arroz y aguacate.', is_active: 1, is_featured: 0, sort_order: 17.05 },
   { id: 'arroz_pollo', neon_id: 29, name: 'Arroz con pollo', price: 18000, category_id: 'fuertes_175', description: 'Arroz amarillo sazonado con pechuga desmechada y verduras frescas.', is_active: 1, is_featured: 0, sort_order: 17.1 },
   { id: 'espagueti_pollo', neon_id: 132, name: 'Espagueti con pollo', price: 18000, category_id: 'fuertes_175', description: 'Pasta en salsa suave con generosos trozos de pechuga de pollo.', is_active: 1, is_featured: 0, sort_order: 17.2 },
@@ -133,7 +133,7 @@ export const lunchProductList = [
   { id: 'esp-11', name: 'Costillas bbq', price: 23000, category_id: 'especiales_21', description: 'Costillas ahumadas bañadas en salsa BBQ casera.', is_active: 1, is_featured: 0, sort_order: 11 },
   { id: 'esp-12', name: 'Pechuga con maíz gratinada', price: 23000, category_id: 'especiales_21', description: 'Pechuga a la plancha con crema de maíz y queso gratinado.', is_active: 1, is_featured: 0, sort_order: 12 },
   { id: 'esp-13', name: 'Pechuga en champiñones', price: 23000, category_id: 'especiales_21', description: 'Filete de pechuga con salsa cremosa de champiñones.', is_active: 1, is_featured: 0, sort_order: 13 },
-  { id: 'esp-combo-san-parrilla', name: 'Combo San Parrilla', price: 23000, category_id: 'especiales_21', description: 'Combo especial de la casa con carnes selectas a la parrilla y acompañamientos.', is_active: 1, is_featured: 1, sort_order: 14 },
+  { id: 'esp-combo-san-parrilla', name: 'Combo San Parrilla', price: 23000, category_id: 'especiales_21', tipo_producto: 'combo', description: 'Incluye arroz especial del día, papas a la francesa, proteína a elección (Lomo de cerdo a la plancha, Milanesa de pollo o Pernil frito) y bebida (Gaseosa o Botella con Agua).', is_active: 1, is_featured: 1, sort_order: 14 },
 
   // $27.500
   { id: 'esp-14', name: 'Churrasco', price: 27500, category_id: 'especiales_21', description: 'Corte de res jugoso asado al carbón.', is_active: 1, is_featured: 1, sort_order: 14 },
@@ -391,6 +391,20 @@ export function getCategories() {
   return fallbackCategories;
 }
 
+export const esCombo = (item) => {
+  if (!item) return false;
+  if (typeof item === 'object' && item.tipo_producto === 'combo') return true;
+  const nombre = (typeof item === 'string' ? item : item.nombre || item.name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return (
+    nombre.includes('combo personal') ||
+    nombre.includes('combinado personal') ||
+    nombre.includes('combo san parrilla')
+  );
+};
+
 const metaById = new Map(
   initialProductList.map((p) => [
     p.id,
@@ -398,6 +412,7 @@ const metaById = new Map(
       menu_type: p.menu_type || (String(p.id).startsWith('rap-') ? 'rapidas' : String(p.id).startsWith('conv-') ? 'convenios' : 'almuerzo'),
       has_flavor: p.has_flavor || 0,
       special_badge: p.special_badge || '',
+      tipo_producto: p.tipo_producto || (esCombo(p) ? 'combo' : 'estandar'),
     },
   ])
 );

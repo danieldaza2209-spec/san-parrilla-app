@@ -1735,6 +1735,29 @@ const searchableCatalog = allPosProducts.map((p) => ({
       return clean;
     }
 
+    // Discriminación determinista de productos tipo "COMBO"
+    function esCombo(itemOrName) {
+      if (!itemOrName) return false;
+      if (typeof itemOrName === 'object' && (itemOrName.tipo_producto === 'combo' || itemOrName.isCombo)) return true;
+      const n = normalizeStr(typeof itemOrName === 'string' ? itemOrName : itemOrName.nombre || itemOrName.name || '');
+      return (
+        n.includes('combo personal') ||
+        n.includes('combinado personal') ||
+        n.includes('combo san parrilla')
+      );
+    }
+
+    function getComboProteinOptions(itemOrName) {
+      const n = normalizeStr(typeof itemOrName === 'string' ? itemOrName : itemOrName?.nombre || itemOrName?.name || '');
+      if (n.includes('combo san parrilla')) {
+        return ['Lomo de cerdo a la plancha', 'Milanesa de pollo', 'Pernil frito'];
+      }
+      return ['Lomo de cerdo a la plancha', 'Milanesa de pollo'];
+    }
+
+    const COMBO_DRINK_OPTIONS = ['Gaseosa', 'Botella con Agua'];
+    const COMBO_FIXED_BASE = 'Arroz especial del día + Papas a la francesa';
+
     // Platos con Guarnición Fija por receta (Bandeja Paisa, Pescados/Cazuelas, Arroces, Creps)
     function isFixedGarnishDish(name) {
       if (!name) return false;
@@ -2329,7 +2352,23 @@ const searchableCatalog = allPosProducts.map((p) => ({
     // Arma el string de notas y guarniciones de un plato
     function buildPlateNotes(item) {
       if (item.isCustomizable) {
+        const isComboDish = esCombo(item);
         const isFixed = isFixedGarnishDish(item.name);
+        if (isComboDish) {
+          const defaultProtein = getComboProteinOptions(item.name)[0];
+          const parts = [
+            `Proteína: ${item.protein || defaultProtein}`,
+            `Bebida: ${item.drink || COMBO_DRINK_OPTIONS[0]}`,
+            `Base: ${COMBO_FIXED_BASE}`
+          ];
+          if (currentOrderType !== 'mesa') {
+            parts.push(`Empaque: ${item.packaging || globalPackagingType}`);
+          }
+          if (item.extraNotes && item.extraNotes.trim()) {
+            parts.push(`Nota: ${item.extraNotes.trim()}`);
+          }
+          return parts.join(' | ');
+        }
         const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
         const parts = [item.soup || soupDefault];
         if (!isFixed) {
@@ -2587,11 +2626,13 @@ const searchableCatalog = allPosProducts.map((p) => ({
       }
 
       if (isCustomizable) {
+        const isComboDish = esCombo(name);
         const isFixed = isFixedGarnishDish(name);
         const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
         const soupOptions = [soupDefault, 'Sin Sopa'];
         const principleOptions = [...(dailySpecialsData.principios || []), 'Sin Principio'];
         const sideOptions = [...(dailySpecialsData.acompanamientos || []), 'Sin Acompañamiento'];
+        const proteinOptions = isComboDish ? getComboProteinOptions(name) : [];
 
         for (let q = 0; q < addQty; q++) {
           const item = {
@@ -2601,15 +2642,20 @@ const searchableCatalog = allPosProducts.map((p) => ({
             price: numPrice,
             quantity: 1,
             category_id: category_id || 'fuertes_165',
+            tipo_producto: isComboDish ? 'combo' : 'estandar',
+            isCombo: isComboDish,
             isCustomizable: true,
             isFixedGarnish: isFixed,
             isRapidasFood: false,
             isJuice: false,
             isDrink: false,
-            soup: soupOptions[0],
-            principle: isFixed ? null : (principleOptions[0] || 'Sin Principio'),
-            side: isFixed ? null : (sideOptions[0] || 'Sin Acompañamiento'),
-            salad: isFixed ? null : 'Con ensalada',
+            soup: isComboDish ? null : soupOptions[0],
+            principle: (isFixed || isComboDish) ? null : (principleOptions[0] || 'Sin Principio'),
+            side: (isFixed || isComboDish) ? null : (sideOptions[0] || 'Sin Acompañamiento'),
+            salad: (isFixed || isComboDish) ? null : 'Con ensalada',
+            protein: isComboDish ? proteinOptions[0] : null,
+            drink: isComboDish ? COMBO_DRINK_OPTIONS[0] : null,
+            base_fija: isComboDish ? COMBO_FIXED_BASE : null,
             packaging: globalPackagingType,
             extraNotes: '',
             notes: ''
@@ -2855,6 +2901,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
 
         let inlineControls = '';
         if (item.isCustomizable) {
+          const isComboDish = esCombo(item);
           const isFixed = isFixedGarnishDish(item.name);
           const soupDefault = dailySpecialsData.sopa ? `Con Sopa (${dailySpecialsData.sopa})` : 'Con Sopa';
           const soupOptions = [
@@ -2868,7 +2915,54 @@ const searchableCatalog = allPosProducts.map((p) => ({
               .map((val) => `<option value="${escapeHtml(val)}" ${val === sel ? 'selected' : ''}>${escapeHtml(val)}</option>`)
               .join('');
 
-          if (isFixed) {
+          if (isComboDish) {
+            const proteinOptions = getComboProteinOptions(item.name);
+            inlineControls = `
+              <div class="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-dashed border-parrilla-border/70 text-[11px]">
+                <div class="col-span-2">
+                  <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    🍛 Incluye: ${escapeHtml(COMBO_FIXED_BASE)}
+                  </span>
+                </div>
+
+                <div>
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🥩 Proteína</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="protein" data-uid="${item.uid}">
+                    ${optHtml(proteinOptions, item.protein || proteinOptions[0])}
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">🥤 Bebida</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="drink" data-uid="${item.uid}">
+                    ${optHtml(COMBO_DRINK_OPTIONS, item.drink || COMBO_DRINK_OPTIONS[0])}
+                  </select>
+                </div>
+
+                ${
+                  currentOrderType !== 'mesa'
+                    ? `
+                <div class="col-span-2">
+                  <label class="block text-[9px] font-extrabold uppercase text-parrilla-muted tracking-wider mb-0.5">📦 Empaque</label>
+                  <select class="pos-inline-select w-full py-1 px-1.5 bg-slate-50 hover:bg-white rounded-lg border border-parrilla-border text-[11px] font-bold text-parrilla-ivory focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none cursor-pointer" data-field="packaging" data-uid="${item.uid}">
+                    ${optHtml(packagingOptions, item.packaging || globalPackagingType)}
+                  </select>
+                </div>`
+                    : ''
+                }
+
+                <div class="col-span-2">
+                  <input
+                    type="text"
+                    class="pos-inline-notes w-full py-1 px-2 bg-slate-50 hover:bg-white focus:bg-white rounded-lg border border-parrilla-border text-[11px] font-medium text-parrilla-ivory placeholder:text-parrilla-muted focus:border-parrilla-gold focus:ring-1 focus:ring-parrilla-gold outline-none transition"
+                    data-uid="${item.uid}"
+                    placeholder="Nota: ej: bien asado, sin cebolla..."
+                    value="${escapeHtml(item.extraNotes || '')}"
+                  />
+                </div>
+              </div>
+            `;
+          } else if (isFixed) {
             // Plato con receta fija (Bandeja Paisa, Pescados/Cazuelas, Arroces, Creps):
             // MOSTRAR ÚNICAMENTE Sopa, Empaque (si es para llevar/domicilio) y Notas
             inlineControls = `
@@ -3151,7 +3245,7 @@ const searchableCatalog = allPosProducts.map((p) => ({
                 <div class="flex items-center gap-2 mt-1">
                   <span class="text-[11px] text-parrilla-gold font-bold font-mono">${fmt(item.price)}</span>
                   ${
-                    item.isCustomizable
+                    item.isCustomizable && !esCombo(item)
                       ? `
                     <button type="button" class="btn-customize-cart-item text-[10px] font-bold text-orange-700 bg-orange-100 hover:bg-orange-200 border border-orange-200 px-1.5 py-0.5 rounded transition flex items-center gap-1 cursor-pointer" data-uid="${item.uid}" title="Abrir modal completo de guarniciones">
                       <span>✏️ Modal</span>
