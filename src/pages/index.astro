@@ -10,7 +10,7 @@ import { getLiveSpecialsFromNeon } from '../lib/neon.js';
 
 Astro.response.headers.set(
   'Cache-Control',
-  'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
+  'public, max-age=0, s-maxage=15, stale-while-revalidate=60'
 );
 
 const rawCategories = getCategories();
@@ -23,13 +23,15 @@ const normKey = (s: string) =>
     .toLowerCase()
     .trim();
 
-// Consultar catálogo vivo sincronizado con Neon DB y overrides de disponibilidad/precios con timeout defensivo
+// Consultar en paralelo catálogo de platos y especiales del día directamente desde Neon DB
 let livePlatosMap = new Map<string, any>();
+let liveNeonSpecials: any = null;
 try {
-  const livePlatos = await Promise.race([
-    fetchLiveSanitizedPlatos(),
-    new Promise<any[]>((resolve) => setTimeout(() => resolve([]), 3500))
+  const [livePlatos, neonSpec] = await Promise.all([
+    fetchLiveSanitizedPlatos().catch(() => []),
+    getLiveSpecialsFromNeon(2500).catch(() => null),
   ]);
+  liveNeonSpecials = neonSpec;
   if (Array.isArray(livePlatos) && livePlatos.length > 0) {
     for (const lp of livePlatos) {
       const k = normKey(lp.nombre || lp.name);
@@ -117,12 +119,9 @@ const products = rawProducts
   });
 
 let rawSpecials = getDailySpecials() || fallbackDailySpecials;
-try {
-  const liveNeonSpecials = await getLiveSpecialsFromNeon(2500);
-  if (liveNeonSpecials && (liveNeonSpecials.sopa || liveNeonSpecials.sopa_dia)) {
-    rawSpecials = { ...rawSpecials, ...liveNeonSpecials };
-  }
-} catch (_) {}
+if (liveNeonSpecials && (liveNeonSpecials.sopa || liveNeonSpecials.sopa_dia)) {
+  rawSpecials = { ...rawSpecials, ...liveNeonSpecials };
+}
 const isDishAvailableByName = (dishName: string) => {
   const k = normKey(dishName);
   if (!k) return false;

@@ -1,4 +1,12 @@
-import { proxyToFastAPI, getSanitizedFastapiUrl } from '../../../lib/fastapi.js';
+import { proxyToFastAPI } from '../../../lib/fastapi.js';
+import { fetchPedidosFromNeon, fetchPlatosFromNeon } from '../../../lib/neon.js';
+
+export const prerender = false;
+
+const JSON_HEADERS = {
+  'Content-Type': 'application/json',
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+};
 
 let cachedPlatosMap = null;
 let cachedPlatosAt = 0;
@@ -9,34 +17,42 @@ async function resolvePlatosMap() {
     return cachedPlatosMap;
   }
   try {
-    const baseUrl = getSanitizedFastapiUrl();
-    const res = await fetch(`${baseUrl}/api/catalogo/platos`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-      const platos = await res.json();
-      if (Array.isArray(platos) && platos.length > 0) {
-        const map = new Map();
-        for (const p of platos) {
-          if (p && p.nombre && p.id) {
-            map.set(String(p.nombre).trim().toLowerCase(), Number(p.id));
-          }
+    const platos = await fetchPlatosFromNeon(2500);
+    if (Array.isArray(platos) && platos.length > 0) {
+      const map = new Map();
+      for (const p of platos) {
+        if (p && p.nombre && p.id) {
+          map.set(String(p.nombre).trim().toLowerCase(), Number(p.id));
         }
-        cachedPlatosMap = map;
-        cachedPlatosAt = now;
-        return map;
       }
+      cachedPlatosMap = map;
+      cachedPlatosAt = now;
+      return map;
     }
   } catch (e) {}
   return cachedPlatosMap || new Map();
 }
 
-export async function ALL({ request, params }) {
+export async function ALL({ request, params, url }) {
   const action = (params.action || '').replace(/^\/+|\/+$/g, '');
-
   const methodUpper = request.method.toUpperCase();
 
-  // Si es creación o actualización de pedido con detalles, normalizar tipo y resolver plato_id real por nombre
+  // 1. Consulta directa de pedidos desde Neon DB (evita 502/504 de Render en Cuentas por Cobrar, Caja y Pedidos)
+  if (methodUpper === 'GET' && !action) {
+    const limit = Number(url.searchParams.get('limit') || 300);
+    const estado = url.searchParams.get('estado') || null;
+    try {
+      const orders = await fetchPedidosFromNeon({ limit, estado }, 4500);
+      return new Response(JSON.stringify(orders), {
+        status: 200,
+        headers: JSON_HEADERS,
+      });
+    } catch (err) {
+      console.warn('Fallback proxy en GET /api/pedidos:', err.message || err);
+    }
+  }
+
+  // 2. Creación o actualización de pedido con detalles: normalizar tipo y resolver plato_id real por nombre
   if (['POST', 'PUT', 'PATCH'].includes(methodUpper)) {
     try {
       const cloned = request.clone();

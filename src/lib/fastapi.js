@@ -10,12 +10,10 @@ export function getSanitizedFastapiUrl() {
 
   raw = String(raw || '').trim();
 
-  // Si no está definida la variable de entorno, usar directamente la URL de Render
   if (!raw || raw === 'undefined' || raw === 'null') {
     return DEFAULT_RENDER_URL;
   }
 
-  // Autocorrección de errores tipográficos comunes al copiar/pegar en Vercel
   if (raw.startsWith('ttps://')) {
     raw = 'h' + raw;
   } else if (raw.startsWith('tp://')) {
@@ -31,26 +29,25 @@ export function getSanitizedFastapiUrl() {
 
 const FASTAPI_URL = getSanitizedFastapiUrl();
 
-async function fetchWithRetry(url, options = {}, maxRetries = 1) {
-  const timeoutMs = options.timeoutMs || 12000;
+async function fetchWithRetry(url, options = {}, maxRetries = 0) {
+  const { timeoutMs = 5500, ...fetchOpts } = options;
   let lastError = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      const res = await fetch(url, { ...options, signal: controller.signal });
+      const res = await fetch(url, { ...fetchOpts, signal: controller.signal });
       clearTimeout(timeoutId);
 
-      // Si Render está despertando y devuelve 502/503/504, reintentar
       if ([502, 503, 504].includes(res.status) && attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 600));
         continue;
       }
       return res;
     } catch (err) {
       lastError = err;
       if (attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 600));
       }
     }
   }
@@ -74,6 +71,7 @@ export async function proxyToFastAPI(request, targetPath) {
   const options = {
     method: request.method,
     headers,
+    timeoutMs: 5500,
   };
 
   if (!['GET', 'HEAD'].includes(request.method.toUpperCase())) {
@@ -86,7 +84,7 @@ export async function proxyToFastAPI(request, targetPath) {
   }
 
   try {
-    const response = await fetchWithRetry(targetUrl.toString(), options, 2);
+    const response = await fetchWithRetry(targetUrl.toString(), options, 0);
     const data = await response.text();
     return new Response(data, {
       status: response.status,
@@ -111,8 +109,7 @@ export async function fetchFastapi(targetPath, options = {}) {
   const baseUrl = getSanitizedFastapiUrl();
   const cleanPath = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
   const targetUrl = new URL(cleanPath, baseUrl);
-  const { timeoutMs, ...fetchOpts } = options;
-  return fetchWithRetry(targetUrl.toString(), fetchOpts, 2);
+  return fetchWithRetry(targetUrl.toString(), options, 0);
 }
 
 export { FASTAPI_URL };

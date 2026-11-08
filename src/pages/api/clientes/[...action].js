@@ -1,5 +1,6 @@
 import { fetchFastapi } from '../../../lib/fastapi.js';
 import { getCustomerByPhone, searchCustomers, getAllCustomers, upsertCustomer } from '../../../lib/db.js';
+import { fetchClientesFromNeon } from '../../../lib/neon.js';
 
 export const prerender = false;
 
@@ -12,6 +13,21 @@ async function handleRequest({ params, request, url }) {
   const action = (params.action || '').replace(/^\/+|\/+$/g, '');
   const method = request.method.toUpperCase();
   const search = url.search || '';
+
+  // 1. Consulta directa de clientes desde Neon DB en peticiones GET (evita 502/504)
+  if (method === 'GET' && !action) {
+    const q = url.searchParams.get('q') || url.searchParams.get('search') || '';
+    const phone = url.searchParams.get('telefono') || url.searchParams.get('phone') || '';
+    try {
+      const neonList = await fetchClientesFromNeon({ q, phone }, 3000);
+      if (Array.isArray(neonList)) {
+        return new Response(JSON.stringify(neonList), {
+          status: 200,
+          headers: JSON_HEADERS,
+        });
+      }
+    } catch (_) {}
+  }
 
   let rawBody = null;
   let parsedBody = null;
@@ -34,12 +50,11 @@ async function handleRequest({ params, request, url }) {
         Accept: 'application/json',
       },
       body: rawBody && rawBody.length > 0 ? rawBody : undefined,
-      timeoutMs: 12000,
+      timeoutMs: 5000,
     });
 
     const text = await upstream.text();
     if (upstream.ok) {
-      // Sincronizar también en SQLite local si es creación/actualización
       if ((method === 'POST' || method === 'PUT') && parsedBody && !action.includes('liquidar')) {
         try {
           const phone = parsedBody.telefono || parsedBody.phone;
@@ -56,9 +71,7 @@ async function handleRequest({ params, request, url }) {
         headers: JSON_HEADERS,
       });
     }
-  } catch (_) {
-    // Fallback a SQLite local si el backend de FastAPI no responde temporalmente
-  }
+  } catch (_) {}
 
   // Fallback local
   if (method === 'GET') {
@@ -67,19 +80,21 @@ async function handleRequest({ params, request, url }) {
     if (phone) {
       const cust = getCustomerByPhone(phone.trim());
       const arr = cust
-        ? [{
-            id: cust.id,
-            nombre: cust.name,
-            name: cust.name,
-            telefono: cust.phone,
-            phone: cust.phone,
-            direccion: cust.address,
-            address: cust.address,
-            barrio: cust.notes,
-            notas: cust.notes,
-            total_pedidos: cust.order_count || 0,
-            order_count: cust.order_count || 0,
-          }]
+        ? [
+            {
+              id: cust.id,
+              nombre: cust.name,
+              name: cust.name,
+              telefono: cust.phone,
+              phone: cust.phone,
+              direccion: cust.address,
+              address: cust.address,
+              barrio: cust.notes,
+              notas: cust.notes,
+              total_pedidos: cust.order_count || 0,
+              order_count: cust.order_count || 0,
+            },
+          ]
         : [];
       return new Response(JSON.stringify(arr), { status: 200, headers: JSON_HEADERS });
     }

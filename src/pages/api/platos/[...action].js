@@ -1,13 +1,17 @@
-import { fetchFastapi, getSanitizedFastapiUrl } from '../../../lib/fastapi.js';
 import {
   getAllProducts,
   updateProductPrice,
   toggleProductStock,
   setDishOverride,
   getDishOverrides,
-  extractOverridesFromAcomp,
-  encodeOverridesToken,
 } from '../../../lib/db.js';
+import {
+  fetchPlatosFromNeon,
+  pullOverridesFromNeon,
+  pushOverridesToNeon,
+  updateSinglePlatoInNeon,
+  bulkUpdatePlatosPriceInNeon,
+} from '../../../lib/neon.js';
 
 export const prerender = false;
 
@@ -41,66 +45,6 @@ const REQUIRED_18K_DISHES = [
   { key: 'arroz mixto', nombre: 'Arroz mixto', precio: 18000 },
 ];
 
-async function pullCloudOverrides() {
-  const baseUrl = getSanitizedFastapiUrl();
-  try {
-    const res = await fetch(`${baseUrl}/api/especiales-dia`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      extractOverridesFromAcomp(data?.acompanamientos);
-    }
-  } catch (_) {}
-  return getDishOverrides();
-}
-
-async function pushCloudOverridesToNeon() {
-  const baseUrl = getSanitizedFastapiUrl();
-  try {
-    const getRes = await fetch(`${baseUrl}/api/especiales-dia`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (!getRes.ok) return false;
-    const current = await getRes.json();
-    const { cleanAcomp } = extractOverridesFromAcomp(current?.acompanamientos);
-    const token = encodeOverridesToken();
-    const baseAcomp = cleanAcomp.length > 0 ? cleanAcomp : ['Puré de ahuyama', 'Deditos', 'Tajadas maduras'];
-    const nextAcomp = token ? [...baseAcomp, token] : baseAcomp;
-    const principiosArr = Array.isArray(current?.principios)
-      ? current.principios
-      : String(current?.principios || 'Calabacín al huevo, Lentejas caseras, Frijoles caseros')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
-    const esp165Arr = Array.isArray(current?.especiales_16500)
-      ? current.especiales_16500
-      : String(current?.especiales_16500 || 'Hígado al ajillo, Desgranado de carne')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
-
-    const putRes = await fetch(`${baseUrl}/api/especiales-dia`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        sopa_dia: current?.sopa_dia || current?.sopa || 'Campesina',
-        sopa: current?.sopa_dia || current?.sopa || 'Campesina',
-        principios: principiosArr,
-        acompanamientos: nextAcomp,
-        especiales_16500: esp165Arr,
-        especiales_16500_etiqueta: current?.especiales_16500_etiqueta || '⭐ SOLO POR HOY',
-        especial_arroz_nombre: current?.especial_arroz_nombre || 'Arroz ranchero',
-        especial_arroz_etiqueta: current?.especial_arroz_etiqueta || '⭐ SOLO LOS LUNES',
-        especial_arroz_precio: Number(current?.especial_arroz_precio || 18000),
-      }),
-    });
-    return putRes.ok;
-  } catch (_) {
-    return false;
-  }
-}
-
 export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
   if (!Array.isArray(rawList)) return [];
   const activeOverrides = { ...getDishOverrides(), ...(overridesMap || {}) };
@@ -114,13 +58,19 @@ export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
     let key = normText(rawName);
     if (key.includes('patacon con hogao')) continue;
 
+    let precio = Number(item.precio ?? item.price ?? 0);
+
     if (key === 'espaguetis con pollo' || key === 'espagueti con pollo') {
       rawName = 'Espagueti con pollo';
       key = 'espagueti con pollo';
     } else if (key === 'botella de agua' || key === 'agua') {
       rawName = 'Botella de Agua';
       key = 'botella de agua';
-    } else if (key === 'porcion de papas a la francesa' || key === 'papa francesa casera' || key === 'porcion de papa a la francesa') {
+    } else if (
+      key === 'porcion de papas a la francesa' ||
+      key === 'papa francesa casera' ||
+      key === 'porcion de papa a la francesa'
+    ) {
       rawName = 'Porción de Papas a la Francesa';
       key = 'porcion de papas a la francesa';
     } else if (key === 'picada por uno' || key === 'picada por 1' || key === 'picada x 1') {
@@ -131,7 +81,6 @@ export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
       }
     }
 
-    let precio = Number(item.precio ?? item.price ?? 0);
     const calBeb = CALIBRATED_BEBIDAS.find((b) => b.key === key);
     if (calBeb) {
       rawName = calBeb.nombre;
@@ -171,9 +120,9 @@ export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
       byKey.set(key, normalizedItem);
     } else {
       const existing = byKey.get(key);
-      // Si no hay override explícito, si cualquiera de las filas duplicadas en DB fue marcada como no disponible, respetar false
-      const mergedDisp = ovr?.disponible !== undefined ? Boolean(ovr.disponible) : (existing.disponible && isDisp);
-      const preferred = normText(item.nombre || '') === key && normText(existing.nombre || '') !== key ? normalizedItem : existing;
+      const mergedDisp = ovr?.disponible !== undefined ? Boolean(ovr.disponible) : existing.disponible && isDisp;
+      const preferred =
+        normText(item.nombre || '') === key && normText(existing.nombre || '') !== key ? normalizedItem : existing;
       byKey.set(key, {
         ...preferred,
         disponible: mergedDisp,
@@ -229,43 +178,40 @@ export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
   return Array.from(byKey.values());
 }
 
-export async function fetchLiveSanitizedPlatos() {
-  const [platosSettled, ovrSettled] = await Promise.allSettled([
-    fetchFastapi('/api/platos/?include_inactive=true&solo_activos=false', {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      timeoutMs: 10000,
-    }),
-    pullCloudOverrides(),
-  ]);
-
-  const cloudOverrides = ovrSettled.status === 'fulfilled' ? ovrSettled.value : getDishOverrides();
-
-  if (platosSettled.status === 'fulfilled' && platosSettled.value && platosSettled.value.ok) {
-    try {
-      const parsed = await platosSettled.value.json();
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return sanitizeCatalogPlatos(parsed, cloudOverrides);
-      }
-    } catch (_) {}
-  }
-
+export function getFallbackSanitizedPlatos() {
   const prods = getAllProducts() || [];
   const mapped = prods.map((p) => {
-    const isAct = p.disponible !== undefined ? Boolean(p.disponible) : (p.is_active !== undefined ? Boolean(p.is_active) : true);
+    const isAct =
+      p.disponible !== undefined
+        ? Boolean(p.disponible)
+        : p.is_active !== undefined
+        ? Boolean(p.is_active)
+        : true;
     return {
       id: p.id,
-      nombre: p.name,
-      name: p.name,
+      nombre: p.name || p.nombre,
+      name: p.name || p.nombre,
       descripcion: p.category || p.description || '',
-      precio: Number(p.price || 0),
-      price: Number(p.price || 0),
+      precio: Number(p.price ?? p.precio ?? 0),
+      price: Number(p.price ?? p.precio ?? 0),
       activo: isAct,
       disponible: isAct,
       categoria_id: p.menu_type === 'rapidas' ? 20 : 1,
     };
   });
-  return sanitizeCatalogPlatos(mapped, cloudOverrides);
+  return sanitizeCatalogPlatos(mapped, getDishOverrides());
+}
+
+export async function fetchLiveSanitizedPlatos() {
+  try {
+    const neonRows = await fetchPlatosFromNeon(3500);
+    if (Array.isArray(neonRows) && neonRows.length > 0) {
+      return sanitizeCatalogPlatos(neonRows, getDishOverrides());
+    }
+  } catch (err) {
+    console.warn('fetchLiveSanitizedPlatos fallback a catálogo local:', err.message || err);
+  }
+  return getFallbackSanitizedPlatos();
 }
 
 function resolveDishNameById(id, fallbackName = '') {
@@ -274,12 +220,16 @@ function resolveDishNameById(id, fallbackName = '') {
   if (!strId) return '';
   if (strId.startsWith('alm18-')) {
     const slug = strId.slice(6).replace(/-/g, ' ');
-    const found = REQUIRED_18K_DISHES.find((d) => normText(d.key).replace(/[^a-z0-9]/g, ' ') === slug || normText(d.key) === slug);
+    const found = REQUIRED_18K_DISHES.find(
+      (d) => normText(d.key).replace(/[^a-z0-9]/g, ' ') === slug || normText(d.key) === slug
+    );
     if (found) return found.nombre;
   }
   if (strId.startsWith('beb-')) {
     const slug = strId.slice(4).replace(/-/g, ' ');
-    const found = CALIBRATED_BEBIDAS.find((b) => normText(b.key).replace(/[^a-z0-9]/g, ' ') === slug || normText(b.key) === slug);
+    const found = CALIBRATED_BEBIDAS.find(
+      (b) => normText(b.key).replace(/[^a-z0-9]/g, ' ') === slug || normText(b.key) === slug
+    );
     if (found) return found.nombre;
   }
   const prods = getAllProducts() || [];
@@ -288,99 +238,44 @@ function resolveDishNameById(id, fallbackName = '') {
   return '';
 }
 
-async function syncSinglePlatoUpstream({ id, nombre, precio, disponible }) {
-  let resolvedName = resolveDishNameById(id, nombre);
-  const isNumId = /^\d+$/.test(String(id || '').trim());
+async function syncSinglePlatoDirect({ id, nombre, precio, disponible }) {
+  const resolvedName = resolveDishNameById(id, nombre);
 
-  const updatePayload = {};
-  if (resolvedName) updatePayload.nombre = resolvedName;
-  if (precio !== undefined && Number(precio) >= 0) updatePayload.precio = Number(precio);
-  if (disponible !== undefined) {
-    updatePayload.disponible = Boolean(disponible);
-    updatePayload.activo = Boolean(disponible);
-  }
+  const updatedRow = await updateSinglePlatoInNeon(
+    { id, nombre: resolvedName, precio, disponible },
+    3500
+  );
 
-  let updatedFromFastapi = null;
+  const finalName = updatedRow?.nombre || resolvedName || '';
 
-  if (isNumId) {
-    try {
-      let res = await fetchFastapi(`/api/platos/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(updatePayload),
-        timeoutMs: 8000,
-      });
-      if (!res.ok) {
-        res = await fetchFastapi(`/api/platos/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify(updatePayload),
-          timeoutMs: 8000,
-        });
-      }
-      if (res.ok) {
-        updatedFromFastapi = await res.json();
-        if (updatedFromFastapi?.nombre && !resolvedName) {
-          resolvedName = updatedFromFastapi.nombre;
-        }
-      }
-    } catch (_) {}
-  }
-
-  if (resolvedName) {
-    const nKey = normText(resolvedName);
-    const variantNames =
-      nKey === 'espagueti con pollo' || nKey === 'espaguetis con pollo'
-        ? ['Espagueti con pollo', 'Espaguetis con pollo']
-        : [resolvedName];
-
-    for (const vName of variantNames) {
-      try {
-        const byNameRes = await fetchFastapi(`/api/platos/by-name?nombre=${encodeURIComponent(vName)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({
-            ...updatePayload,
-            nombre: nKey === 'espagueti con pollo' || nKey === 'espaguetis con pollo' ? 'Espagueti con pollo' : vName,
-          }),
-          timeoutMs: 8000,
-        });
-        if (byNameRes.ok && !updatedFromFastapi) {
-          updatedFromFastapi = await byNameRes.json();
-        }
-      } catch (_) {}
-    }
-  }
-
-  // Aplicar en memoria local / SQLite y en el mapa de overrides
-  if (resolvedName) {
-    setDishOverride(resolvedName, { disponible, precio });
+  if (finalName) {
+    setDishOverride(finalName, { disponible, precio });
   }
   if (id) {
     setDishOverride(String(id), { disponible, precio });
   }
   if (precio !== undefined && Number(precio) >= 0) {
-    updateProductPrice(id || resolvedName, Number(precio), resolvedName);
+    updateProductPrice(id || finalName, Number(precio), finalName);
   }
   if (disponible !== undefined) {
-    toggleProductStock(id || resolvedName, Boolean(disponible), resolvedName);
+    toggleProductStock(id || finalName, Boolean(disponible), finalName);
   }
 
   return {
-    id: updatedFromFastapi?.id ?? id ?? 0,
-    nombre: updatedFromFastapi?.nombre || resolvedName || '',
+    id: updatedRow?.id ?? id ?? 0,
+    nombre: finalName,
     precio:
       precio !== undefined
         ? Number(precio)
-        : Number(updatedFromFastapi?.precio ?? 0),
+        : Number(updatedRow?.precio ?? 0),
     disponible:
       disponible !== undefined
         ? Boolean(disponible)
-        : Boolean(updatedFromFastapi?.disponible ?? true),
+        : Boolean(updatedRow?.disponible ?? true),
     activo:
       disponible !== undefined
         ? Boolean(disponible)
-        : Boolean(updatedFromFastapi?.activo ?? true),
+        : Boolean(updatedRow?.activo ?? true),
   };
 }
 
@@ -398,27 +293,8 @@ async function handleRequest({ params, request }) {
       });
     } catch (err) {
       console.error('Error en GET /api/platos fallback:', err);
-      const prods = getAllProducts() || [];
-      const mapped = prods.map((p) => {
-        const isAct =
-          p.disponible !== undefined
-            ? Boolean(p.disponible)
-            : p.is_active !== undefined
-            ? Boolean(p.is_active)
-            : true;
-        return {
-          id: p.id,
-          nombre: p.name,
-          name: p.name,
-          descripcion: p.category || p.description || '',
-          precio: Number(p.price || 0),
-          price: Number(p.price || 0),
-          activo: isAct,
-          disponible: isAct,
-          categoria_id: p.menu_type === 'rapidas' ? 20 : 1,
-        };
-      });
-      return new Response(JSON.stringify(mapped), {
+      const fallbackList = getFallbackSanitizedPlatos();
+      return new Response(JSON.stringify(fallbackList), {
         status: 200,
         headers: JSON_HEADERS,
       });
@@ -435,8 +311,8 @@ async function handleRequest({ params, request }) {
     }
   }
 
-  // Cargar primero overrides actuales desde Neon DB para no perder cambios previos en otra instancia serverless
-  await pullCloudOverrides();
+  // Cargar overrides actuales desde Neon DB con timeout corto (2.5s)
+  await pullOverridesFromNeon(2500);
 
   // 2. Guardado masivo de disponibilidad y precios: POST/PUT /api/platos/bulk-save
   if (action === 'bulk-save' && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
@@ -445,22 +321,43 @@ async function handleRequest({ params, request }) {
       : Array.isArray(parsedBody.items)
       ? parsedBody.items
       : [];
+
     const results = [];
     for (const item of items) {
       if (!item) continue;
-      const resItem = await syncSinglePlatoUpstream({
+      const itemName = resolveDishNameById(item.id, item.nombre || item.name);
+      const itemPrice = item.precio ?? item.price;
+      const itemDisp = item.disponible !== undefined ? Boolean(item.disponible) : true;
+
+      if (itemName) {
+        setDishOverride(itemName, { disponible: itemDisp, precio: itemPrice });
+      }
+      if (item.id) {
+        setDishOverride(String(item.id), { disponible: itemDisp, precio: itemPrice });
+      }
+      if (itemPrice !== undefined && Number(itemPrice) >= 0) {
+        updateProductPrice(item.id || itemName, Number(itemPrice), itemName);
+      }
+      toggleProductStock(item.id || itemName, itemDisp, itemName);
+
+      results.push({
         id: item.id,
-        nombre: item.nombre || item.name,
-        precio: item.precio ?? item.price,
-        disponible: item.disponible,
+        nombre: itemName,
+        precio: Number(itemPrice || 0),
+        disponible: itemDisp,
+        activo: itemDisp,
       });
-      results.push(resItem);
     }
-    await pushCloudOverridesToNeon();
-    return new Response(JSON.stringify({ ok: true, updated: results.length, platos: results }), {
-      status: 200,
-      headers: JSON_HEADERS,
-    });
+
+    await pushOverridesToNeon(3500);
+
+    return new Response(
+      JSON.stringify({ ok: true, success: true, updated: results.length, platos: results }),
+      {
+        status: 200,
+        headers: JSON_HEADERS,
+      }
+    );
   }
 
   // 3. Actualización masiva de precio de un bloque: PUT/POST /api/platos/bulk-price
@@ -469,17 +366,8 @@ async function handleRequest({ params, request }) {
     const ids = Array.isArray(parsedBody.plato_ids) ? parsedBody.plato_ids : [];
     const nombres = Array.isArray(parsedBody.nombres) ? parsedBody.nombres : [];
 
-    try {
-      const numericIds = ids.filter((x) => /^\d+$/.test(String(x))).map(Number);
-      if (numericIds.length > 0) {
-        await fetchFastapi('/api/platos/bulk-price', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ plato_ids: numericIds, nuevo_precio: nuevoPrecio }),
-          timeoutMs: 8000,
-        });
-      }
-    } catch (_) {}
+    const numericIds = ids.filter((x) => /^\d+$/.test(String(x))).map(Number);
+    await bulkUpdatePlatosPriceInNeon({ numericIds, nombres, nuevoPrecio }, 3500);
 
     for (const id of ids) {
       const rName = resolveDishNameById(id);
@@ -492,18 +380,23 @@ async function handleRequest({ params, request }) {
         updateProductPrice(n, nuevoPrecio, n);
       }
     }
-    await pushCloudOverridesToNeon();
-    return new Response(JSON.stringify({ ok: true, nuevo_precio: nuevoPrecio }), {
+    await pushOverridesToNeon(3500);
+
+    return new Response(JSON.stringify({ ok: true, success: true, nuevo_precio: nuevoPrecio }), {
       status: 200,
       headers: JSON_HEADERS,
     });
   }
 
   // 4. Actualización individual de disponibilidad y/o precio:
-  //    Soporta /api/platos/{id}/disponibilidad, /api/platos/{id}, y /api/platos/by-name
+  //    Soporta /api/platos/{id}/disponibilidad, /api/platos/{id}, /api/platos/by-name y /api/platos
   if (method === 'PATCH' || method === 'PUT' || method === 'POST') {
     const dispMatch = action.match(/^([^/]+)\/disponibilidad$/i);
-    const targetId = dispMatch ? decodeURIComponent(dispMatch[1]) : (action !== 'by-name' ? decodeURIComponent(action) : (parsedBody.id || ''));
+    const targetId = dispMatch
+      ? decodeURIComponent(dispMatch[1])
+      : action && action !== 'by-name' && action !== 'disponibilidad'
+      ? decodeURIComponent(action)
+      : parsedBody.id || '';
     const targetName = parsedBody.nombre || parsedBody.name || '';
     const targetDisp =
       parsedBody.disponible !== undefined
@@ -518,18 +411,19 @@ async function handleRequest({ params, request }) {
         ? Number(parsedBody.price)
         : undefined;
 
-    const updated = await syncSinglePlatoUpstream({
+    const updated = await syncSinglePlatoDirect({
       id: targetId,
       nombre: targetName,
       precio: targetPrice,
       disponible: targetDisp,
     });
 
-    await pushCloudOverridesToNeon();
+    await pushOverridesToNeon(3500);
 
     return new Response(
       JSON.stringify({
         ok: true,
+        success: true,
         ...updated,
       }),
       {

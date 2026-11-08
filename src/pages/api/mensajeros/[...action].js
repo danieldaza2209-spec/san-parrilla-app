@@ -1,4 +1,5 @@
 import { proxyToFastAPI } from '../../../lib/fastapi.js';
+import { fetchMensajerosFromNeon } from '../../../lib/neon.js';
 
 export const prerender = false;
 
@@ -11,20 +12,31 @@ const DEFAULT_MENSAJEROS = [
   { id: 6, nombre: 'Jefferson', telefono: null, activo: true, creado_en: new Date().toISOString() },
 ];
 
-export async function ALL({ request, params }) {
+export async function ALL({ request, params, url }) {
   const action = (params.action || '').replace(/^\/+|\/+$/g, '');
-  const targetPath = action ? `/api/mensajeros/${action}` : '/api/mensajeros';
+  const methodUpper = request.method.toUpperCase();
 
-  return proxyToFastAPI(request, targetPath, {
-    fallback: () => {
-      const methodUpper = request.method.toUpperCase();
-      if (methodUpper === 'GET') {
-        const url = new URL(request.url);
-        const incluirInactivos = url.searchParams.get('incluir_inactivos') === 'true';
-        if (incluirInactivos) return DEFAULT_MENSAJEROS;
-        return DEFAULT_MENSAJEROS.filter((m) => m.activo);
+  if (methodUpper === 'GET' && !action) {
+    const incluirInactivos = url.searchParams.get('incluir_inactivos') === 'true';
+    try {
+      const rows = await fetchMensajerosFromNeon({ incluirInactivos }, 3000);
+      if (Array.isArray(rows) && rows.length > 0) {
+        return new Response(JSON.stringify(rows), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+        });
       }
-      return DEFAULT_MENSAJEROS;
-    },
-  });
+    } catch (_) {}
+
+    const fallbackList = incluirInactivos
+      ? DEFAULT_MENSAJEROS
+      : DEFAULT_MENSAJEROS.filter((m) => m.activo);
+    return new Response(JSON.stringify(fallbackList), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    });
+  }
+
+  const targetPath = action ? `/api/mensajeros/${action}` : '/api/mensajeros';
+  return proxyToFastAPI(request, targetPath);
 }
