@@ -4,13 +4,13 @@ import PublicLayout from '../layouts/PublicLayout.astro';
 import CartDrawer from '../components/CartDrawer.astro';
 import QuickOrderView from '../components/QuickOrderView.astro';
 import StyledMenuView from '../components/StyledMenuView.astro';
-import { getCategories, getPublicProducts, getDailySpecials, fallbackCategories, fallbackDailySpecials } from '../lib/db.js';
+import { getCategories, getPublicProducts, getDailySpecials, fallbackCategories, fallbackDailySpecials, normalizeCanonicalDishName } from '../lib/db.js';
 import { fetchLiveSanitizedPlatos } from './api/platos/[...action].js';
 import { getLiveSpecialsFromNeon } from '../lib/neon.js';
 
 Astro.response.headers.set(
   'Cache-Control',
-  'public, max-age=0, s-maxage=15, stale-while-revalidate=60'
+  'public, max-age=0, s-maxage=1, stale-while-revalidate=15'
 );
 
 const rawCategories = getCategories();
@@ -36,9 +36,19 @@ try {
     for (const lp of livePlatos) {
       const k = normKey(lp.nombre || lp.name);
       if (k) livePlatosMap.set(k, lp);
+      if (lp.id !== undefined && lp.id !== null) livePlatosMap.set(`id:${lp.id}`, lp);
+      if (lp.slug_id) livePlatosMap.set(`slug:${lp.slug_id}`, lp);
       if (k === 'espaguetis con pollo' || k === 'espagueti con pollo') {
         livePlatosMap.set('espagueti con pollo', lp);
         livePlatosMap.set('espaguetis con pollo', lp);
+      }
+      if (k === 'alitas bbq' || k === 'barbacoa alitas') {
+        livePlatosMap.set('alitas bbq', lp);
+        livePlatosMap.set('barbacoa alitas', lp);
+      }
+      if (k === 'combo personal' || k === 'combinado personal') {
+        livePlatosMap.set('combo personal', lp);
+        livePlatosMap.set('combinado personal', lp);
       }
       if (k === 'picada x 1' || k === 'picada por uno' || k === 'picada por 1') {
         livePlatosMap.set('picada x 1', lp);
@@ -73,17 +83,18 @@ const seenPublicKeys = new Set<string>();
 const products = rawProducts
   .map((p) => {
     let item = { ...p };
+    item.name = normalizeCanonicalDishName(item.name);
     const n = normKey(item.name);
-    if (n === 'espaguetis con pollo' || n === 'espagueti con pollo') {
-      item.name = 'Espagueti con pollo';
-    } else if (n === 'picada por uno' || n === 'picada por 1') {
-      item.name = 'Picada x 1';
-    }
     if (CALIBRATED_BEVERAGE_PRICES[n]) {
       item.name = CALIBRATED_BEVERAGE_PRICES[n].name;
       item.price = CALIBRATED_BEVERAGE_PRICES[n].price;
     }
-    const liveMatch = livePlatosMap.get(normKey(item.name)) || livePlatosMap.get(n);
+    const liveMatch =
+      (item.neon_id ? livePlatosMap.get(`id:${item.neon_id}`) : null) ||
+      livePlatosMap.get(`slug:${item.id}`) ||
+      livePlatosMap.get(`id:${item.id}`) ||
+      livePlatosMap.get(normKey(item.name)) ||
+      livePlatosMap.get(n);
     if (liveMatch) {
       const liveDisp = liveMatch.disponible !== false && liveMatch.activo !== false && liveMatch.in_stock !== 0;
       item.disponible = liveDisp;

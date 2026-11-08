@@ -96,19 +96,22 @@ export const lunchProductList = [
   { id: 't2-10', name: 'Chuleta de cerdo al ajillo', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 10 },
   { id: 't2-11', name: 'Chuleta de cerdo a la bbq', price: 17500, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 11 },
 
-  // $18.000
-  { id: 't3-0', name: 'Bandeja paisa', price: 18000, category_id: 'fuertes_175', description: 'Plato típico tradicional con carne, chicharrón, huevo, arroz y frijol.', is_active: 1, is_featured: 1, sort_order: 12 },
-  { id: 't3-1', name: 'Alitas bbq', price: 18000, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 13 },
-  { id: 't3-2', name: 'Creps de pollo', price: 18000, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 14 },
-  { id: 't3-3', name: 'Bistec a caballo', price: 18000, category_id: 'fuertes_175', description: 'Carne en salsa criolla coronada con huevo frito.', is_active: 1, is_featured: 0, sort_order: 15 },
-  { id: 't3-4', name: 'Pechuga hawaiana', price: 18000, category_id: 'fuertes_175', description: 'Pechuga gratinada con piña caramelizada y queso.', is_active: 1, is_featured: 0, sort_order: 16 },
-  { id: 't3-4b', name: 'Pechuga en salsa bechamel', price: 18000, category_id: 'fuertes_175', description: 'Pechuga bañada en salsa bechamel casera. Incluye sopa, principio y acompañamiento.', is_active: 1, is_featured: 0, sort_order: 16 },
-  { id: 't3-5', name: 'Combo Personal', price: 18000, category_id: 'fuertes_175', description: 'Opción rápida del asador.', is_active: 1, is_featured: 0, sort_order: 17 },
-  { id: 't3-7', name: 'Arroz con pollo', price: 18000, category_id: 'fuertes_175', description: 'Arroz amarillo sazonado con pechuga desmechada y verduras frescas.', is_active: 1, is_featured: 0, sort_order: 17.1 },
-  { id: 't3-8', name: 'Espagueti con pollo', price: 18000, category_id: 'fuertes_175', description: 'Pasta en salsa suave con generosos trozos de pechuga de pollo.', is_active: 1, is_featured: 0, sort_order: 17.2 },
-  { id: 't3-9', name: 'Arroz campesino', price: 18000, category_id: 'fuertes_175', description: 'Arroz salteado estilo campesino con carnes mixtas, maíz dulce y plátano.', is_active: 1, is_featured: 0, sort_order: 17.3 },
-  { id: 't3-10', name: 'Arroz mixto', price: 18000, category_id: 'fuertes_175', description: 'Arroz especial con carnes mixtas salteadas.', is_active: 1, is_featured: 0, sort_order: 17.4 },
-  { id: 't3-6', name: 'Arroz ranchero', price: 18000, category_id: 'fuertes_175', description: 'Arroz especial de la casa con carnes y maíz.', is_active: 1, is_featured: 1, sort_order: 18, special_badge: '⭐ SOLO LOS LUNES' },
+  // $18.000 (Identificadores únicos fijos y nombres canónicos en español)
+  { id: 'bandeja_paisa', neon_id: 20, name: 'Bandeja paisa', price: 18000, category_id: 'fuertes_175', description: 'Plato típico tradicional con carne, chicharrón, huevo, arroz y frijol.', is_active: 1, is_featured: 1, sort_order: 12 },
+  { id: 'alitas_bbq', neon_id: 21, name: 'Alitas BBQ', price: 18000, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 13 },
+  { id: 'creps_pollo', neon_id: 22, name: 'Creps de pollo', price: 18000, category_id: 'fuertes_175', description: 'Incluye sopa del día, principio y acompañamiento a elección.', is_active: 1, is_featured: 0, sort_order: 14 },
+  { id: 'bistec_caballo', neon_id: 23, name: 'Bistec a caballo', price: 18000, category_id: 'fuertes_175', description: 'Carne en salsa criolla coronada con huevo frito.', is_active: 1, is_featured: 0, sort_order: 15 },
+  { id: 'pechuga_hawaiana', neon_id: 24, name: 'Pechuga hawaiana', price: 18000, category_id: 'fuertes_175', description: 'Pechuga gratinada con piña caramelizada y queso.', is_active: 1, is_featured: 0, sort_order: 16 },
+  { id: 'pechuga_bechamel', neon_id: 63, name: 'Pechuga en salsa bechamel', price: 18000, category_id: 'fuertes_175', description: 'Pechuga bañada en salsa bechamel casera. Incluye sopa, principio y acompañamiento.', is_active: 1, is_featured: 0, sort_order: 16.5 },
+  { id: 'combo_personal', neon_id: 25, name: 'Combo Personal', price: 18000, category_id: 'fuertes_175', description: 'Opción rápida del asador con plato fuerte y acompañamiento.', is_active: 1, is_featured: 0, sort_order: 17 },
+  { id: 'sancocho_gallina', neon_id: 26, name: 'Sancocho de gallina', price: 18000, category_id: 'fuertes_175', description: 'Tradicional sancocho de gallina criolla con plátano, yuca, mazorca, arroz y aguacate.', is_active: 1, is_featured: 0, sort_order: 17.05 },
+  { id: 'arroz_pollo', neon_id: 29, name: 'Arroz con pollo', price: 18000, category_id: 'fuertes_175', description: 'Arroz amarillo sazonado con pechuga desmechada y verduras frescas.', is_active: 1, is_featured: 0, sort_order: 17.1 },
+  { id: 'espagueti_pollo', neon_id: 132, name: 'Espagueti con pollo', price: 18000, category_id: 'fuertes_175', description: 'Pasta en salsa suave con generosos trozos de pechuga de pollo.', is_active: 1, is_featured: 0, sort_order: 17.2 },
+  { id: 'arroz_campesino', neon_id: 30, name: 'Arroz campesino', price: 18000, category_id: 'fuertes_175', description: 'Arroz salteado estilo campesino con carnes mixtas, maíz dulce y plátano.', is_active: 1, is_featured: 0, sort_order: 17.3 },
+  { id: 'arroz_mixto', neon_id: 131, name: 'Arroz mixto', price: 18000, category_id: 'fuertes_175', description: 'Arroz especial con carnes mixtas salteadas.', is_active: 1, is_featured: 0, sort_order: 17.4 },
+  { id: 'arroz_paisa', neon_id: 133, name: 'Arroz paisa', price: 18000, category_id: 'fuertes_175', description: 'Arroz salteado con chicharrón, chorizo, maíz tierno y maduritos.', is_active: 1, is_featured: 0, sort_order: 17.5 },
+  { id: 'espaguetis_bolonesa', neon_id: 28, name: 'Espaguetis boloñesa', price: 18000, category_id: 'fuertes_175', description: 'Espaguetis en clásica salsa boloñesa con carne molida sazonada.', is_active: 1, is_featured: 0, sort_order: 17.6 },
+  { id: 'arroz_ranchero', neon_id: 64, name: 'Arroz ranchero', price: 18000, category_id: 'fuertes_175', description: 'Arroz especial de la casa con carnes y maíz.', is_active: 1, is_featured: 1, sort_order: 18, special_badge: '⭐ SOLO LOS LUNES' },
 
   // $21.000
   { id: 'esp-0', name: 'Sobrebarriga dorada', price: 21000, category_id: 'especiales_21', description: 'Corte suave y dorado a las brasas.', is_active: 1, is_featured: 0, sort_order: 0 },
@@ -399,6 +402,129 @@ const metaById = new Map(
   ])
 );
 
+export const CANONICAL_DISH_DEFINITIONS = [
+  {
+    slugId: 'bandeja_paisa',
+    neonIds: [20],
+    legacyIds: ['t3-0'],
+    nombre: 'Bandeja paisa',
+    precio: 18000,
+    aliases: ['bandeja paisa'],
+  },
+  {
+    slugId: 'alitas_bbq',
+    neonIds: [21],
+    legacyIds: ['t3-1'],
+    nombre: 'Alitas BBQ',
+    precio: 18000,
+    aliases: ['alitas bbq', 'barbacoa alitas', 'alitas a la bbq'],
+  },
+  {
+    slugId: 'creps_pollo',
+    neonIds: [22],
+    legacyIds: ['t3-2'],
+    nombre: 'Creps de pollo',
+    precio: 18000,
+    aliases: ['creps de pollo', 'crepes de pollo', 'crep de pollo'],
+  },
+  {
+    slugId: 'bistec_caballo',
+    neonIds: [23],
+    legacyIds: ['t3-3'],
+    nombre: 'Bistec a caballo',
+    precio: 18000,
+    aliases: ['bistec a caballo'],
+  },
+  {
+    slugId: 'pechuga_hawaiana',
+    neonIds: [24],
+    legacyIds: ['t3-4'],
+    nombre: 'Pechuga hawaiana',
+    precio: 18000,
+    aliases: ['pechuga hawaiana'],
+  },
+  {
+    slugId: 'pechuga_bechamel',
+    neonIds: [63],
+    legacyIds: ['t3-4b'],
+    nombre: 'Pechuga en salsa bechamel',
+    precio: 18000,
+    aliases: ['pechuga en salsa bechamel', 'pechuga bechamel'],
+  },
+  {
+    slugId: 'combo_personal',
+    neonIds: [25],
+    legacyIds: ['t3-5'],
+    nombre: 'Combo Personal',
+    precio: 18000,
+    aliases: ['combo personal', 'combinado personal'],
+  },
+  {
+    slugId: 'sancocho_gallina',
+    neonIds: [26],
+    legacyIds: ['t3-sancocho'],
+    nombre: 'Sancocho de gallina',
+    precio: 18000,
+    aliases: ['sancocho de gallina', 'sancocho gallina'],
+  },
+  {
+    slugId: 'arroz_pollo',
+    neonIds: [29],
+    legacyIds: ['t3-7'],
+    nombre: 'Arroz con pollo',
+    precio: 18000,
+    aliases: ['arroz con pollo'],
+  },
+  {
+    slugId: 'espagueti_pollo',
+    neonIds: [27, 132],
+    legacyIds: ['t3-8'],
+    nombre: 'Espagueti con pollo',
+    precio: 18000,
+    aliases: ['espagueti con pollo', 'espaguetis con pollo'],
+  },
+  {
+    slugId: 'arroz_campesino',
+    neonIds: [30],
+    legacyIds: ['t3-9'],
+    nombre: 'Arroz campesino',
+    precio: 18000,
+    aliases: ['arroz campesino'],
+  },
+  {
+    slugId: 'arroz_mixto',
+    neonIds: [131],
+    legacyIds: ['t3-10'],
+    nombre: 'Arroz mixto',
+    precio: 18000,
+    aliases: ['arroz mixto'],
+  },
+  {
+    slugId: 'arroz_paisa',
+    neonIds: [133],
+    legacyIds: ['t3-11'],
+    nombre: 'Arroz paisa',
+    precio: 18000,
+    aliases: ['arroz paisa'],
+  },
+  {
+    slugId: 'espaguetis_bolonesa',
+    neonIds: [28],
+    legacyIds: ['t3-12'],
+    nombre: 'Espaguetis boloñesa',
+    precio: 18000,
+    aliases: ['espaguetis bolonesa', 'espagueti bolonesa'],
+  },
+  {
+    slugId: 'arroz_ranchero',
+    neonIds: [64],
+    legacyIds: ['t3-6'],
+    nombre: 'Arroz ranchero',
+    precio: 18000,
+    aliases: ['arroz ranchero'],
+  },
+];
+
 const normProdKey = (str) =>
   String(str || '')
     .normalize('NFD')
@@ -406,15 +532,52 @@ const normProdKey = (str) =>
     .toLowerCase()
     .trim();
 
-const dishOverridesMap = new Map([
-  ['picada x 1', { precio: 27500, disponible: true }],
-  ['picada por uno', { precio: 27500, disponible: true }],
-  ['picada por 1', { precio: 27500, disponible: true }],
-]);
+export function resolveCanonicalDish(idOrName, secondName = '') {
+  const candidates = [idOrName, secondName].map(normProdKey).filter(Boolean);
+  for (const c of candidates) {
+    const num = /^\d+$/.test(c) ? Number(c) : null;
+    for (const def of CANONICAL_DISH_DEFINITIONS) {
+      if (num !== null && def.neonIds.includes(num)) return def;
+      if (def.slugId === c) return def;
+      if (def.legacyIds.includes(c)) return def;
+      if (def.aliases.includes(c) || normProdKey(def.nombre) === c) return def;
+    }
+  }
+  return null;
+}
+
+export function normalizeCanonicalDishName(rawName, categoryId = null) {
+  const trimmed = String(rawName || '').trim();
+  if (!trimmed) return '';
+  const k = normProdKey(trimmed);
+  if (Number(categoryId) === 15 && (k === 'alitas bbq' || k === 'barbacoa alitas')) {
+    return 'Alitas BBQ (Noche)';
+  }
+  const canonical = resolveCanonicalDish(trimmed);
+  if (canonical) return canonical.nombre;
+  if (k === 'picada por uno' || k === 'picada por 1' || k === 'picada x 1') {
+    return 'Picada x 1';
+  }
+  if (k === 'botella de agua' || k === 'agua') {
+    return 'Botella de Agua';
+  }
+  if (
+    k === 'porcion de papas a la francesa' ||
+    k === 'papa francesa casera' ||
+    k === 'porcion de papa a la francesa' ||
+    k === 'porcion papas a la francesa'
+  ) {
+    return 'Porción de Papas a la Francesa';
+  }
+  return trimmed;
+}
+
+const dishOverridesMap = new Map();
 
 export function setDishOverride(nameOrId, { disponible, precio } = {}) {
   const k = normProdKey(nameOrId);
   if (!k) return;
+  const canonical = resolveCanonicalDish(nameOrId);
   const prev = dishOverridesMap.get(k) || {};
   const next = {
     ...prev,
@@ -422,14 +585,19 @@ export function setDishOverride(nameOrId, { disponible, precio } = {}) {
     ...(precio !== undefined && Number(precio) > 0 ? { precio: Number(precio) } : {}),
   };
   dishOverridesMap.set(k, next);
-  if (k === 'espagueti con pollo' || k === 'espaguetis con pollo') {
-    dishOverridesMap.set('espagueti con pollo', next);
-    dishOverridesMap.set('espaguetis con pollo', next);
+  if (canonical) {
+    dishOverridesMap.set(canonical.slugId, next);
+    dishOverridesMap.set(normProdKey(canonical.nombre), next);
+    for (const a of canonical.aliases) dishOverridesMap.set(a, next);
+    for (const nid of canonical.neonIds) dishOverridesMap.set(String(nid), next);
+    for (const lid of canonical.legacyIds) dishOverridesMap.set(lid, next);
   }
-  if (k === 'picada x 1' || k === 'picada por uno' || k === 'picada por 1' || k === 'pic-1') {
+  if (k === 'picada x 1' || k === 'picada por uno' || k === 'picada por 1' || k === 'pic-1' || k === '65') {
     dishOverridesMap.set('picada x 1', next);
     dishOverridesMap.set('picada por uno', next);
     dishOverridesMap.set('picada por 1', next);
+    dishOverridesMap.set('pic-1', next);
+    dishOverridesMap.set('65', next);
   }
 }
 
@@ -585,7 +753,7 @@ const badgeById = new Map(
 );
 
 export function getPublicProducts() {
-  const rows = getProducts(true) || [];
+  const rows = getProducts(false) || [];
   const source = rows.length > 0 ? rows : initialProductList;
   return source
     .filter((p) => !INTERNAL_PRODUCT_IDS.has(p.id))
@@ -1039,18 +1207,28 @@ export function getAllProducts() {
 
 export function updateProductPrice(id, price, nombre = '') {
   const numPrice = Number(price || 0);
-  const targetKey = normProdKey(nombre || id);
-  if (targetKey) {
-    const prev = dishOverridesMap.get(targetKey) || {};
-    dishOverridesMap.set(targetKey, { ...prev, precio: numPrice });
-  }
+  const canonical = resolveCanonicalDish(id, nombre);
+  const canonicalName = canonical?.nombre || normalizeCanonicalDishName(nombre || id);
+  const targetKey = normProdKey(canonicalName || nombre || id);
+  setDishOverride(canonicalName || nombre || id, { precio: numPrice });
+  if (id) setDishOverride(String(id), { precio: numPrice });
+
   if (db) {
     try {
-      db.prepare('UPDATE products SET price = ? WHERE id = ? OR lower(name) = lower(?)').run(numPrice, String(id), String(nombre || id));
+      db.prepare('UPDATE products SET price = ? WHERE id = ? OR lower(name) = lower(?)').run(
+        numPrice,
+        String(canonical?.slugId || id),
+        String(canonicalName || nombre || id)
+      );
     } catch (e) {}
   }
   memProducts = memProducts.map(p => {
-    if (String(p.id) === String(id) || (targetKey && normProdKey(p.name) === targetKey)) {
+    const pKey = normProdKey(p.name);
+    if (
+      String(p.id) === String(id) ||
+      (canonical && (p.id === canonical.slugId || canonical.legacyIds.includes(p.id) || canonical.neonIds.includes(Number(p.neon_id)))) ||
+      (targetKey && pKey === targetKey)
+    ) {
       return { ...p, price: numPrice };
     }
     return p;
@@ -1060,27 +1238,31 @@ export function updateProductPrice(id, price, nombre = '') {
 export function toggleProductStock(id, isActive, nombre = '') {
   const act = isActive ? 1 : 0;
   const boolDisp = Boolean(isActive);
-  const targetKey = normProdKey(nombre || id);
-  if (targetKey) {
-    const prev = dishOverridesMap.get(targetKey) || {};
-    dishOverridesMap.set(targetKey, { ...prev, disponible: boolDisp });
-    if (targetKey === 'espagueti con pollo' || targetKey === 'espaguetis con pollo') {
-      dishOverridesMap.set('espagueti con pollo', { ...(dishOverridesMap.get('espagueti con pollo') || {}), disponible: boolDisp });
-      dishOverridesMap.set('espaguetis con pollo', { ...(dishOverridesMap.get('espaguetis con pollo') || {}), disponible: boolDisp });
-    }
-  }
+  const canonical = resolveCanonicalDish(id, nombre);
+  const canonicalName = canonical?.nombre || normalizeCanonicalDishName(nombre || id);
+  const targetKey = normProdKey(canonicalName || nombre || id);
+  setDishOverride(canonicalName || nombre || id, { disponible: boolDisp });
+  if (id) setDishOverride(String(id), { disponible: boolDisp });
+
   if (db) {
     try {
-      db.prepare('UPDATE products SET is_active = ? WHERE id = ? OR lower(name) = lower(?)').run(act, String(id), String(nombre || id));
+      db.prepare('UPDATE products SET is_active = ? WHERE id = ? OR lower(name) = lower(?)').run(
+        act,
+        String(canonical?.slugId || id),
+        String(canonicalName || nombre || id)
+      );
     } catch (e) {}
   }
   memProducts = memProducts.map(p => {
     const pKey = normProdKey(p.name);
     const isMatch =
       String(p.id) === String(id) ||
-      (targetKey && pKey === targetKey) ||
-      ((targetKey === 'espagueti con pollo' || targetKey === 'espaguetis con pollo') &&
-        (pKey === 'espagueti con pollo' || pKey === 'espaguetis con pollo'));
+      (canonical &&
+        (p.id === canonical.slugId ||
+          canonical.legacyIds.includes(p.id) ||
+          canonical.neonIds.includes(Number(p.neon_id)) ||
+          canonical.aliases.includes(pKey))) ||
+      (targetKey && pKey === targetKey);
     if (isMatch) {
       return { ...p, is_active: act, in_stock: boolDisp, disponible: boolDisp };
     }

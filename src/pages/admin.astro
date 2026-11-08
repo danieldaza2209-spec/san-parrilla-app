@@ -1396,6 +1396,9 @@ const formatPrice = (val) => {
     const normDishText = (str) => {
       const s = String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
       if (s === 'picada por uno' || s === 'picada por 1') return 'picada x 1';
+      if (s === 'barbacoa alitas') return 'alitas bbq';
+      if (s === 'combinado personal') return 'combo personal';
+      if (s === 'espaguetis con pollo') return 'espagueti con pollo';
       return s;
     };
 
@@ -1441,11 +1444,20 @@ const formatPrice = (val) => {
         if (n === 'espaguetis con pollo' || n === 'espagueti con pollo') {
           nombre = 'Espagueti con pollo';
           n = 'espagueti con pollo';
+        } else if (n === 'alitas bbq' || n === 'barbacoa alitas') {
+          nombre = Number(item.categoria_id) === 15 ? 'Alitas BBQ (Noche)' : 'Alitas BBQ';
+          n = normDishText(nombre);
+        } else if (n === 'combo personal' || n === 'combinado personal') {
+          nombre = 'Combo Personal';
+          n = 'combo personal';
+        } else if (n === 'sancocho de gallina' || n === 'sancocho gallina') {
+          nombre = 'Sancocho de gallina';
+          n = 'sancocho de gallina';
         } else if (n === 'picada por uno' || n === 'picada por 1' || n === 'picada x 1') {
           nombre = 'Picada x 1';
           n = 'picada x 1';
         }
-        let precio = Number(item.precio || 0);
+        let precio = Number(item.precio ?? item.price ?? 0);
         if (n === 'picada x 1' && (precio === 19500 || precio <= 0)) {
           precio = 27500;
         }
@@ -1456,11 +1468,15 @@ const formatPrice = (val) => {
           n = normDishText(nombre);
         }
         const descNorm = normDishText(item.descripcion || '');
-        const isRapidas = descNorm.includes('comidas rapidas') || descNorm.includes('noche');
+        const isRapidas =
+          (Number(item.categoria_id) >= 9 && Number(item.categoria_id) <= 16) ||
+          descNorm.includes('comidas rapidas') ||
+          descNorm.includes('noche');
         const dedupeKey = isRapidas && !CALIBRATED_BEVERAGES.has(n) ? `rap:${n}` : `alm:${n}`;
         if (seenKeys.has(dedupeKey)) continue;
         seenKeys.add(dedupeKey);
-        result.push({ ...item, nombre, precio });
+        const isDisp = item.disponible !== false && item.activo !== false && item.is_active !== 0 && item.in_stock !== 0;
+        result.push({ ...item, nombre, precio, disponible: isDisp, activo: isDisp });
       }
       return result;
     }
@@ -2019,7 +2035,7 @@ const formatPrice = (val) => {
         });
       });
 
-      // Bind interruptor 1-Clic Disponible / No Disponible (Persistencia inmediata en segundo plano + Toast)
+      // Bind interruptor 1-Clic Disponible / No Disponible (Actualización Optimista + Persistencia en Neon DB)
       container.querySelectorAll('.btn-toggle-plato-disp').forEach(btn => {
         btn.addEventListener('click', async () => {
           const platoId = btn.getAttribute('data-toggle-disp-id') || '';
@@ -2034,12 +2050,52 @@ const formatPrice = (val) => {
           const dishPrice = Number(selEl?.value || btn.getAttribute('data-plato-price') || 0);
           const curDisp = btn.getAttribute('data-current-disp') === '1';
           const nextDisp = !curDisp;
+          const blockKey = btn.getAttribute('data-block-key');
 
-          const origText = btn.textContent;
-          const origClass = btn.className;
-          btn.textContent = '⏳ Guardando...';
+          const applyVisualState = (stateDisp) => {
+            btn.setAttribute('data-current-disp', stateDisp ? '1' : '0');
+            if (stateDisp) {
+              btn.textContent = '✓ Disponible';
+              btn.className = 'btn-toggle-plato-disp px-2.5 py-1.5 rounded-lg font-extrabold text-[10px] transition cursor-pointer whitespace-nowrap bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200';
+            } else {
+              btn.textContent = '✕ No disponible';
+              btn.className = 'btn-toggle-plato-disp px-2.5 py-1.5 rounded-lg font-extrabold text-[10px] transition cursor-pointer whitespace-nowrap bg-red-50 text-red-600 border border-red-300 hover:bg-red-100';
+            }
+            if (rowEl) {
+              const pill = rowEl.querySelector('.dish-status-pill');
+              const nameEl = rowEl.querySelector('.dish-name-el');
+              if (stateDisp) {
+                rowEl.classList.remove('bg-red-50/40', 'border', 'border-red-200/70');
+                rowEl.classList.add('bg-white', 'hover:bg-slate-50');
+                if (nameEl) nameEl.classList.remove('text-slate-600');
+                if (pill) pill.classList.add('hidden');
+              } else {
+                rowEl.classList.remove('bg-white', 'hover:bg-slate-50');
+                rowEl.classList.add('bg-red-50/40', 'border', 'border-red-200/70');
+                if (nameEl) nameEl.classList.add('text-slate-600');
+                if (pill) pill.classList.remove('hidden');
+              }
+            }
+            if (blockKey) {
+              const blockEl = container.querySelector(`[data-block-key="${blockKey}"]`);
+              const counterEl = blockEl?.querySelector(`[data-block-counter="${blockKey}"]`);
+              if (blockEl && counterEl) {
+                const blockButtons = blockEl.querySelectorAll('.btn-toggle-plato-disp');
+                const totalInBlock = blockButtons.length;
+                let dispInBlock = 0;
+                blockButtons.forEach(b => {
+                  if (b.getAttribute('data-current-disp') === '1') dispInBlock++;
+                });
+                counterEl.textContent = `${totalInBlock} PLATOS • ${dispInBlock} DISPONIBLES`;
+              }
+            }
+          };
+
+          // 1. Actualización optimista inmediata en interfaz
+          applyVisualState(nextDisp);
           // @ts-ignore
           btn.disabled = true;
+
           try {
             let res = await fetch(`/api/platos/${encodeURIComponent(platoId)}/disponibilidad`, {
               method: 'PATCH',
@@ -2070,7 +2126,11 @@ const formatPrice = (val) => {
             // Actualizar estado en allLivePlatos por ID y por nombre normalizado preservando nombre y precio intactos
             const normTarget = normDishText(dishName);
             allLivePlatos = allLivePlatos.map(p => {
-              if (String(p.id) === String(platoId) || (normTarget && normDishText(p.nombre) === normTarget)) {
+              if (
+                String(p.id) === String(platoId) ||
+                String(p.slug_id || '') === String(platoId) ||
+                (normTarget && normDishText(p.nombre) === normTarget)
+              ) {
                 return {
                   ...p,
                   disponible: nextDisp,
@@ -2081,59 +2141,14 @@ const formatPrice = (val) => {
             });
             broadcastPlatosUpdate(allLivePlatos);
 
-            // Actualizar apariencia del botón (Verde claro o Rojo suave con borde rojo)
-            btn.setAttribute('data-current-disp', nextDisp ? '1' : '0');
             // @ts-ignore
             btn.disabled = false;
-            if (nextDisp) {
-              btn.textContent = '✓ Disponible';
-              btn.className = 'btn-toggle-plato-disp px-2.5 py-1.5 rounded-lg font-extrabold text-[10px] transition cursor-pointer whitespace-nowrap bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200';
-            } else {
-              btn.textContent = '✕ No disponible';
-              btn.className = 'btn-toggle-plato-disp px-2.5 py-1.5 rounded-lg font-extrabold text-[10px] transition cursor-pointer whitespace-nowrap bg-red-50 text-red-600 border border-red-300 hover:bg-red-100';
-            }
-
-            // Actualizar estilo visual de la fila en pantalla (la fila permanece visible siempre)
-            if (rowEl) {
-              const pill = rowEl.querySelector('.dish-status-pill');
-              const nameEl = rowEl.querySelector('.dish-name-el');
-              if (nextDisp) {
-                rowEl.classList.remove('bg-red-50/40', 'border', 'border-red-200/70');
-                rowEl.classList.add('bg-white', 'hover:bg-slate-50');
-                if (nameEl) nameEl.classList.remove('text-slate-600');
-                if (pill) pill.classList.add('hidden');
-              } else {
-                rowEl.classList.remove('bg-white', 'hover:bg-slate-50');
-                rowEl.classList.add('bg-red-50/40', 'border', 'border-red-200/70');
-                if (nameEl) nameEl.classList.add('text-slate-600');
-                if (pill) pill.classList.remove('hidden');
-              }
-            }
-
-            // Actualizar dinámicamente el contador del bloque: "X PLATOS • Y DISPONIBLES"
-            const blockKey = btn.getAttribute('data-block-key');
-            if (blockKey) {
-              const blockEl = container.querySelector(`[data-block-key="${blockKey}"]`);
-              const counterEl = blockEl?.querySelector(`[data-block-counter="${blockKey}"]`);
-              if (blockEl && counterEl) {
-                const blockButtons = blockEl.querySelectorAll('.btn-toggle-plato-disp');
-                const totalInBlock = blockButtons.length;
-                let dispInBlock = 0;
-                blockButtons.forEach(b => {
-                  if (b.getAttribute('data-current-disp') === '1') dispInBlock++;
-                });
-                counterEl.textContent = `${totalInBlock} PLATOS • ${dispInBlock} DISPONIBLES`;
-              }
-            }
-
             showAdminPlatoToast(`✓ Estado de ${dishName || 'plato'} guardado (${nextDisp ? 'Disponible' : 'No disponible'})`);
           } catch (err) {
             // Revertir visualmente el botón si el servidor falla y mostrar mensaje claro
-            btn.setAttribute('data-current-disp', curDisp ? '1' : '0');
+            applyVisualState(curDisp);
             // @ts-ignore
             btn.disabled = false;
-            btn.textContent = origText;
-            btn.className = origClass;
             showAdminPlatoToast(`✕ No se pudo guardar el estado de ${dishName || 'plato'}: ${err.message || err}`, true);
             alert('Error guardando disponibilidad de ' + (dishName || 'plato') + ': ' + (err.message || err));
           }

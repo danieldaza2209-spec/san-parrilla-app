@@ -656,9 +656,19 @@ const desayunos = showDesayunos
         if (!nombre) continue;
         let key = normDishKey(nombre);
         if (key.includes('patacon con hogao')) continue;
+        let precio = Number(item.precio ?? item.price ?? 0);
         if (key === 'espaguetis con pollo' || key === 'espagueti con pollo') {
           nombre = 'Espagueti con pollo';
           key = 'espagueti con pollo';
+        } else if (key === 'alitas bbq' || key === 'barbacoa alitas') {
+          nombre = Number(item.categoria_id) === 15 ? 'Alitas BBQ (Noche)' : 'Alitas BBQ';
+          key = normDishKey(nombre);
+        } else if (key === 'combo personal' || key === 'combinado personal') {
+          nombre = 'Combo Personal';
+          key = 'combo personal';
+        } else if (key === 'sancocho de gallina' || key === 'sancocho gallina') {
+          nombre = 'Sancocho de gallina';
+          key = 'sancocho de gallina';
         } else if (key === 'picada por uno' || key === 'picada por 1' || key === 'picada x 1') {
           nombre = 'Picada x 1';
           key = 'picada x 1';
@@ -666,7 +676,6 @@ const desayunos = showDesayunos
             precio = 27500;
           }
         }
-        let precio = Number(item.precio ?? item.price ?? 0);
         if (CALIBRATED_BEVERAGES_MAP.has(key)) {
           const cal = CALIBRATED_BEVERAGES_MAP.get(key);
           nombre = cal.nombre;
@@ -677,6 +686,7 @@ const desayunos = showDesayunos
         const isRapidas =
           String(item.id || '').startsWith('rap-') ||
           item.menu_type === 'rapidas' ||
+          (Number(item.categoria_id) >= 9 && Number(item.categoria_id) <= 16) ||
           desc.includes('comidas rapidas') ||
           desc.includes('noche');
         const dedupeKey = isRapidas && !CALIBRATED_BEVERAGES_MAP.has(key) ? `rap:${key}` : `alm:${key}`;
@@ -739,6 +749,14 @@ const desayunos = showDesayunos
           if (key === 'espagueti con pollo' || key === 'espaguetis con pollo') {
             platoMap.set('espagueti con pollo', p);
             platoMap.set('espaguetis con pollo', p);
+          }
+          if (key === 'alitas bbq' || key === 'barbacoa alitas') {
+            platoMap.set('alitas bbq', p);
+            platoMap.set('barbacoa alitas', p);
+          }
+          if (key === 'combo personal' || key === 'combinado personal') {
+            platoMap.set('combo personal', p);
+            platoMap.set('combinado personal', p);
           }
           if (key === 'picada x 1' || key === 'picada por uno' || key === 'picada por 1') {
             platoMap.set('picada x 1', p);

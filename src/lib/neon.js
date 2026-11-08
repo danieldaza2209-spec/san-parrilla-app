@@ -1,10 +1,11 @@
 import { neon } from '@neondatabase/serverless';
 import {
   extractOverridesFromAcomp,
-  encodeOverridesToken,
   getDailySpecials,
   updateDailySpecials,
   getDishOverrides,
+  resolveCanonicalDish,
+  normalizeCanonicalDishName,
 } from './db.js';
 
 const DEFAULT_DATABASE_URL =
@@ -171,11 +172,8 @@ export async function upsertDailySpecialsToNeon(data, timeoutMs = 4500) {
 
   const especial_arroz_precio = Number(input.especial_arroz_precio || fallback.especial_arroz_precio || 18000);
 
-  const ovrToken = encodeOverridesToken();
-  const finalAcompList = ovrToken ? [...acompanamientos, ovrToken] : acompanamientos;
-
   const principios_str = principios.join(', ');
-  const acomp_str = finalAcompList.join(', ');
+  const acomp_str = acompanamientos.join(', ');
   const esp165_str = especiales_16500.join(', ');
 
   const normalized = {
@@ -234,74 +232,39 @@ export async function upsertDailySpecialsToNeon(data, timeoutMs = 4500) {
   return normalized;
 }
 
-export async function pullOverridesFromNeon(timeoutMs = 2500) {
-  try {
-    const sql = getNeonSql();
-    const rows = await queryNeonWithTimeout(
-      sql`SELECT acompanamientos FROM daily_specials_config WHERE id = 1 LIMIT 1`,
-      timeoutMs
-    );
-    if (Array.isArray(rows) && rows.length > 0 && rows[0].acompanamientos) {
-      extractOverridesFromAcomp(rows[0].acompanamientos);
-    }
-  } catch (_) {}
+export async function pullOverridesFromNeon() {
   return getDishOverrides();
 }
 
-export async function pushOverridesToNeon(timeoutMs = 3500) {
-  try {
-    const sql = getNeonSql();
-    const rows = await queryNeonWithTimeout(
-      sql`SELECT acompanamientos FROM daily_specials_config WHERE id = 1 LIMIT 1`,
-      timeoutMs
-    );
-    const currentAcompRaw = rows?.[0]?.acompanamientos || '';
-    const { cleanAcomp } = extractOverridesFromAcomp(currentAcompRaw);
-    const baseAcomp = cleanAcomp.length > 0 ? cleanAcomp : ['Puré de ahuyama', 'Deditos', 'Tajadas maduras'];
-    const token = encodeOverridesToken();
-    const nextAcompStr = (token ? [...baseAcomp, token] : baseAcomp).join(', ');
-
-    await queryNeonWithTimeout(
-      sql`
-        UPDATE daily_specials_config
-        SET acompanamientos = ${nextAcompStr}, updated_at = NOW()
-        WHERE id = 1
-      `,
-      timeoutMs
-    );
-    return true;
-  } catch (err) {
-    console.warn('pushOverridesToNeon error:', err.message || err);
-    return false;
-  }
+export async function pushOverridesToNeon() {
+  return true;
 }
 
 export async function fetchPlatosFromNeon(timeoutMs = 3500) {
   const sql = getNeonSql();
-  const [platosRows, specialsRows] = await queryNeonWithTimeout(
-    Promise.all([
-      sql`
-        SELECT id, categoria_id, nombre, descripcion, precio, imagen_emoji, activo, disponible
-        FROM platos
-        ORDER BY categoria_id ASC, precio ASC, id ASC
-      `,
-      sql`SELECT acompanamientos FROM daily_specials_config WHERE id = 1 LIMIT 1`.catch(() => []),
-    ]),
+  const platosRows = await queryNeonWithTimeout(
+    sql`
+      SELECT id, categoria_id, nombre, descripcion, precio, imagen_emoji, activo, disponible
+      FROM platos
+      ORDER BY categoria_id ASC, precio ASC, id ASC
+    `,
     timeoutMs
   );
-
-  if (Array.isArray(specialsRows) && specialsRows.length > 0 && specialsRows[0].acompanamientos) {
-    extractOverridesFromAcomp(specialsRows[0].acompanamientos);
-  }
 
   return Array.isArray(platosRows) ? platosRows : [];
 }
 
 export async function updateSinglePlatoInNeon({ id, nombre, precio, disponible }, timeoutMs = 3500) {
   const sql = getNeonSql();
+  const canonical = resolveCanonicalDish(id, nombre);
   const isNumId = /^\d+$/.test(String(id || '').trim());
   const numId = isNumId ? Number(id) : null;
-  const cleanName = String(nombre || '').trim();
+  const targetNumIds = canonical
+    ? Array.from(new Set([...canonical.neonIds, ...(numId !== null ? [numId] : [])]))
+    : numId !== null
+    ? [numId]
+    : [];
+  const cleanName = canonical ? canonical.nombre : normalizeCanonicalDishName(nombre || '');
   const hasPrice = precio !== undefined && Number(precio) >= 0;
   const hasDisp = disponible !== undefined;
   const dispVal = hasDisp ? Boolean(disponible) : true;
@@ -310,13 +273,13 @@ export async function updateSinglePlatoInNeon({ id, nombre, precio, disponible }
   let updatedRow = null;
 
   try {
-    if (numId !== null) {
+    if (targetNumIds.length > 0) {
       if (hasDisp && hasPrice) {
         const rows = await queryNeonWithTimeout(
           sql`
             UPDATE platos
             SET disponible = ${dispVal}, activo = ${dispVal}, precio = ${priceVal}
-            WHERE id = ${numId}
+            WHERE id = ANY(${targetNumIds})
             RETURNING id, categoria_id, nombre, descripcion, precio, activo, disponible
           `,
           timeoutMs
@@ -327,7 +290,7 @@ export async function updateSinglePlatoInNeon({ id, nombre, precio, disponible }
           sql`
             UPDATE platos
             SET disponible = ${dispVal}, activo = ${dispVal}
-            WHERE id = ${numId}
+            WHERE id = ANY(${targetNumIds})
             RETURNING id, categoria_id, nombre, descripcion, precio, activo, disponible
           `,
           timeoutMs
@@ -338,7 +301,7 @@ export async function updateSinglePlatoInNeon({ id, nombre, precio, disponible }
           sql`
             UPDATE platos
             SET precio = ${priceVal}
-            WHERE id = ${numId}
+            WHERE id = ANY(${targetNumIds})
             RETURNING id, categoria_id, nombre, descripcion, precio, activo, disponible
           `,
           timeoutMs
@@ -350,12 +313,13 @@ export async function updateSinglePlatoInNeon({ id, nombre, precio, disponible }
     const nameToMatch = cleanName || updatedRow?.nombre || '';
     if (nameToMatch) {
       const lower = nameToMatch.toLowerCase();
-      const variants =
-        lower === 'espagueti con pollo' || lower === 'espaguetis con pollo'
-          ? ['espagueti con pollo', 'espaguetis con pollo']
-          : lower === 'picada x 1' || lower === 'picada por uno' || lower === 'picada por 1'
-          ? ['picada x 1', 'picada por uno', 'picada por 1']
-          : [lower];
+      const variants = canonical
+        ? Array.from(new Set([canonical.nombre.toLowerCase(), ...canonical.aliases]))
+        : lower === 'espagueti con pollo' || lower === 'espaguetis con pollo'
+        ? ['espagueti con pollo', 'espaguetis con pollo']
+        : lower === 'picada x 1' || lower === 'picada por uno' || lower === 'picada por 1'
+        ? ['picada x 1', 'picada por uno', 'picada por 1']
+        : [lower];
 
       if (hasDisp && hasPrice) {
         const rows = await queryNeonWithTimeout(
@@ -397,6 +361,24 @@ export async function updateSinglePlatoInNeon({ id, nombre, precio, disponible }
   }
 
   return updatedRow;
+}
+
+export async function bulkSavePlatosInNeon(items = [], timeoutMs = 4500) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  const results = await Promise.all(
+    items.map((item) =>
+      updateSinglePlatoInNeon(
+        {
+          id: item.id,
+          nombre: item.nombre || item.name,
+          precio: item.precio ?? item.price,
+          disponible: item.disponible !== undefined ? Boolean(item.disponible) : Boolean(item.activo ?? true),
+        },
+        timeoutMs
+      ).catch(() => null)
+    )
+  );
+  return results.filter(Boolean);
 }
 
 export async function bulkUpdatePlatosPriceInNeon({ numericIds = [], nombres = [], nuevoPrecio }, timeoutMs = 4000) {

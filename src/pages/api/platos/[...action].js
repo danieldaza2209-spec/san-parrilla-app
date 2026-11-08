@@ -4,12 +4,16 @@ import {
   toggleProductStock,
   setDishOverride,
   getDishOverrides,
+  CANONICAL_DISH_DEFINITIONS,
+  resolveCanonicalDish,
+  normalizeCanonicalDishName,
 } from '../../../lib/db.js';
 import {
   fetchPlatosFromNeon,
   pullOverridesFromNeon,
   pushOverridesToNeon,
   updateSinglePlatoInNeon,
+  bulkSavePlatosInNeon,
   bulkUpdatePlatosPriceInNeon,
 } from '../../../lib/neon.js';
 
@@ -29,25 +33,26 @@ const normText = (str) =>
 
 const CALIBRATED_BEBIDAS = [
   { key: 'botella de agua', nombre: 'Botella de Agua', precio: 3000, legacyPrices: [0] },
-  { key: 'cerveza club colombia / aguila', nombre: 'Cerveza Club Colombia / Águila', precio: 5500, legacyPrices: [0, 4500] },
-  { key: 'gaseosa 1.5l', nombre: 'Gaseosa 1.5L', precio: 8000, legacyPrices: [0] },
+  { key: 'cerveza club colombia / aguila', nombre: 'Cerveza Club Colombia / Águila', precio: 5500, legacyPrices: [0, 4000, 4500] },
+  { key: 'gaseosa 1.5l', nombre: 'Gaseosa 1.5L', precio: 8000, legacyPrices: [0, 4000] },
   { key: 'gaseosa 400ml', nombre: 'Gaseosa 400ml', precio: 4000, legacyPrices: [0] },
-  { key: 'jugo natural en agua', nombre: 'Jugo Natural en Agua', precio: 8500, legacyPrices: [0, 6000] },
-  { key: 'jugo natural en leche', nombre: 'Jugo Natural en Leche', precio: 9500, legacyPrices: [0, 7500] },
-  { key: 'soda', nombre: 'Soda', precio: 4500, legacyPrices: [0] },
-  { key: 'porcion de papas a la francesa', nombre: 'Porción de Papas a la Francesa', precio: 5500, legacyPrices: [0, 6000] },
+  { key: 'jugo natural en agua', nombre: 'Jugo Natural en Agua', precio: 8500, legacyPrices: [0, 4000, 6000] },
+  { key: 'jugo natural en leche', nombre: 'Jugo Natural en Leche', precio: 9500, legacyPrices: [0, 4000, 7500] },
+  { key: 'soda', nombre: 'Soda', precio: 4500, legacyPrices: [0, 4000] },
+  { key: 'porcion de papas a la francesa', nombre: 'Porción de Papas a la Francesa', precio: 5500, legacyPrices: [0, 4000, 6000] },
 ];
 
-const REQUIRED_18K_DISHES = [
-  { key: 'arroz con pollo', nombre: 'Arroz con pollo', precio: 18000 },
-  { key: 'espagueti con pollo', nombre: 'Espagueti con pollo', precio: 18000 },
-  { key: 'arroz campesino', nombre: 'Arroz campesino', precio: 18000 },
-  { key: 'arroz mixto', nombre: 'Arroz mixto', precio: 18000 },
-];
+const REQUIRED_18K_DISHES = CANONICAL_DISH_DEFINITIONS.map((d) => ({
+  id: d.neonIds[0] || d.slugId,
+  slugId: d.slugId,
+  key: normText(d.nombre),
+  nombre: d.nombre,
+  precio: d.precio,
+}));
 
-export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
+export function sanitizeCatalogPlatos(rawList, overridesMap = {}, { fromNeon = false } = {}) {
   if (!Array.isArray(rawList)) return [];
-  const activeOverrides = { ...getDishOverrides(), ...(overridesMap || {}) };
+  const activeOverrides = fromNeon ? {} : { ...getDishOverrides(), ...(overridesMap || {}) };
   const byKey = new Map();
 
   for (const item of rawList) {
@@ -55,27 +60,13 @@ export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
     let rawName = String(item.nombre || item.name || '').trim();
     if (!rawName) continue;
 
+    rawName = normalizeCanonicalDishName(rawName, item.categoria_id);
     let key = normText(rawName);
     if (key.includes('patacon con hogao')) continue;
 
     let precio = Number(item.precio ?? item.price ?? 0);
 
-    if (key === 'espaguetis con pollo' || key === 'espagueti con pollo') {
-      rawName = 'Espagueti con pollo';
-      key = 'espagueti con pollo';
-    } else if (key === 'botella de agua' || key === 'agua') {
-      rawName = 'Botella de Agua';
-      key = 'botella de agua';
-    } else if (
-      key === 'porcion de papas a la francesa' ||
-      key === 'papa francesa casera' ||
-      key === 'porcion de papa a la francesa'
-    ) {
-      rawName = 'Porción de Papas a la Francesa';
-      key = 'porcion de papas a la francesa';
-    } else if (key === 'picada por uno' || key === 'picada por 1' || key === 'picada x 1') {
-      rawName = 'Picada x 1';
-      key = 'picada x 1';
+    if (key === 'picada x 1') {
       if (precio === 19500 || precio <= 0) {
         precio = 27500;
       }
@@ -98,14 +89,19 @@ export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
         ? Boolean(item.is_active)
         : true;
 
-    const ovr = activeOverrides[key] || activeOverrides[normText(item.id)];
-    if (ovr) {
-      if (ovr.disponible !== undefined) isDisp = Boolean(ovr.disponible);
-      if (ovr.precio !== undefined && Number(ovr.precio) > 0) precio = Number(ovr.precio);
+    if (!fromNeon) {
+      const ovr = activeOverrides[key] || activeOverrides[normText(item.id)];
+      if (ovr) {
+        if (ovr.disponible !== undefined) isDisp = Boolean(ovr.disponible);
+        if (ovr.precio !== undefined && Number(ovr.precio) > 0) precio = Number(ovr.precio);
+      }
     }
+
+    const canonical = Number(item.categoria_id) === 15 ? null : resolveCanonicalDish(item.id, rawName);
 
     const normalizedItem = {
       ...item,
+      ...(canonical ? { slug_id: canonical.slugId } : {}),
       nombre: rawName,
       name: rawName,
       precio,
@@ -120,7 +116,7 @@ export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
       byKey.set(key, normalizedItem);
     } else {
       const existing = byKey.get(key);
-      const mergedDisp = ovr?.disponible !== undefined ? Boolean(ovr.disponible) : existing.disponible && isDisp;
+      const mergedDisp = existing.disponible && isDisp;
       const preferred =
         normText(item.nombre || '') === key && normText(existing.nombre || '') !== key ? normalizedItem : existing;
       byKey.set(key, {
@@ -160,7 +156,8 @@ export function sanitizeCatalogPlatos(rawList, overridesMap = {}) {
       const isDisp = ovr?.disponible !== undefined ? Boolean(ovr.disponible) : true;
       const precio = ovr?.precio !== undefined && Number(ovr.precio) > 0 ? Number(ovr.precio) : req18.precio;
       byKey.set(req18.key, {
-        id: `alm18-${req18.key.replace(/[^a-z0-9]/g, '-')}`,
+        id: req18.id,
+        slug_id: req18.slugId,
         nombre: req18.nombre,
         name: req18.nombre,
         descripcion: 'Platos Fuertes $18.000',
@@ -188,7 +185,8 @@ export function getFallbackSanitizedPlatos() {
         ? Boolean(p.is_active)
         : true;
     return {
-      id: p.id,
+      id: p.neon_id || p.id,
+      slug_id: p.id,
       nombre: p.name || p.nombre,
       name: p.name || p.nombre,
       descripcion: p.category || p.description || '',
@@ -199,14 +197,14 @@ export function getFallbackSanitizedPlatos() {
       categoria_id: p.menu_type === 'rapidas' ? 20 : 1,
     };
   });
-  return sanitizeCatalogPlatos(mapped, getDishOverrides());
+  return sanitizeCatalogPlatos(mapped, getDishOverrides(), { fromNeon: false });
 }
 
 export async function fetchLiveSanitizedPlatos() {
   try {
     const neonRows = await fetchPlatosFromNeon(3500);
     if (Array.isArray(neonRows) && neonRows.length > 0) {
-      return sanitizeCatalogPlatos(neonRows, getDishOverrides());
+      return sanitizeCatalogPlatos(neonRows, {}, { fromNeon: true });
     }
   } catch (err) {
     console.warn('fetchLiveSanitizedPlatos fallback a catálogo local:', err.message || err);
@@ -215,7 +213,11 @@ export async function fetchLiveSanitizedPlatos() {
 }
 
 function resolveDishNameById(id, fallbackName = '') {
-  if (fallbackName && String(fallbackName).trim()) return String(fallbackName).trim();
+  const canonical = resolveCanonicalDish(id, fallbackName);
+  if (canonical) return canonical.nombre;
+  if (fallbackName && String(fallbackName).trim()) {
+    return normalizeCanonicalDishName(fallbackName);
+  }
   const strId = String(id || '').trim();
   if (!strId) return '';
   if (strId.startsWith('alm18-')) {
@@ -233,7 +235,7 @@ function resolveDishNameById(id, fallbackName = '') {
     if (found) return found.nombre;
   }
   const prods = getAllProducts() || [];
-  const match = prods.find((p) => String(p.id) === strId);
+  const match = prods.find((p) => String(p.id) === strId || String(p.neon_id) === strId);
   if (match) return match.name || match.nombre || '';
   return '';
 }
@@ -322,6 +324,8 @@ async function handleRequest({ params, request }) {
       ? parsedBody.items
       : [];
 
+    await bulkSavePlatosInNeon(items, 4500);
+
     const results = [];
     for (const item of items) {
       if (!item) continue;
@@ -348,8 +352,6 @@ async function handleRequest({ params, request }) {
         activo: itemDisp,
       });
     }
-
-    await pushOverridesToNeon(3500);
 
     return new Response(
       JSON.stringify({ ok: true, success: true, updated: results.length, platos: results }),
