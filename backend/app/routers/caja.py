@@ -35,6 +35,7 @@ def obtener_caja_activa(db: Session = Depends(get_db)):
     """
     activa = crud.get_active_cash_closure(db)
     if not activa:
+        db.rollback()
         return None
     resumen = crud.calcular_resumen_caja(db, activa)
     db.commit()

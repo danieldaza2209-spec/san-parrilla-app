@@ -11,9 +11,17 @@ engine_kwargs = {}
 if db_url.startswith("postgresql"):
     # Neon cloud database connection optimizations:
     # pool_pre_ping checks if connection is still alive before reusing it.
-    # pool_recycle refreshes connections every 5 minutes to prevent stale pooler disconnects.
+    # pool_recycle refreshes connections every 3 minutes to prevent stale pooler disconnects.
     engine_kwargs["pool_pre_ping"] = True
-    engine_kwargs["pool_recycle"] = 300
+    engine_kwargs["pool_recycle"] = 180
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 5
+    engine_kwargs["pool_timeout"] = 15
+    engine_kwargs["connect_args"] = {
+        "connect_timeout": 10,
+        "application_name": "sanparrilla_fastapi",
+        "options": "-c statement_timeout=15000 -c idle_in_transaction_session_timeout=15000"
+    }
 
 # Create database engine
 engine = create_engine(db_url, **engine_kwargs)
@@ -30,8 +38,14 @@ def get_db():
     try:
         yield db
     except Exception:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         raise
     finally:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         db.close()
