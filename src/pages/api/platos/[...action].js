@@ -390,11 +390,39 @@ async function handleRequest({ params, request }) {
 
   // 1. GET /api/platos
   if (method === 'GET' && !action) {
-    const list = await fetchLiveSanitizedPlatos();
-    return new Response(JSON.stringify(list), {
-      status: 200,
-      headers: JSON_HEADERS,
-    });
+    try {
+      const list = await fetchLiveSanitizedPlatos();
+      return new Response(JSON.stringify(Array.isArray(list) ? list : []), {
+        status: 200,
+        headers: JSON_HEADERS,
+      });
+    } catch (err) {
+      console.error('Error en GET /api/platos fallback:', err);
+      const prods = getAllProducts() || [];
+      const mapped = prods.map((p) => {
+        const isAct =
+          p.disponible !== undefined
+            ? Boolean(p.disponible)
+            : p.is_active !== undefined
+            ? Boolean(p.is_active)
+            : true;
+        return {
+          id: p.id,
+          nombre: p.name,
+          name: p.name,
+          descripcion: p.category || p.description || '',
+          precio: Number(p.price || 0),
+          price: Number(p.price || 0),
+          activo: isAct,
+          disponible: isAct,
+          categoria_id: p.menu_type === 'rapidas' ? 20 : 1,
+        };
+      });
+      return new Response(JSON.stringify(mapped), {
+        status: 200,
+        headers: JSON_HEADERS,
+      });
+    }
   }
 
   let parsedBody = {};

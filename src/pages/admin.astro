@@ -1117,6 +1117,18 @@ const formatPrice = (val) => {
           Cargando catálogo de platos desde Neon DB...
         </div>
       </div>
+      <!-- Datos iniciales de catálogo para renderizado inmediato sin congelamientos -->
+      <script id="server-initial-products" type="application/json" set:html={JSON.stringify(products.map(p => ({
+        id: p.id,
+        nombre: p.name || p.nombre,
+        name: p.name || p.nombre,
+        descripcion: p.category || p.description || '',
+        precio: Number(p.price || p.precio || 0),
+        price: Number(p.price || p.precio || 0),
+        disponible: p.disponible !== undefined ? Boolean(p.disponible) : (p.is_active !== undefined ? Boolean(p.is_active) : true),
+        activo: p.disponible !== undefined ? Boolean(p.disponible) : (p.is_active !== undefined ? Boolean(p.is_active) : true),
+        categoria_id: p.menu_type === 'rapidas' ? 20 : 1
+      })))}></script>
     </div>
 
   </div>
@@ -1364,7 +1376,6 @@ const formatPrice = (val) => {
     // =====================================================================
     // 3. GESTOR DE PRECIOS Y PLATOS AGOTADOS AGRUPADO POR BLOQUES EN VIVO
     // =====================================================================
-    let allLivePlatos = [];
     let currentPlatosFamilyTab = 'ALL';
     let currentPlatosSearch = '';
 
@@ -1408,8 +1419,9 @@ const formatPrice = (val) => {
       const seenKeys = new Set();
       const result = [];
       for (const item of rawList) {
-        if (!item || !item.nombre) continue;
-        let nombre = String(item.nombre).trim();
+        if (!item) continue;
+        let nombre = String(item.nombre || item.name || '').trim();
+        if (!nombre) continue;
         let n = normDishText(nombre);
         if (n.includes('patacon con hogao')) continue;
         if (n === 'espaguetis con pollo' || n === 'espagueti con pollo') {
@@ -1438,6 +1450,30 @@ const formatPrice = (val) => {
       }
       return result;
     }
+
+    function getInitialPlatosBootstrap() {
+      try {
+        const cached = localStorage.getItem('sp_platos_live_v1');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return sanitizeAdminPlatos(parsed);
+          }
+        }
+      } catch (_) {}
+      try {
+        const initEl = document.getElementById('server-initial-products');
+        if (initEl && initEl.textContent) {
+          const parsedInit = JSON.parse(initEl.textContent);
+          if (Array.isArray(parsedInit) && parsedInit.length > 0) {
+            return sanitizeAdminPlatos(parsedInit);
+          }
+        }
+      } catch (_) {}
+      return [];
+    }
+
+    let allLivePlatos = getInitialPlatosBootstrap();
 
     function buildPriceOptionsHtml(currentPrice) {
       const prNum = Math.round(Number(currentPrice || 0));
@@ -2092,22 +2128,57 @@ const formatPrice = (val) => {
     }
 
     async function loadLivePlatosIntoAdmin() {
+      const container = document.getElementById('admin-price-groups-container');
       try {
         const res = await fetch('/api/platos?include_inactive=true&solo_activos=false', { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            allLivePlatos = sanitizeAdminPlatos(data);
-            broadcastPlatosUpdate(allLivePlatos);
-            renderAdminPriceGroups();
-            const badge = document.getElementById('platos-sync-badge');
-            if (badge) badge.classList.remove('hidden');
+        if (!res.ok) {
+          throw new Error(`Error en API: ${res.status} ${res.statusText}`);
+        }
+        const data = await res.json();
+
+        // Validar si la respuesta es un array directo o viene anidada { platos: [...] }
+        const listaPlatos = Array.isArray(data) ? data : (data?.platos || []);
+
+        if (listaPlatos.length === 0) {
+          console.warn('La API devolvió 0 platos.');
+        }
+
+        if (listaPlatos.length > 0) {
+          allLivePlatos = sanitizeAdminPlatos(listaPlatos);
+          broadcastPlatosUpdate(allLivePlatos);
+          renderAdminPriceGroups();
+          const badge = document.getElementById('platos-sync-badge');
+          if (badge) badge.classList.remove('hidden');
+        } else if (!allLivePlatos || allLivePlatos.length === 0) {
+          if (container) {
+            container.innerHTML = `
+              <div class="col-span-full p-4 bg-amber-50 border border-amber-200 rounded-lg text-center text-sm text-amber-800">
+                <p class="font-bold">⚠️ No se pudo sincronizar automáticamente con Neon DB.</p>
+                <p class="text-xs mt-1 text-gray-600">La API devolvió 0 platos.</p>
+                <button type="button" onclick="loadLivePlatosIntoAdmin()" class="mt-2 px-3 py-1 bg-amber-600 text-white rounded text-xs font-bold hover:bg-amber-700 cursor-pointer">Reintentar</button>
+              </div>
+            `;
           }
         }
       } catch (err) {
-        console.warn('Error cargando /api/platos en Admin:', err);
+        console.error('Error cargando platos:', err);
+        if (!allLivePlatos || allLivePlatos.length === 0) {
+          if (container) {
+            container.innerHTML = `
+              <div class="col-span-full p-4 bg-amber-50 border border-amber-200 rounded-lg text-center text-sm text-amber-800">
+                <p class="font-bold">⚠️ No se pudo sincronizar automáticamente con Neon DB.</p>
+                <p class="text-xs mt-1 text-gray-600">${err.message || 'Error de conexión con el servidor'}</p>
+                <button type="button" onclick="loadLivePlatosIntoAdmin()" class="mt-2 px-3 py-1 bg-amber-600 text-white rounded text-xs font-bold hover:bg-amber-700 cursor-pointer">Reintentar</button>
+              </div>
+            `;
+          }
+        } else {
+          showAdminPlatoToast(`⚠️ No se pudo sincronizar con Neon DB: ${err.message || err}`, true);
+        }
       }
     }
+    // @ts-ignore
+    window.loadLivePlatosIntoAdmin = loadLivePlatosIntoAdmin;
 
     // Buscador de platos y pestañas de familia en Gestor de Precios
     const adminSearchDishEl = document.getElementById('admin-search-dish');
@@ -2134,7 +2205,22 @@ const formatPrice = (val) => {
 
     const btnRefreshPlatosAdmin = document.getElementById('btn-refresh-platos-admin');
     if (btnRefreshPlatosAdmin) {
-      btnRefreshPlatosAdmin.addEventListener('click', () => loadLivePlatosIntoAdmin());
+      btnRefreshPlatosAdmin.addEventListener('click', async () => {
+        const origText = btnRefreshPlatosAdmin.innerHTML;
+        btnRefreshPlatosAdmin.innerHTML = '<span>⏳ Sincronizando...</span>';
+        // @ts-ignore
+        btnRefreshPlatosAdmin.disabled = true;
+        try {
+          await loadLivePlatosIntoAdmin();
+          showAdminPlatoToast('✓ Catálogo sincronizado con Neon DB');
+        } catch (e) {
+          showAdminPlatoToast('✕ Error sincronizando: ' + (e.message || e), true);
+        } finally {
+          btnRefreshPlatosAdmin.innerHTML = origText;
+          // @ts-ignore
+          btnRefreshPlatosAdmin.disabled = false;
+        }
+      });
     }
 
     const btnSaveAllPlatosState = document.getElementById('btn-save-all-platos-state');
@@ -3035,7 +3121,16 @@ const formatPrice = (val) => {
     // =====================================================================
     // 2.5 MÓDULO DE CUENTAS DE FIADO Y EXPORTACIÓN A EXCEL MENSUAL
     // =====================================================================
-    let allHistoricalOrders = [];
+    let allHistoricalOrders = (() => {
+      try {
+        const cached = sessionStorage.getItem('sp_admin_historical_orders');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (_) {}
+      return [];
+    })();
     let allNeonClientes = [];
     let fiadoStatusFilter = 'PENDIENTE'; // 'PENDIENTE' | 'PAGADO' | 'ALL'
     let fiadoMonthFilter = '';
@@ -3855,25 +3950,52 @@ const formatPrice = (val) => {
     async function loadLiveAdminMetrics() {
       try {
         const [cajaRes, pedRes, dashRes, cliRes, msgRes] = await Promise.all([
-          fetch('/api/caja/active', { cache: 'no-store' }),
-          fetch('/api/pedidos?limit=500', { cache: 'no-store' }),
+          fetch('/api/caja/active', { cache: 'no-store' }).catch((e) => { console.warn('Error en /api/caja/active:', e); return null; }),
+          fetch('/api/pedidos?limit=500', { cache: 'no-store' }).catch((e) => { console.warn('Error en /api/pedidos:', e); return null; }),
           fetch('/api/pedidos/stats/dashboard', { cache: 'no-store' }).catch(() => null),
           fetch('/api/clientes', { cache: 'no-store' }).catch(() => null),
           fetch('/api/mensajeros?incluir_inactivos=true', { cache: 'no-store' }).catch(() => null)
         ]);
 
-        const caja = (cajaRes && cajaRes.ok) ? await cajaRes.json() : null;
-        const pedidos = (pedRes && pedRes.ok) ? await pedRes.json() : [];
-        const clientesData = (cliRes && cliRes.ok) ? await cliRes.json() : [];
-        const mensajerosData = (msgRes && msgRes.ok) ? await msgRes.json() : [];
+        const caja = (cajaRes && cajaRes.ok) ? await cajaRes.json().catch(() => null) : null;
+        let pedidos = null;
+        if (pedRes && pedRes.ok) {
+          pedidos = await pedRes.json().catch(() => null);
+        }
+        const clientesData = (cliRes && cliRes.ok) ? await cliRes.json().catch(() => []) : [];
+        const mensajerosData = (msgRes && msgRes.ok) ? await msgRes.json().catch(() => []) : [];
         if (Array.isArray(mensajerosData) && mensajerosData.length > 0) {
           allAdminCouriers = mensajerosData;
         }
-        const listaPedidos = Array.isArray(pedidos) ? pedidos : [];
 
-        allHistoricalOrders = listaPedidos;
-        allNeonClientes = Array.isArray(clientesData) ? clientesData : [];
-        renderFiadoAccountsModule();
+        if (Array.isArray(pedidos)) {
+          allHistoricalOrders = pedidos;
+          try {
+            sessionStorage.setItem('sp_admin_historical_orders', JSON.stringify(pedidos.slice(0, 300)));
+          } catch (_) {}
+        }
+        if (Array.isArray(clientesData) && clientesData.length > 0) {
+          allNeonClientes = clientesData;
+        }
+
+        // Si la carga de pedidos falló y no tenemos pedidos en memoria ni en caché, mostrar tarjeta de reintento amigable
+        if ((!pedRes || !pedRes.ok) && (!allHistoricalOrders || allHistoricalOrders.length === 0)) {
+          const fiadoContainer = document.getElementById('fiado-accounts-container');
+          if (fiadoContainer) {
+            const statusMsg = pedRes ? `Error en API: ${pedRes.status} ${pedRes.statusText}` : 'Error de conexión con Neon DB';
+            fiadoContainer.innerHTML = `
+              <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg text-center text-sm text-amber-800">
+                <p class="font-bold">⚠️ No se pudieron sincronizar las cuentas por cobrar desde Neon DB.</p>
+                <p class="text-xs mt-1 text-gray-600">${statusMsg}</p>
+                <button type="button" onclick="loadLiveAdminMetrics()" class="mt-2 px-3 py-1 bg-amber-600 text-white rounded text-xs font-bold hover:bg-amber-700 cursor-pointer">Reintentar</button>
+              </div>
+            `;
+          }
+        } else {
+          renderFiadoAccountsModule();
+        }
+
+        const listaPedidos = Array.isArray(allHistoricalOrders) ? allHistoricalOrders : [];
 
         // Filtrar pedidos del turno activo de caja o del día de hoy en Colombia
         const hoyCol = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
@@ -3965,10 +4087,28 @@ const formatPrice = (val) => {
         });
       } catch (err) {
         console.error('Error cargando métricas y auditoría en vivo de /admin:', err);
+        const fiadoContainer = document.getElementById('fiado-accounts-container');
+        if (fiadoContainer && (!allHistoricalOrders || allHistoricalOrders.length === 0)) {
+          fiadoContainer.innerHTML = `
+            <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg text-center text-sm text-amber-800">
+              <p class="font-bold">⚠️ No se pudieron sincronizar las cuentas por cobrar desde Neon DB.</p>
+              <p class="text-xs mt-1 text-gray-600">${err.message || err}</p>
+              <button type="button" onclick="loadLiveAdminMetrics()" class="mt-2 px-3 py-1 bg-amber-600 text-white rounded text-xs font-bold hover:bg-amber-700 cursor-pointer">Reintentar</button>
+            </div>
+          `;
+        }
       }
     }
+    // @ts-ignore
+    window.loadLiveAdminMetrics = loadLiveAdminMetrics;
 
     document.addEventListener('DOMContentLoaded', () => {
+      if (allLivePlatos && allLivePlatos.length > 0) {
+        renderAdminPriceGroups();
+      }
+      if (allHistoricalOrders && allHistoricalOrders.length > 0) {
+        renderFiadoAccountsModule();
+      }
       renderCourierFilterButtons();
       loadLiveSpecialsIntoAdmin();
       loadLivePlatosIntoAdmin();
