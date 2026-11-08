@@ -1,190 +1,97 @@
 import { getSanitizedFastapiUrl } from '../../lib/fastapi.js';
+import { getDailySpecials } from '../../lib/db.js';
 import {
-  getDailySpecials,
-  updateDailySpecials,
-  extractOverridesFromAcomp,
-  encodeOverridesToken,
-} from '../../lib/db.js';
+  getLiveSpecialsFromNeon,
+  upsertDailySpecialsToNeon,
+} from '../../lib/neon.js';
 
-function normalizeSpecialsPayload(raw) {
-  const fallback = getDailySpecials();
-  const data = raw && typeof raw === 'object' ? raw : {};
+export const prerender = false;
 
-  const sopa = String(data.sopa_dia || data.sopa || fallback.sopa || 'Campesina').trim();
-  const toArray = (v, def) => {
-    if (Array.isArray(v) && v.length > 0) return v.map((x) => String(x).trim()).filter(Boolean);
-    if (typeof v === 'string' && v.trim()) return v.split(',').map((x) => x.trim()).filter(Boolean);
-    return def;
-  };
-
-  const principios = toArray(data.principios, fallback.principios || ['Calabacín al huevo', 'Lentejas caseras', 'Frijoles caseros']);
-  const rawAcompList = toArray(data.acompanamientos, fallback.acompanamientos || ['Puré de ahuyama', 'Deditos', 'Tajadas maduras']);
-  const { cleanAcomp } = extractOverridesFromAcomp(rawAcompList);
-  const acompanamientos = cleanAcomp.length > 0 ? cleanAcomp : ['Puré de ahuyama', 'Deditos', 'Tajadas maduras'];
-  const especiales_16500 = toArray(data.especiales_16500, fallback.especiales_16500 || ['Hígado al ajillo', 'Desgranado de carne']);
-
-  let rawTag165 = String(data.especiales_16500_etiqueta || fallback.especiales_16500_etiqueta || '⭐ SOLO POR HOY').trim();
-  let tag165Flag = undefined;
-  if (rawTag165.endsWith('||OFF')) {
-    tag165Flag = false;
-    rawTag165 = rawTag165.slice(0, -5).trim();
-  } else if (rawTag165.endsWith('||ON')) {
-    tag165Flag = true;
-    rawTag165 = rawTag165.slice(0, -4).trim();
-  }
-  const especiales_16500_etiqueta = rawTag165 || '⭐ SOLO POR HOY';
-  const mostrar_rotativos_16k =
-    data.mostrar_rotativos_16k !== undefined
-      ? Boolean(data.mostrar_rotativos_16k)
-      : tag165Flag !== undefined
-      ? tag165Flag
-      : fallback.mostrar_rotativos_16k !== false;
-
-  const especial_arroz_nombre = String(data.especial_arroz_nombre || fallback.especial_arroz_nombre || 'Arroz ranchero').trim();
-
-  let rawTagArroz = String(data.especial_arroz_etiqueta || fallback.especial_arroz_etiqueta || '⭐ SOLO LOS LUNES').trim();
-  let tagArrozFlag = undefined;
-  if (rawTagArroz.endsWith('||OFF')) {
-    tagArrozFlag = false;
-    rawTagArroz = rawTagArroz.slice(0, -5).trim();
-  } else if (rawTagArroz.endsWith('||ON')) {
-    tagArrozFlag = true;
-    rawTagArroz = rawTagArroz.slice(0, -4).trim();
-  }
-  const especial_arroz_etiqueta = rawTagArroz || '⭐ SOLO LOS LUNES';
-  const mostrar_rotativo_fin_semana =
-    data.mostrar_rotativo_fin_semana !== undefined
-      ? Boolean(data.mostrar_rotativo_fin_semana)
-      : tagArrozFlag !== undefined
-      ? tagArrozFlag
-      : fallback.mostrar_rotativo_fin_semana !== false;
-
-  const especial_arroz_precio = Number(data.especial_arroz_precio || fallback.especial_arroz_precio || 18000);
-
-  return {
-    sopa_dia: sopa,
-    sopa,
-    principios,
-    principios_str: principios.join(', '),
-    acompanamientos,
-    acompanamientos_str: acompanamientos.join(', '),
-    especiales_16500,
-    especiales_16500_str: especiales_16500.join(', '),
-    especiales_16500_etiqueta,
-    mostrar_rotativos_16k,
-    especial_arroz_nombre,
-    especial_arroz_etiqueta,
-    especial_arroz_precio,
-    mostrar_rotativo_fin_semana,
-    updated_at: data.updated_at || new Date().toISOString(),
-  };
-}
+const JSON_HEADERS = {
+  'Content-Type': 'application/json',
+  'Cache-Control': 'no-store, max-age=0',
+};
 
 export async function GET() {
-  const baseUrl = getSanitizedFastapiUrl();
   try {
-    const res = await fetch(`${baseUrl}/api/especiales-dia`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-      const remoteData = await res.json();
-      const normalized = normalizeSpecialsPayload(remoteData);
-      updateDailySpecials(normalized.sopa, normalized.principios, normalized.acompanamientos, normalized);
-      return new Response(JSON.stringify(normalized), {
+    const neonSpecials = await getLiveSpecialsFromNeon(3500);
+    if (neonSpecials && (neonSpecials.sopa || neonSpecials.sopa_dia)) {
+      return new Response(JSON.stringify(neonSpecials), {
         status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store, max-age=0',
-        },
+        headers: JSON_HEADERS,
       });
     }
-  } catch (e) {}
+  } catch (err) {
+    console.warn('Error en GET /api/especiales-dia Neon:', err);
+  }
 
-  const localData = normalizeSpecialsPayload(getDailySpecials());
-  return new Response(JSON.stringify(localData), {
+  const fallback = getDailySpecials();
+  return new Response(JSON.stringify(fallback), {
     status: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-store, max-age=0',
-    },
+    headers: JSON_HEADERS,
   });
 }
 
 async function handleSave(request) {
   try {
-    const body = await request.json();
-    const normalizedInput = normalizeSpecialsPayload(body);
-
-    // Actualizar memoria/SQLite local inmediatamente
-    updateDailySpecials(
-      normalizedInput.sopa,
-      normalizedInput.principios,
-      normalizedInput.acompanamientos,
-      normalizedInput
-    );
-
-    const baseUrl = getSanitizedFastapiUrl();
+    let body = {};
     try {
-      // Sincronizar overrides existentes de platos antes de guardar especiales
-      try {
-        const curRes = await fetch(`${baseUrl}/api/especiales-dia`, { headers: { Accept: 'application/json' } });
-        if (curRes.ok) {
-          const curRemote = await curRes.json();
-          extractOverridesFromAcomp(curRemote?.acompanamientos);
-        }
-      } catch (_) {}
+      body = await request.json();
+    } catch (_) {
+      body = {};
+    }
 
-      const ovrToken = encodeOverridesToken();
-      const remoteAcomp = ovrToken
-        ? [...normalizedInput.acompanamientos, ovrToken]
-        : normalizedInput.acompanamientos;
+    // 1. Guardar directamente en Neon DB y memoria local con timeout máximo de 5s
+    const saved = await upsertDailySpecialsToNeon(body, 5000);
 
-      const encodedTag165 = `${normalizedInput.especiales_16500_etiqueta}||${normalizedInput.mostrar_rotativos_16k ? 'ON' : 'OFF'}`;
-      const encodedTagArroz = `${normalizedInput.especial_arroz_etiqueta}||${normalizedInput.mostrar_rotativo_fin_semana ? 'ON' : 'OFF'}`;
-      const res = await fetch(`${baseUrl}/api/especiales-dia`, {
+    // 2. Notificación en segundo plano a FastAPI (fire-and-forget, NUNCA bloquea ni arroja 502/504)
+    try {
+      const baseUrl = getSanitizedFastapiUrl();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      fetch(`${baseUrl}/api/especiales-dia`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
-          sopa_dia: normalizedInput.sopa_dia,
-          sopa: normalizedInput.sopa,
-          principios: normalizedInput.principios,
-          acompanamientos: remoteAcomp,
-          especiales_16500: normalizedInput.especiales_16500,
-          especiales_16500_etiqueta: encodedTag165,
-          mostrar_rotativos_16k: normalizedInput.mostrar_rotativos_16k,
-          especial_arroz_nombre: normalizedInput.especial_arroz_nombre,
-          especial_arroz_etiqueta: encodedTagArroz,
-          especial_arroz_precio: normalizedInput.especial_arroz_precio,
-          mostrar_rotativo_fin_semana: normalizedInput.mostrar_rotativo_fin_semana,
+          sopa_dia: saved.sopa_dia,
+          sopa: saved.sopa,
+          principios: saved.principios,
+          acompanamientos: saved.acompanamientos,
+          especiales_16500: saved.especiales_16500,
+          especiales_16500_etiqueta: `${saved.especiales_16500_etiqueta}||${saved.mostrar_rotativos_16k ? 'ON' : 'OFF'}`,
+          especial_arroz_nombre: saved.especial_arroz_nombre,
+          especial_arroz_etiqueta: `${saved.especial_arroz_etiqueta}||${saved.mostrar_rotativo_fin_semana ? 'ON' : 'OFF'}`,
+          especial_arroz_precio: saved.especial_arroz_precio,
         }),
-      });
-      if (res.ok) {
-        const savedRemote = await res.json();
-        const finalData = normalizeSpecialsPayload({
-          ...savedRemote,
-          mostrar_rotativos_16k: normalizedInput.mostrar_rotativos_16k,
-          mostrar_rotativo_fin_semana: normalizedInput.mostrar_rotativo_fin_semana,
-        });
-        updateDailySpecials(finalData.sopa, finalData.principios, finalData.acompanamientos, finalData);
-        return new Response(JSON.stringify({ success: true, ...finalData, specials: finalData }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-    } catch (e) {}
+        signal: controller.signal,
+      })
+        .then(() => clearTimeout(timeoutId))
+        .catch(() => clearTimeout(timeoutId));
+    } catch (_) {}
 
-    return new Response(JSON.stringify({ success: true, ...normalizedInput, specials: normalizedInput }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Especiales guardados con éxito en Neon DB',
+        ...saved,
+        specials: saved,
+      }),
+      {
+        status: 200,
+        headers: JSON_HEADERS,
+      }
+    );
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    console.error('Error en POST/PUT /api/especiales-dia:', err);
+    return new Response(
+      JSON.stringify({
+        error: err.message || 'Error guardando especiales del día',
+      }),
+      {
+        status: 500,
+        headers: JSON_HEADERS,
+      }
+    );
   }
 }
 

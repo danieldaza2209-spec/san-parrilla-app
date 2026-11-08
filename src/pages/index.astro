@@ -6,6 +6,7 @@ import QuickOrderView from '../components/QuickOrderView.astro';
 import StyledMenuView from '../components/StyledMenuView.astro';
 import { getCategories, getPublicProducts, getDailySpecials, fallbackCategories, fallbackDailySpecials } from '../lib/db.js';
 import { fetchLiveSanitizedPlatos } from './api/platos/[...action].js';
+import { getLiveSpecialsFromNeon } from '../lib/neon.js';
 
 Astro.response.headers.set(
   'Cache-Control',
@@ -115,7 +116,13 @@ const products = rawProducts
     return true;
   });
 
-const rawSpecials = getDailySpecials() || fallbackDailySpecials;
+let rawSpecials = getDailySpecials() || fallbackDailySpecials;
+try {
+  const liveNeonSpecials = await getLiveSpecialsFromNeon(2500);
+  if (liveNeonSpecials && (liveNeonSpecials.sopa || liveNeonSpecials.sopa_dia)) {
+    rawSpecials = { ...rawSpecials, ...liveNeonSpecials };
+  }
+} catch (_) {}
 const isDishAvailableByName = (dishName: string) => {
   const k = normKey(dishName);
   if (!k) return false;

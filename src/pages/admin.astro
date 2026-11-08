@@ -1344,12 +1344,23 @@ const formatPrice = (val) => {
 
         try {
           const res = await fetch('/api/especiales-dia', {
-            method: 'PUT',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
-          const data = await res.json();
-          const savedSpecials = data.specials || payload;
+
+          if (!res.ok) {
+            const errorText = await res.text().catch(() => '');
+            throw new Error(`El servidor respondió con código ${res.status}: ${errorText.slice(0, 80)}`);
+          }
+
+          let data = null;
+          try {
+            data = await res.json();
+          } catch (_) {
+            data = payload;
+          }
+          const savedSpecials = (data && data.specials) ? data.specials : (data || payload);
 
           try {
             localStorage.setItem('sp_daily_specials_v1', JSON.stringify(savedSpecials));
@@ -1365,8 +1376,11 @@ const formatPrice = (val) => {
             feedback.classList.remove('hidden');
             setTimeout(() => feedback.classList.add('hidden'), 6000);
           }
+          showAdminPlatoToast('✅ ¡Especiales del día y menú sincronizados con éxito!');
         } catch (err) {
-          alert('Error al guardar especiales del día: ' + (err.message || err));
+          console.error('Error al guardar especiales:', err);
+          showAdminPlatoToast(`⚠️ No se pudo guardar: ${err.message}`, true);
+          alert(`⚠️ No se pudo guardar: ${err.message}`);
         } finally {
           if (btnSave) btnSave.textContent = '💾 Guardar Especiales del Día (Carta + POS)';
         }
